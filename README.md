@@ -46,3 +46,9 @@ The only tricky part you have to do is get your training data into the format sp
 1. The ability to pass in a param_grid of your own to run during GridSearchCV that will override any of the properties we would use ourselves. Properties that are not valid will be logged to the console and summarily ignored. Yeah, it'll be ugly. That's what an MVP is for. Besides, you can handle it if you're diving this deep into the project. 
 1. Ensembling of results. Honestly, probably not all that practical, as it will likely increase the computation time for making each prediction rather dramatically. Worth mentioning in case some other contributor wants to add it in, as it's likely highly useful for competitions. But, not super great for production environments, so I'll probably ignore it until a future where I get very bored. 
 
+Just for kicks, here's how we'd implement ensembling:
+Create our own custom transformer class.
+This class will have a bunch of weak classifiers (non-tuned perceptrion, LinearRegression, etc.). 
+This custom transformer class will then use each of these weak predictors in a FeatureUnion to get predictions on each row, and append it to that row's features. 
+Then, we'll just continue on our merry way to the standard big predictor, using each of these weak predictions as features. It probably wouldn't increase the complexity too much, since we're using FeatureUnion to compute predictions in parallel...
+Just thoughts for a future future scenario in which I've already conquered all my other ML ambitions and found myself with bored time on my hands again...
