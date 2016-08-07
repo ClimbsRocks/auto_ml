@@ -44,5 +44,5 @@ The only tricky part you have to do is get your training data into the format sp
   - These will be mostly used by GridSearchCV, and are probably not things that you'll get to specify unless you dive into the internals of the project. 
 1. Feature selection
 1. The ability to pass in a param_grid of your own to run during GridSearchCV that will override any of the properties we would use ourselves. Properties that are not valid will be logged to the console and summarily ignored. Yeah, it'll be ugly. That's what an MVP is for. Besides, you can handle it if you're diving this deep into the project. 
-
+1. Ensembling of results. Honestly, probably not all that practical, as it will likely increase the computation time for making each prediction rather dramatically. Worth mentioning in case some other contributor wants to add it in, as it's likely highly useful for competitions. But, not super great for production environments, so I'll probably ignore it until a future where I get very bored. 
 
