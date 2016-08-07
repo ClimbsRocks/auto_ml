@@ -18,18 +18,25 @@ class Predictor(object):
 
     def train(self, raw_training_data):
 
+        # split out out output column so we have a proper X, y dataset
+        output_splitter = utils.SplitOutput(self.output_column)
+        X, y = output_splitter.transform(raw_training_data)
+
         ppl = Pipeline([
-            ('split_output', utils.SplitOutput())
-            ('dv', DictVectorizer()),
+            ('dv', DictVectorizer(sparse=False)),
             ('model', LogisticRegression())
         ])
 
-        ppl.fit()
+        ppl.fit(X, y)
 
-        self.trained_pipeline = trained_pipeline
+        self.trained_pipeline = ppl
 
 
     def predict(self, prediction_data):
 
         return self.trained_pipeline.predict(prediction_data)
+
+    def predict_proba(self, prediction_data):
+
+        return self.trained_pipeline.predict_proba(prediction_data)
 
