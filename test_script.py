@@ -1,6 +1,7 @@
 import csv
 import random
 from auto_ml import Predictor
+from auto_ml import utils
 
 # # open full dataset
 # with open('numerai_datasets_early_aug/numerai_training_data.csv', 'rU') as input_file:
@@ -27,12 +28,20 @@ with open('numerai_datasets_early_aug/numerai_short.csv', 'rU') as input_file:
     training_rows = csv.DictReader(input_file)
 
     training_data = []
+    testing_data = []
 
     for row in training_rows:
-        training_data.append(row)
+        if random.random() > 0.8:
+            testing_data.append(row)
+        else:
+            training_data.append(row)
 
 
 ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
 
 ml_predictor.train(training_data)
-ml_predictor.predict(new_data)
+
+output_splitter = utils.SplitOutput('target')
+X_test, y_test = output_splitter.transform(testing_data)
+
+print(ml_predictor.predict_proba(X_test))
