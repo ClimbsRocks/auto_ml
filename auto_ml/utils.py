@@ -1,6 +1,7 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
+# originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
 class SplitOutput(BaseEstimator, TransformerMixin):
 
     def __init__(self, output_column_name):
