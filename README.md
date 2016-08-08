@@ -9,7 +9,7 @@ This project is under active development. If you want to help, please check out 
 
 1. `pip install auto_ml`
 1. `from auto_ml import Predictor`
-1. `ml_predictor = Predictor(type_of_algo='classifier')` can pass in `type_of_algo='regressor'` as well. 
+1. `ml_predictor = Predictor(type_of_algo='classifier', column_descriptions=col_desc_dictionary)` can pass in `type_of_algo='regressor'` as well. 
 1. `ml_predictor.train(my_formatted_but_otherwise_raw_training_data)`
 1. `ml_predictor.predict(new_data)`
 
