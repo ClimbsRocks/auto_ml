@@ -1,6 +1,7 @@
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
+from sklearn.preprocessing import FunctionTransformer
 
 import utils
 
@@ -16,14 +17,15 @@ class Predictor(object):
         self.output_column = output_column
 
 
-    def train(self, raw_training_data):
+    def train(self, raw_training_data, user_input_func=None):
 
         # split out out output column so we have a proper X, y dataset
         output_splitter = utils.SplitOutput(self.output_column)
         X, y = output_splitter.transform(raw_training_data)
 
         ppl = Pipeline([
-            ('dv', DictVectorizer(sparse=False)),
+            ('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False)),
+            ('dv', DictVectorizer(sparse=True)),
             ('model', LogisticRegression())
         ])
 
