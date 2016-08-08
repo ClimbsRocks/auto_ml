@@ -40,3 +40,7 @@ class Predictor(object):
 
         return self.trained_pipeline.predict_proba(prediction_data)
 
+
+    def score(self, X_test, y_test):
+        return self.trained_pipeline.score(X_test, y_test)
+
