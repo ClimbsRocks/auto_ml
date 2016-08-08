@@ -3,18 +3,19 @@ import random
 from auto_ml import Predictor
 from auto_ml import utils
 
-# # open full dataset
-# with open('numerai_datasets_early_aug/numerai_training_data.csv', 'rU') as input_file:
-#     training_rows = csv.reader(input_file)
+# open full dataset
+with open('numerai_datasets_early_aug/numerai_training_data.csv', 'rU') as input_file:
+    training_rows = csv.DictReader(input_file)
 
-#     training_data = []
+    training_data = []
 
-#     training_data_short = []
+    testing_data = []
 
-#     for row in training_rows:
-#         if random.random() > 0.98:
-#             training_data_short.append(row)
-#         training_data.append(row)
+    for row in training_rows:
+        if random.random() > 0.8:
+            testing_data.append(row)
+        else:
+            training_data.append(row)
 
 # # write short dataset to file
 # with open('numerai_datasets_early_aug/numerai_short.csv', 'w+') as write_file:
@@ -23,18 +24,18 @@ from auto_ml import utils
 #     for row in training_data_short:
 #         writer.writerow(row)
 
-# load short dataset
-with open('numerai_datasets_early_aug/numerai_short.csv', 'rU') as input_file:
-    training_rows = csv.DictReader(input_file)
+# # load short dataset
+# with open('numerai_datasets_early_aug/numerai_short.csv', 'rU') as input_file:
+#     training_rows = csv.DictReader(input_file)
 
-    training_data = []
-    testing_data = []
+#     training_data = []
+#     testing_data = []
 
-    for row in training_rows:
-        if random.random() > 0.8:
-            testing_data.append(row)
-        else:
-            training_data.append(row)
+#     for row in training_rows:
+#         if random.random() > 0.8:
+#             testing_data.append(row)
+#         else:
+#             training_data.append(row)
 
 
 ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
@@ -44,4 +45,5 @@ ml_predictor.train(training_data)
 output_splitter = utils.SplitOutput('target')
 X_test, y_test = output_splitter.transform(testing_data)
 
-print(ml_predictor.predict_proba(X_test))
+ml_predictor.predict_proba(X_test)
+print(ml_predictor.score(X_test, y_test))
