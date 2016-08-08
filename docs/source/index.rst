@@ -20,13 +20,13 @@ Installation
 Getting Started
 ================
 
-``
-from auto_ml import Predictor
-col_desc_dictionary = {col_to_predict: 'output'}
-ml_predictor = Predictor(type_of_algo='classifier', column_descriptions=col_desc_dictionary) # can pass in type_of_algo='regressor' as well
-ml_predictor.train(my_formatted_but_otherwise_raw_training_data)
-ml_predictor.predict(new_data)
-``
+::
+
+  from auto_ml import Predictor
+  col_desc_dictionary = {col_to_predict: 'output'}
+  ml_predictor = Predictor(type_of_algo='classifier', column_descriptions=col_desc_dictionary) # can pass in type_of_algo='regressor' as well
+  ml_predictor.train(my_formatted_but_otherwise_raw_training_data)
+  ml_predictor.predict(new_data)
 
 
 Core Functionality
@@ -57,4 +57,32 @@ Header row information
 What this project does
 =======================
 Automates the whole machine learning process!
+
+
+
+
+Future API features that I definitely haven't built out yet
+------------------------------------------------------------
+#. ``grid_search`` aka, ``optimize_the_foobar_out_of_this_predictor``. Sit down for a long coffee break. Better yet, go make some cold brew. Come back when the cold brew's ready. As amped as you are on all that caffeine is as amped as this highly optimized algo will be. They'll also both take about the same amount of time to prepare. Both are best done overnight. 
+#. Support for multiple nlp columns. 
+#. ``print_analytics_output`` For the curious out there, sometimes we want to know what features are important. This option will let you figure that out. 
+
+Future internal features that you'll never see but will make this much better
+------------------------------------------------------------------------------
+#. Mostly, all kinds of stats-y feature engineering
+  * RobustScaler
+  * Handling correlated features
+  * etc. 
+  * These will be mostly used by GridSearchCV, and are probably not things that you'll get to specify unless you dive into the internals of the project. 
+#. Feature selection
+#. The ability to pass in a param_grid of your own to run during GridSearchCV that will override any of the properties we would use ourselves. Properties that are not valid will be logged to the console and summarily ignored. Yeah, it'll be ugly. That's what an MVP is for. Besides, you can handle it if you're diving this deep into the project. 
+#. Ensembling of results. Honestly, probably not all that practical, as it will likely increase the computation time for making each prediction rather dramatically. Worth mentioning in case some other contributor wants to add it in, as it's likely highly useful for competitions. But, not super great for production environments, so I'll probably ignore it until a future where I get very bored. 
+
+Just for kicks, here's how we'd implement ensembling:
+Create our own custom transformer class.
+This class will have a bunch of weak classifiers (non-tuned perceptrion, LinearRegression, etc.). 
+This custom transformer class will then use each of these weak predictors in a FeatureUnion to get predictions on each row, and append it to that row's features. 
+Then, we'll just continue on our merry way to the standard big predictor, using each of these weak predictions as features. It probably wouldn't increase the complexity too much, since we're using FeatureUnion to compute predictions in parallel...
+Heavily caveat all this with how ensembling tends to overfit, so we'd probably have to build in significantly more complexity to evaluate all this on a holdout set of data. 
+Just thoughts for a future future scenario in which I've already conquered all my other ML ambitions and found myself with bored time on my hands again...
 
