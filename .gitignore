@@ -3,3 +3,4 @@ numerai*/*
 *.pyc
 *.npy
 *.pkl
+docs/build/*
