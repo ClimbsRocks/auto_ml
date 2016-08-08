@@ -1,4 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.linear_model import LogisticRegression
 
 
 # originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
@@ -22,3 +23,10 @@ class SplitOutput(BaseEstimator, TransformerMixin):
 
         return self
 
+
+def instantiate_model(model_name='LogisticRegression'):
+    return LogisticRegression()
+
+# class InstantiateModel(BaseEstimator, TransformerMixin):
+
+#     def __init__

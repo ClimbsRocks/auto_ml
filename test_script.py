@@ -45,12 +45,14 @@ def test_input_func(X, y=None):
     print('inside test_input_func')
     return X
 
-ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
+if __name__ == '__main__':
 
-ml_predictor.train(training_data, user_input_func=test_input_func)
+    ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
 
-output_splitter = utils.SplitOutput('target')
-X_test, y_test = output_splitter.transform(testing_data)
+    ml_predictor.train(training_data, user_input_func=test_input_func, grid_search=True)
 
-ml_predictor.predict_proba(X_test)
-print(ml_predictor.score(X_test, y_test))
+    output_splitter = utils.SplitOutput('target')
+    X_test, y_test = output_splitter.transform(testing_data)
+
+    ml_predictor.predict_proba(X_test)
+    print(ml_predictor.score(X_test, y_test))

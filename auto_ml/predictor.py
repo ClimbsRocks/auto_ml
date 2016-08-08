@@ -29,7 +29,7 @@ class Predictor(object):
         ppl = Pipeline([
             ('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False)),
             ('dv', DictVectorizer(sparse=True)),
-            ('model', LogisticRegression())
+            ('model', utils.instantiate_model(model_name='LogisticRegression'))
         ])
 
         if grid_search:
@@ -38,7 +38,7 @@ class Predictor(object):
                 'model__solver': ['newton-cg', 'lbfgs', 'liblinear']
             }
 
-            gs = GridSearchCV(ppl, lr_params, n_jobs=-1, verbose=1)
+            gs = GridSearchCV(ppl, lr_params, n_jobs=-1, verbose=10)
             gs.fit(X, y)
             self.trained_pipeline = gs
 
