@@ -8,8 +8,8 @@ class SplitOutput(BaseEstimator, TransformerMixin):
         self.output_column_name = output_column_name
 
 
-    def transform(self, X, y=[]):
-
+    def transform(self, X, y=None):
+        y = []
         for row in X:
             y.append( 
                 row.pop(self.output_column_name)
