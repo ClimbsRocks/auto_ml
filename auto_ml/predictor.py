@@ -5,6 +5,9 @@ from sklearn.preprocessing import FunctionTransformer
 
 import utils
 
+from sklearn.grid_search import GridSearchCV
+
+
 class Predictor(object):
 
 
@@ -17,7 +20,7 @@ class Predictor(object):
         self.output_column = output_column
 
 
-    def train(self, raw_training_data, user_input_func=None):
+    def train(self, raw_training_data, user_input_func=None, grid_search=False):
 
         # split out out output column so we have a proper X, y dataset
         output_splitter = utils.SplitOutput(self.output_column)
@@ -29,9 +32,20 @@ class Predictor(object):
             ('model', LogisticRegression())
         ])
 
-        ppl.fit(X, y)
+        if grid_search:
+            lr_params = {
+                'model__C': [.001, .01, .1],
+                'model__solver': ['newton-cg', 'lbfgs', 'liblinear']
+            }
 
-        self.trained_pipeline = ppl
+            gs = GridSearchCV(ppl, lr_params, n_jobs=-1, verbose=1)
+            gs.fit(X, y)
+            self.trained_pipeline = gs
+
+        else:
+            ppl.fit(X, y)
+
+            self.trained_pipeline = ppl
 
 
     def predict(self, prediction_data):
