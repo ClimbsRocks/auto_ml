@@ -36,24 +36,32 @@ Core Functionality
   
   :param type_of_algo: Whether you want a classifier or regressor
   :type type_of_algo: 'regressor' or 'classifier'
-  :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'`` or ``'categorical'``
+  :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'`` or ``'categorical'``. See below for more details. 
   :type column_descriptions: dictionary
 
-.. py:method:: ml_predictor.train()
+.. py:method:: ml_predictor.train(raw_training_data, user_input_func=None)
+  
+  :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance. 
+  :param raw_training_data: The data to train on. See below for more information on formatting of this data. 
+  :type raw_training_data: List of dictionaries, where each dictionary has both the input data as well as the target data the ml algo is trying to predict.
+  :param user_input_func: A function that you can define that will be called as the first step in the pipeline. The function will be passed the entire X dataset, must not alter the order or length of the X dataset, and must return the entire X dataset. You can perform any feature engineering you would like in this function. See below for more details. 
+  :type user_input_func: function
 
 Formatting the training data
 =============================
 
 The only tricky part you have to do is get your training data into the format specified. 
 
+
+
 Training data format
 ---------------------
 #. Must be a list (or other iterable) filled with python dictionaries.
-#. The first dictionary in the list is essentially the header row. Here you've gotta specify some basic information about each "column" of data in the other dictionaries. This object should essentially have the same attributes as the following objects, except the values stored in each attribute will tell us information about that "column" of data. 
 #. The non-header-row objects can be "sparse". That is, they don't have to have all the properties. So if you are missing data for a certain row, or have a property that only applies to certain rows, you can include it or not at your discretion. 
 
 Header row information
 -----------------------
+The ``column_descriptions`` dictionary passed into ``Predictor()`` is essentially the header row. Here you've gotta specify some basic information about each "column" of data in the other dictionaries. This object should essentially have the same attributes as the following objects, except the values stored in each attribute will tell us information about that "column" of data. 
 
 #. ``attribute_name: 'output'`` The first object in your training data must specify one of your attributes as the output column that we're interested in training on. This is what the ``auto_ml`` predictor will try to predict. 
 #. ``attribute_name: 'categorical'`` All attribute names that hold a string in any of the rows after the header row will be encoded as categorical data. If, however, you have any numerical columns that you want encoded as categorical data, you can specify that here. 
