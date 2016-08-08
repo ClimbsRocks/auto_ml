@@ -38,9 +38,16 @@ with open('numerai_datasets_early_aug/numerai_training_data.csv', 'rU') as input
 #             training_data.append(row)
 
 
+def test_input_func(X, y=None):
+
+    # print(X)
+
+    print('inside test_input_func')
+    return X
+
 ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
 
-ml_predictor.train(training_data)
+ml_predictor.train(training_data, user_input_func=test_input_func)
 
 output_splitter = utils.SplitOutput('target')
 X_test, y_test = output_splitter.transform(testing_data)
