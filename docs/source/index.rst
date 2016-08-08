@@ -32,7 +32,14 @@ Getting Started
 Core Functionality
 ===================
 
+.. py:class:: Predictor(type_of_algo, column_descriptions)
+  
+  :param type_of_algo: Whether you want a classifier or regressor
+  :type type_of_algo: 'regressor' or 'classifier'
+  :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'`` or ``'categorical'``
+  :type column_descriptions: dictionary
 
+.. py:method:: ml_predictor.train()
 
 Formatting the training data
 =============================
@@ -54,6 +61,20 @@ Header row information
 
 
 
+Passing in your own feature engineering function
+=================================================
+
+You can pass in your own function to perform feature engineering on the data. This will be called as the first step in the pipeline that ``auto_ml`` builds out. 
+
+You will be passed the entire X dataset (not the y dataset), and are expected to return the entire X dataset. 
+
+The advantage of including it in the pipeline is that it will then be applied to any data you want predictions on later. You will also eventually be able to run GridSearchCV over any parameters you include here. 
+
+Limitations:
+You cannot alter the length or ordering of the X dataset, since you will not have a chance to modify the y dataset. If you want to perform filtering, perform it before you pass in the data to train on. 
+
+
+
 What this project does
 =======================
 Automates the whole machine learning process!
@@ -66,6 +87,7 @@ Future API features that I definitely haven't built out yet
 #. ``grid_search`` aka, ``optimize_the_foobar_out_of_this_predictor``. Sit down for a long coffee break. Better yet, go make some cold brew. Come back when the cold brew's ready. As amped as you are on all that caffeine is as amped as this highly optimized algo will be. They'll also both take about the same amount of time to prepare. Both are best done overnight. 
 #. Support for multiple nlp columns. 
 #. ``print_analytics_output`` For the curious out there, sometimes we want to know what features are important. This option will let you figure that out. 
+
 
 Future internal features that you'll never see but will make this much better
 ------------------------------------------------------------------------------
