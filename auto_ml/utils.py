@@ -25,27 +25,23 @@ class SplitOutput(BaseEstimator, TransformerMixin):
         return self
 
 
-def instantiate_model(model_name='RandomForestClassifier'):
-    print(model_name)
-
-    model_map = {
-        'LogisticRegression': LogisticRegression(),
-        'RandomForestClassifier': RandomForestClassifier()
-    }
-
-    return model_map[model_name]
-
-
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False):
+    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None):
 
         self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train
         self.perform_grid_search_on_model = perform_grid_search_on_model
 
+        if model_map is not None:
+            self.model_map = model_map
+        else:
+            self.set_model_map()
+
+
+    def set_model_map(self):
         self.model_map = {
             'LogisticRegression': LogisticRegression(),
             'RandomForestClassifier': RandomForestClassifier()
