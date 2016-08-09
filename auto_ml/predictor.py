@@ -31,15 +31,12 @@ class Predictor(object):
         ppl = Pipeline([
             ('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False)),
             ('dv', DictVectorizer(sparse=True)),
-            ('model', utils.instantiate_model())
+            ('final_model', utils.FinalModelATC(model_name='LogisticRegression'))
         ])
 
         if grid_search:
             lr_params = {
-                'model__criterion': ['gini', 'entropy']
-                # 'model__model_name': ['LogisticRegression', 'RandomForestClassifier']
-                # 'model__C': [.001, .01, .1],
-                # 'model__solver': ['newton-cg', 'lbfgs', 'liblinear']
+                'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression']
             }
 
             gs = GridSearchCV(ppl, lr_params, n_jobs=-1, verbose=10)
