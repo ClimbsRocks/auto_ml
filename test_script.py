@@ -43,12 +43,6 @@ else:
                 training_data.append(row)
 
 
-def test_input_func(X, y=None):
-
-    # print('inside test_input_func')
-    # print(test_var)
-    return X
-
 ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
 
 ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
