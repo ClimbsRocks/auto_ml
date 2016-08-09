@@ -1,5 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.linear_model import LogisticRegression
+from sklearn.ensemble import RandomForestClassifier
 
 
 # originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
@@ -12,7 +13,7 @@ class SplitOutput(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         y = []
         for row in X:
-            y.append( 
+            y.append(
                 row.pop(self.output_column_name)
             )
 
@@ -24,9 +25,19 @@ class SplitOutput(BaseEstimator, TransformerMixin):
         return self
 
 
-def instantiate_model(model_name='LogisticRegression'):
-    return LogisticRegression()
+def instantiate_model(model_name='RandomForestClassifier'):
+    print(model_name)
 
-# class InstantiateModel(BaseEstimator, TransformerMixin):
+    model_map = {
+        'LogisticRegression': LogisticRegression(),
+        'RandomForestClassifier': RandomForestClassifier()
+    }
 
-#     def __init__
+    return model_map[model_name]
+
+class FinalModelATC(BaseEstimator, TransformerMixin):
+
+    def __init__(self, X_train=None, y_train=None):
+        self.X_train = X_train
+        self.y_train = y_train
+
