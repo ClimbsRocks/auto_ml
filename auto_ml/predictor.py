@@ -41,10 +41,24 @@ class Predictor(object):
 
             # Note that this is computationally expensive and extremely time consuming.
             if optimize_final_model:
-                # we will alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline
+                # We can alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline.
+                # We could choose to bake this into the broader pipeline GridSearchCV, but that risks becoming too cumbersome, and might be impossible since we're trying so many different models that have different parameters.
                 grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
 
-            gs = GridSearchCV(ppl, grid_search_params, n_jobs=-1, verbose=10)
+            gs = GridSearchCV(
+                # Fit on the pipeline.
+                ppl,
+                grid_search_params,
+                # Train across all cores.
+                n_jobs=-1,
+                # Be verbose (lots of printing).
+                verbose=10,
+                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                error_score=10,
+                # TODO(PRESTON): change scoring to be RMSE by default
+                scoring=None
+            )
+
             gs.fit(X, y)
             self.trained_pipeline = gs
 
