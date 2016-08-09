@@ -43,8 +43,23 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def set_model_map(self):
         self.model_map = {
-            'LogisticRegression': LogisticRegression(),
-            'RandomForestClassifier': RandomForestClassifier()
+            'LogisticRegression': LogisticRegression(n_jobs=-2),
+            'RandomForestClassifier': RandomForestClassifier(n_jobs=-2)
+        }
+
+
+    def set_grid_search_params():
+        self.gs_params = {
+            'LogisticRegression': {
+                'C': [.001, .01, .1, 1],
+                'class_weight': [None, 'balanced'],
+                'solver': ['newton-cg', 'lbfgs', 'sag']
+            },
+            'RandomForestClassifier': {
+                'criterion': ['entropy', 'gini'],
+                'class_weight': [None, 'balanced']
+            }
+
         }
 
 
