@@ -26,16 +26,20 @@ class Predictor(object):
         output_splitter = utils.SplitOutput(self.output_column)
         X, y = output_splitter.transform(raw_training_data)
 
+        X_train = 'this is a test'
+
         ppl = Pipeline([
             ('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False)),
             ('dv', DictVectorizer(sparse=True)),
-            ('model', utils.instantiate_model(model_name='LogisticRegression'))
+            ('model', utils.instantiate_model())
         ])
 
         if grid_search:
             lr_params = {
-                'model__C': [.001, .01, .1],
-                'model__solver': ['newton-cg', 'lbfgs', 'liblinear']
+                'model__criterion': ['gini', 'entropy']
+                # 'model__model_name': ['LogisticRegression', 'RandomForestClassifier']
+                # 'model__C': [.001, .01, .1],
+                # 'model__solver': ['newton-cg', 'lbfgs', 'liblinear']
             }
 
             gs = GridSearchCV(ppl, lr_params, n_jobs=-1, verbose=10)
