@@ -5,7 +5,7 @@ import sys
 from auto_ml import Predictor
 from auto_ml import utils
 
-if sys.argv[2] in ('full', 'long', 'full_dataset', 'all_data', 'all'):
+if len(sys.argv) > 1 and sys.argv[1] in set(['full', 'long', 'full_dataset', 'all_data', 'all']):
 
     # open full dataset
     with open('numerai_datasets_early_aug/numerai_training_data.csv', 'rU') as input_file:
@@ -45,16 +45,13 @@ else:
 
 def test_input_func(X, y=None):
 
-    # print(X)
-
-    print('inside test_input_func')
+    # print('inside test_input_func')
+    # print(test_var)
     return X
-
-# if __name__ == '__main__':
 
 ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
 
-ml_predictor.train(training_data, user_input_func=test_input_func, grid_search=True)
+ml_predictor.train(training_data,  grid_search=True)
 
 output_splitter = utils.SplitOutput('target')
 X_test, y_test = output_splitter.transform(testing_data)
