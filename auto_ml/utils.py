@@ -35,9 +35,33 @@ def instantiate_model(model_name='RandomForestClassifier'):
 
     return model_map[model_name]
 
+
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
-    def __init__(self, X_train=None, y_train=None):
+
+    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False):
+
+        self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train
+        self.perform_grid_search_on_model = perform_grid_search_on_model
 
+        self.model_map = {
+            'LogisticRegression': LogisticRegression(),
+            'RandomForestClassifier': RandomForestClassifier()
+        }
+
+
+    def fit(self, X, y):
+        print('self.model_name inside fit')
+        print(self.model_name)
+        self.model = self.model_map[self.model_name]
+        self.model.fit(X, y)
+
+
+    def score(self, X, y):
+        return self.model.score(X, y)
+
+
+    def predict_proba(self, X):
+        return self.model.predict_proba(X)
