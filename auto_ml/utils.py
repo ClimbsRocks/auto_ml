@@ -1,6 +1,6 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier
-from sklearn.grid_search import GridSearchCV
+from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 
 
@@ -56,8 +56,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     # It would be optimal to store large objects like this elsewhere, but storing it all inside FinalModelATC ensures that each instance will always be self-contained, which is helpful when saving and transferring to different environments.
-    def get_grid_search_params(self):
-        gs_params = {
+    def get_search_params(self):
+        randomized_search_params = {
             'LogisticRegression': {
                 'C': [.001, .01, .1, 1],
                 'class_weight': [None, 'balanced'],
@@ -65,12 +65,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             },
             'RandomForestClassifier': {
                 'criterion': ['entropy', 'gini'],
-                'class_weight': [None, 'balanced']
+                'class_weight': [None, 'balanced'],
+                'max_features': ['sqrt', 'log2', None],
+                'min_samples_split': [1, 2, 5, 20, 50, 100],
+                'min_samples_leaf': [1, 2, 5, 20, 50, 100],
+                'bootstrap': [True, False]
             }
 
         }
 
-        return gs_params[self.model_name]
+        return randomized_search_params[self.model_name]
 
 
     def fit(self, X, y):
@@ -78,8 +82,20 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         # we can perform GridSearchCV (or, eventually, RandomizedSearchCV) on just our final estimator.
         if self.perform_grid_search_on_model:
 
-            gs_params = self.get_grid_search_params()
-            self.model = GridSearchCV(self.model_map[self.model_name], gs_params, n_jobs=-1, verbose=1)
+            gs_params = self.get_search_params()
+            self.model = RandomizedSearchCV(
+                self.model_map[self.model_name],
+                gs_params,
+                # Pick 10 combinations of hyperparameters to fit on and score.
+                # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
+                n_iter=10,
+                n_jobs=-1,
+                verbose=1,
+                # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
+                error_score=10,
+                # TOOD(PRESTON): change to be RMSE by default
+                scoring=None
+            )
 
         # or, we can just use the default estimator
         else:
