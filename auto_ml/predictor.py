@@ -36,7 +36,9 @@ class Predictor(object):
 
         if grid_search:
             lr_params = {
-                'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression']
+                'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression'],
+                # we will alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline
+                'final_model__perform_grid_search_on_model': [True, False]
             }
 
             gs = GridSearchCV(ppl, lr_params, n_jobs=-1, verbose=10)
