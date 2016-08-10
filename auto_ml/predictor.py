@@ -22,19 +22,29 @@ class Predictor(object):
         self.output_column = output_column
 
 
+    def _construct_pipeline(self, user_input_func=None, optimize_final_model=False):
+
+        pipeline_list = []
+        if user_input_func is not None:
+            pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
+
+        pipeline_list.append(('dv', DictVectorizer(sparse=True)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name='LogisticRegression', perform_grid_search_on_model=optimize_final_model)))
+
+        constructed_pipeline = Pipeline(pipeline_list)
+        return constructed_pipeline
+
+
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False):
 
         # split out out output column so we have a proper X, y dataset
         output_splitter = utils.SplitOutput(self.output_column)
         X, y = output_splitter.transform(raw_training_data)
 
-        X_train = 'this is a test'
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model)
 
-        ppl = Pipeline([
-            ('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False)),
-            ('dv', DictVectorizer(sparse=True)),
-            ('final_model', utils.FinalModelATC(model_name='LogisticRegression', perform_grid_search_on_model=optimize_final_model))
-        ])
+        # print('Pipeline')
+        # print(ppl)
 
         if optimize_entire_pipeline:
             self.grid_search_params = {
@@ -50,7 +60,7 @@ class Predictor(object):
             gs = GridSearchCV(
                 # Fit on the pipeline.
                 ppl,
-                grid_search_params,
+                self.grid_search_params,
                 # Train across all cores.
                 n_jobs=-1,
                 # Be verbose (lots of printing).
