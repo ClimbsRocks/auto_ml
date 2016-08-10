@@ -45,7 +45,8 @@ else:
 
 ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
 
-ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
+# ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
+ml_predictor.ml_for_analytics(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
 
 output_splitter = utils.SplitOutput('target')
 X_test, y_test = output_splitter.transform(testing_data)

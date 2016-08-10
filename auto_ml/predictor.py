@@ -36,7 +36,7 @@ class Predictor(object):
         return constructed_pipeline
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
 
         # split out out output column so we have a proper X, y dataset
         output_splitter = utils.SplitOutput(self.output_column)
@@ -75,9 +75,6 @@ class Predictor(object):
             gs.fit(X, y)
             self.trained_pipeline = gs
 
-            print("self.trained_pipeline.best_estimator_.named_steps['dv'].get_feature_names()")
-            print(self.trained_pipeline.best_estimator_.named_steps['dv'].get_feature_names())
-
         else:
             ppl.fit(X, y)
 
@@ -85,9 +82,51 @@ class Predictor(object):
 
 
 
-    def print_analytics_output(self):
-        if self.trained_pipeline is None:
-            return "Whoops! You tried skipping right to the good stuff before doing the work of actually training the models.\nBefore calling .print_analytics_output(), you must first invoke .train()"
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
+
+        # split out out output column so we have a proper X, y dataset
+        output_splitter = utils.SplitOutput(self.output_column)
+        X, y = output_splitter.transform(raw_training_data)
+
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model)
+
+        if optimize_entire_pipeline:
+            self.grid_search_params = {
+                'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression']
+            }
+
+            # Note that this is computationally expensive and extremely time consuming.
+            if optimize_final_model:
+                # We can alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline.
+                # We could choose to bake this into the broader pipeline GridSearchCV, but that risks becoming too cumbersome, and might be impossible since we're trying so many different models that have different parameters.
+                self.grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
+
+            gs = GridSearchCV(
+                # Fit on the pipeline.
+                ppl,
+                self.grid_search_params,
+                # Train across all cores.
+                n_jobs=-1,
+                # Be verbose (lots of printing).
+                verbose=10,
+                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                error_score=10,
+                # TODO(PRESTON): change scoring to be RMSE by default
+                scoring=None
+            )
+
+            gs.fit(X, y)
+            self.trained_pipeline = gs.best_estimator_
+
+        else:
+            ppl.fit(X, y)
+            self.trained_pipeline = ppl
+
+
+        feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        print("self.trained_pipeline.named_steps['dv'].get_feature_names()")
+        print(feature_names)
+
 
         # TODO(PRESTON)
         # Figure out how to access the FinalModelATC from our pipeline
