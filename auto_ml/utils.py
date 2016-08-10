@@ -28,6 +28,36 @@ class SplitOutput(BaseEstimator, TransformerMixin):
         return self
 
 
+class BasicDataCleaning(BaseEstimator, TransformerMixin):
+
+
+    def __init__(self):
+        pass
+
+
+    def fit(self, X, y=None):
+        return self
+
+
+    def turn_strings_to_floats(self, X, y=None):
+        for row in X:
+            for key, val in row.items():
+                try:
+                    row[key] = float(val)
+                except:
+                    pass
+
+        return X
+
+
+    def transform(self, X, y=None):
+        X = self.turn_strings_to_floats(X, y)
+
+        return X
+
+
+
+
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
