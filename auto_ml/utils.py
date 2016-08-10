@@ -3,6 +3,8 @@ from sklearn.ensemble import RandomForestClassifier
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 
+import scipy
+
 
 # originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
 class SplitOutput(BaseEstimator, TransformerMixin):
@@ -59,7 +61,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def get_search_params(self):
         randomized_search_params = {
             'LogisticRegression': {
-                'C': [.001, .01, .1, 1],
+                'C': scipy.stats.expon(.001, 1),
                 'class_weight': [None, 'balanced'],
                 'solver': ['newton-cg', 'lbfgs', 'sag']
             },
@@ -86,9 +88,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self.model = RandomizedSearchCV(
                 self.model_map[self.model_name],
                 gs_params,
-                # Pick 10 combinations of hyperparameters to fit on and score.
+                # Pick n_iter combinations of hyperparameters to fit on and score.
                 # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
-                n_iter=10,
+                n_iter=5,
                 n_jobs=-1,
                 verbose=1,
                 # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
@@ -102,6 +104,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self.model = self.model_map[self.model_name]
 
         self.model.fit(X, y)
+
+        # TODO(PRESTON): see if we need to return self to stay consistent with the scikit-learn API
+        # return self
 
 
     def score(self, X, y):
