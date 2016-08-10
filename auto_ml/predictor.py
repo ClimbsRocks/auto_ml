@@ -28,6 +28,7 @@ class Predictor(object):
         if user_input_func is not None:
             pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
 
+        pipeline_list.append(('basic_transform', utils.BasicDataCleaning()))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
         pipeline_list.append(('final_model', utils.FinalModelATC(model_name='LogisticRegression', perform_grid_search_on_model=optimize_final_model)))
 
@@ -74,10 +75,14 @@ class Predictor(object):
             gs.fit(X, y)
             self.trained_pipeline = gs
 
+            print("self.trained_pipeline.best_estimator_.named_steps['dv'].get_feature_names()")
+            print(self.trained_pipeline.best_estimator_.named_steps['dv'].get_feature_names())
+
         else:
             ppl.fit(X, y)
 
             self.trained_pipeline = ppl
+
 
 
     def print_analytics_output(self):
