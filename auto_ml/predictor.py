@@ -15,7 +15,9 @@ class Predictor(object):
         self.type_of_algo = type_of_algo
         self.column_descriptions = column_descriptions
         self.verbose = verbose
+        self.trained_pipeline = None
 
+        # figure out which column has a value 'output'
         output_column = [key for key, value in column_descriptions.items() if value.lower() == 'output'][0]
         self.output_column = output_column
 
@@ -35,7 +37,7 @@ class Predictor(object):
         ])
 
         if optimize_entire_pipeline:
-            grid_search_params = {
+            self.grid_search_params = {
                 'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression']
             }
 
@@ -43,7 +45,7 @@ class Predictor(object):
             if optimize_final_model:
                 # We can alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline.
                 # We could choose to bake this into the broader pipeline GridSearchCV, but that risks becoming too cumbersome, and might be impossible since we're trying so many different models that have different parameters.
-                grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
+                self.grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
 
             gs = GridSearchCV(
                 # Fit on the pipeline.
@@ -66,6 +68,27 @@ class Predictor(object):
             ppl.fit(X, y)
 
             self.trained_pipeline = ppl
+
+
+    def print_analytics_output(self):
+        if self.trained_pipeline is None:
+            return "Whoops! You tried skipping right to the good stuff before doing the work of actually training the models.\nBefore calling .print_analytics_output(), you must first invoke .train()"
+
+        # TODO(PRESTON)
+        # Figure out how to access the FinalModelATC from our pipeline
+        # Figure out how to access the model from FinalModelATC
+        # Figure out how to get the coefficients from the best regression and random forest
+        # Figure out how to get that particular model's features from DictVectorizer (we will be doing a lot of feature engineering and feature selection in very near term versions of this repo)
+            # Might have to wrap DictVectorizer in a class that writes the results to the pipeline object or something?
+        # consider letting them pass this in as a flag for train. would probably be much easier to calculate these things if we know to beforehand
+        # look into putting some logic into FinalModelATC that keeps the best model/parameters around in an easy way for analytics.
+        # Figure out the reasonable range for whatever features we do have left, for regression printing
+
+
+    def print_training_summary(self):
+        pass
+        # Print some nice summary output of all the training we did.
+        # maybe allow the user to pass in a flag to write info to a file
 
 
     def predict(self, prediction_data):
