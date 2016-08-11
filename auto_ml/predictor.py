@@ -41,11 +41,13 @@ class Predictor(object):
     def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False):
 
         gs_params = {}
+
         if optimize_final_model:
             gs_params['final_model__perform_grid_search_on_model'] = [True, False]
 
         if ml_for_analytics:
             gs_params['final_model__ml_for_analytics'] = [True]
+
         else:
             if optimize_entire_pipeline:
                 gs_params['final_model__model_name'] = ['RandomForestClassifier', 'LogisticRegression']
@@ -117,28 +119,37 @@ class Predictor(object):
             gs.fit(X, y)
             self.trained_pipeline = gs.best_estimator_
 
-            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-
             if model_name in ('LogisticRegression', 'Ridge'):
+                self._print_ml_analytics_results_regression()
 
-                trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+            # *********************************************************
+            # Above this, the rest of ml_for_analytics is nearly the same as .train()
+            # The only difference being that we're iterating through two model names
+            # Below this is where we start to handle printing logic
+            # *********************************************************
 
-                feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+    def _print_ml_analytics_results_regression(self):
 
-                feature_summary = []
-                for col_idx, feature_name in enumerate(trained_feature_names):
+        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-                    potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
-                    summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
-                    feature_summary.append(summary_tuple)
+        trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
 
-                sorted_feature_summary = sorted(feature_summary, key=lambda x: x[2])
+        feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
-                print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
-                print('This printed list will only contain the top 50 features.')
-                for summary in sorted_feature_summary[:50]:
-                    print(summary[0] + ': ' + str(round(summary[1], 4)))
-                    print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
+        feature_summary = []
+        for col_idx, feature_name in enumerate(trained_feature_names):
+
+            potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
+            summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
+            feature_summary.append(summary_tuple)
+
+        sorted_feature_summary = sorted(feature_summary, key=lambda x: x[2])
+
+        print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
+        print('This printed list will only contain the top 50 features.')
+        for summary in sorted_feature_summary[:50]:
+            print(summary[0] + ': ' + str(round(summary[1], 4)))
+            print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
 
         # TODO(PRESTON)
         # Figure out how to access the FinalModelATC from our pipeline
