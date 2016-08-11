@@ -125,31 +125,29 @@ class Predictor(object):
                 self.trained_pipeline = gs.best_estimator_
                 trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-                if model_name == 'LogisticRegression':
-                    print('trained_feature_names')
-                    print(trained_feature_names)
+                if model_name in ('LogisticRegression', 'Ridge'):
+
                     trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
-                    print('trained_coefficients')
-                    print(trained_coefficients)
 
                     feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
-                    print('feature_ranges')
-                    print(feature_ranges)
-
+                    feature_summary = []
                     for col_idx, feature_name in enumerate(trained_feature_names):
-                        print(feature_name + ': ' + str(trained_coefficients[col_idx]))
-                        print('The potential impact of this feature is: ' + str(trained_coefficients[col_idx] * feature_ranges[col_idx]))
+
+                        potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
+                        summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
+                        feature_summary.append(summary_tuple)
+
+                    sorted_feature_summary = sorted(feature_summary, key=lambda x: x[2])
+
+                    for summary in sorted_feature_summary:
+                        print(summary[0] + ': ' + str(summary[1]))
+                        print('The potential impact of this feature is: ' + str(summary[2]))
 
 
         else:
             ppl.fit(X, y)
             self.trained_pipeline = ppl
-
-
-        # feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-        # print("self.trained_pipeline.named_steps['dv'].get_feature_names()")
-        # print(feature_names)
 
 
         # TODO(PRESTON)
