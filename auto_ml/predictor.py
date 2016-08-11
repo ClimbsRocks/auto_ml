@@ -22,7 +22,7 @@ class Predictor(object):
         self.output_column = output_column
 
 
-    def _construct_pipeline(self, user_input_func=None, optimize_final_model=False):
+    def _construct_pipeline(self, user_input_func=None, optimize_final_model=False, ml_for_analytics=False):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -30,7 +30,7 @@ class Predictor(object):
 
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning()))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name='LogisticRegression', perform_grid_search_on_model=optimize_final_model)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name='LogisticRegression', perform_grid_search_on_model=optimize_final_model, ml_for_analytics=ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -90,7 +90,7 @@ class Predictor(object):
         output_splitter = utils.SplitOutput(self.output_column)
         X, y = output_splitter.transform(raw_training_data)
 
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model)
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model, ml_for_analytics=True)
 
         if optimize_entire_pipeline:
             self.grid_search_params = {
