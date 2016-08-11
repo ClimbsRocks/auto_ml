@@ -67,12 +67,13 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None):
+    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False):
 
         self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train
         self.perform_grid_search_on_model = perform_grid_search_on_model
+        self.ml_for_analytics = ml_for_analytics
 
         if model_map is not None:
             self.model_map = model_map
@@ -110,6 +111,18 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+
+        if self.ml_for_analytics:
+            self.feature_ranges = []
+            # Grab the ranges for each feature
+            try:
+                print('X.shape')
+                print(X.shape)
+                for col_idx in range(X.shape[1]):
+                    self.feature_ranges.append(col_idx)
+            except:
+                pass
+
 
         # we can perform GridSearchCV (or, eventually, RandomizedSearchCV) on just our final estimator.
         if self.perform_grid_search_on_model:
