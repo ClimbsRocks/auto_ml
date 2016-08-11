@@ -121,12 +121,22 @@ class Predictor(object):
 
             if model_name in ('LogisticRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()
+            elif model_name == 'RandomForestClassifier':
+                self._print_ml_analytics_results_random_forest()
 
-            # *********************************************************
-            # Above this, the rest of ml_for_analytics is nearly the same as .train()
-            # The only difference being that we're iterating through two model names
-            # Below this is where we start to handle printing logic
-            # *********************************************************
+    def _print_ml_analytics_results_random_forest(self):
+
+        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+
+        trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+
+        feature_infos = zip(trained_feature_names, trained_feature_importances)
+
+        sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+
+        for feature in sorted_feature_infos[:50]:
+            print(feature[0] + ': ' + str(round(feature[1], 4)))
+
 
     def _print_ml_analytics_results_regression(self):
 
@@ -136,6 +146,7 @@ class Predictor(object):
 
         feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
+        # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []
         for col_idx, feature_name in enumerate(trained_feature_names):
 
@@ -143,7 +154,7 @@ class Predictor(object):
             summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
             feature_summary.append(summary_tuple)
 
-        sorted_feature_summary = sorted(feature_summary, key=lambda x: x[2])
+        sorted_feature_summary = sorted(feature_summary, key=lambda x: abs(x[2]))
 
         print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
         print('This printed list will only contain the top 50 features.')
