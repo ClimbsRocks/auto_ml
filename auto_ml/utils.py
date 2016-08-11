@@ -135,6 +135,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     # print('twentieth_percentile')
                     # print(twentieth_percentile)
                     self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
+                    del col_vals
             # except:
             #     pass
 
