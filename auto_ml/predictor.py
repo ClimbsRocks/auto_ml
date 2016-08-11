@@ -80,6 +80,8 @@ class Predictor(object):
 
             self.trained_pipeline = ppl
 
+        return self
+
 
 
     def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
@@ -92,7 +94,8 @@ class Predictor(object):
 
         if optimize_entire_pipeline:
             self.grid_search_params = {
-                'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression']
+                # temporary value just so we have something to test.
+                'dv__sparse': [True, False]
             }
 
             # Note that this is computationally expensive and extremely time consuming.
@@ -101,31 +104,41 @@ class Predictor(object):
                 # We could choose to bake this into the broader pipeline GridSearchCV, but that risks becoming too cumbersome, and might be impossible since we're trying so many different models that have different parameters.
                 self.grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
 
-            gs = GridSearchCV(
-                # Fit on the pipeline.
-                ppl,
-                self.grid_search_params,
-                # Train across all cores.
-                n_jobs=-1,
-                # Be verbose (lots of printing).
-                verbose=10,
-                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-                error_score=10,
-                # TODO(PRESTON): change scoring to be RMSE by default
-                scoring=None
-            )
+            for model_name in ['LogisticRegression', 'RandomForestClassifier']:
+                self.grid_search_params['final_model__model_name'] = [model_name]
 
-            gs.fit(X, y)
-            self.trained_pipeline = gs.best_estimator_
+                gs = GridSearchCV(
+                    # Fit on the pipeline.
+                    ppl,
+                    self.grid_search_params,
+                    # Train across all cores.
+                    n_jobs=-1,
+                    # Be verbose (lots of printing).
+                    verbose=10,
+                    # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                    error_score=10,
+                    # TODO(PRESTON): change scoring to be RMSE by default
+                    scoring=None
+                )
+
+                gs.fit(X, y)
+                self.trained_pipeline = gs.best_estimator_
+                trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+
+                if model_name == 'LogisticRegression':
+                    print(trained_feature_names)
+                    trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
+                    print(trained_coefficients)
+
 
         else:
             ppl.fit(X, y)
             self.trained_pipeline = ppl
 
 
-        feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-        print("self.trained_pipeline.named_steps['dv'].get_feature_names()")
-        print(feature_names)
+        # feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        # print("self.trained_pipeline.named_steps['dv'].get_feature_names()")
+        # print(feature_names)
 
 
         # TODO(PRESTON)
