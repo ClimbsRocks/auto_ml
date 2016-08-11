@@ -28,10 +28,10 @@ class Predictor(object):
         if user_input_func is not None:
             pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
 
+        # These parts will be included no matter what.
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning()))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
-        # We have to include ml_for_analytics here to tell that stage to save the feature ranges.
-        # TODO(PRESTON): refactor to do this inside _construct_pipeline_search_params instead
+
         pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model)))
 
         constructed_pipeline = Pipeline(pipeline_list)
@@ -58,8 +58,7 @@ class Predictor(object):
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
 
         # split out out output column so we have a proper X, y dataset
-        output_splitter = utils.SplitOutput(self.output_column)
-        X, y = output_splitter.transform(raw_training_data)
+        X, y = utils.split_output(raw_training_data, self.output_column)
 
         ppl = self._construct_pipeline(user_input_func, optimize_final_model)
 
@@ -91,8 +90,7 @@ class Predictor(object):
     def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
 
         # split out out output column so we have a proper X, y dataset
-        output_splitter = utils.SplitOutput(self.output_column)
-        X, y = output_splitter.transform(raw_training_data)
+        X, y = utils.split_output(raw_training_data, self.output_column)
 
         ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True)
 
@@ -161,16 +159,6 @@ class Predictor(object):
         for summary in sorted_feature_summary[:50]:
             print(summary[0] + ': ' + str(round(summary[1], 4)))
             print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
-
-        # TODO(PRESTON)
-        # Figure out how to access the FinalModelATC from our pipeline
-        # Figure out how to access the model from FinalModelATC
-        # Figure out how to get the coefficients from the best regression and random forest
-        # Figure out how to get that particular model's features from DictVectorizer (we will be doing a lot of feature engineering and feature selection in very near term versions of this repo)
-            # Might have to wrap DictVectorizer in a class that writes the results to the pipeline object or something?
-        # consider letting them pass this in as a flag for train. would probably be much easier to calculate these things if we know to beforehand
-        # look into putting some logic into FinalModelATC that keeps the best model/parameters around in an easy way for analytics.
-        # Figure out the reasonable range for whatever features we do have left, for regression printing
 
 
     def print_training_summary(self):

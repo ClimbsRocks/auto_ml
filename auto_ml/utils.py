@@ -8,25 +8,14 @@ import numpy as np
 
 
 # originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
-class SplitOutput(BaseEstimator, TransformerMixin):
+def split_output(X, output_column_name):
+    y = []
+    for row in X:
+        y.append(
+            row.pop(output_column_name)
+        )
 
-    def __init__(self, output_column_name):
-        self.output_column_name = output_column_name
-
-
-    def transform(self, X, y=None):
-        y = []
-        for row in X:
-            y.append(
-                row.pop(self.output_column_name)
-            )
-
-        return X, y
-
-
-    def fit(self, X, y=None):
-
-        return self
+    return X, y
 
 
 class BasicDataCleaning(BaseEstimator, TransformerMixin):
@@ -115,11 +104,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if self.ml_for_analytics:
             self.feature_ranges = []
+
             # Grab the ranges for each feature
-            # try:
             if scipy.sparse.issparse(X):
-                print('X.shape')
-                print(X.shape)
                 for col_idx in range(X.shape[1]):
                     col_vals = X.getcol(col_idx).toarray()
 
@@ -132,15 +119,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     # TODO: optimize.
                     twentieth_percentile = np.percentile(col_vals, 20)
                     eightieth_percentile = np.percentile(col_vals, 80)
-                    # print('twentieth_percentile')
-                    # print(twentieth_percentile)
+
                     self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
                     del col_vals
-            # except:
-            #     pass
 
 
-        # we can perform GridSearchCV (or, eventually, RandomizedSearchCV) on just our final estimator.
+        # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
 
             gs_params = self.get_search_params()
@@ -166,8 +150,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             self.model.fit(X, y)
 
-        # TODO(PRESTON): see if we need to return self to stay consistent with the scikit-learn API
-        # return self
+        return self
 
 
     def score(self, X, y):
