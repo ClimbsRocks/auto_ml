@@ -126,9 +126,20 @@ class Predictor(object):
                 trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
                 if model_name == 'LogisticRegression':
+                    print('trained_feature_names')
                     print(trained_feature_names)
-                    trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
+                    trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+                    print('trained_coefficients')
                     print(trained_coefficients)
+
+                    feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+
+                    print('feature_ranges')
+                    print(feature_ranges)
+
+                    for col_idx, feature_name in enumerate(trained_feature_names):
+                        print(feature_name + ': ' + str(trained_coefficients[col_idx]))
+                        print('The potential impact of this feature is: ' + str(trained_coefficients[col_idx] * feature_ranges[col_idx]))
 
 
         else:
