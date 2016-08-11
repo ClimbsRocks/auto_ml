@@ -115,7 +115,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.perform_grid_search_on_model:
 
             gs_params = self.get_search_params()
-            self.model = RandomizedSearchCV(
+            self.rscv = RandomizedSearchCV(
                 self.model_map[self.model_name],
                 gs_params,
                 # Pick n_iter combinations of hyperparameters to fit on and score.
@@ -128,12 +128,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # TOOD(PRESTON): change to be RMSE by default
                 scoring=None
             )
+            self.rscv.fit(X, y)
+            self.model = self.rscv.best_estimator_
 
         # or, we can just use the default estimator
         else:
             self.model = self.model_map[self.model_name]
 
-        self.model.fit(X, y)
+            self.model.fit(X, y)
 
         # TODO(PRESTON): see if we need to return self to stay consistent with the scikit-learn API
         # return self
