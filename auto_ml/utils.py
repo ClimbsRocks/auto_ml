@@ -82,7 +82,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def get_search_params(self):
         randomized_search_params = {
             'LogisticRegression': {
-                'C': scipy.stats.expon(.001, 1),
+                'C': scipy.stats.expon(.0001, 1000),
                 'class_weight': [None, 'balanced'],
                 'solver': ['newton-cg', 'lbfgs', 'sag']
             },
