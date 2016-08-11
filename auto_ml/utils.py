@@ -4,6 +4,7 @@ from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression
 
 import scipy
+import numpy as np
 
 
 # originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
@@ -115,13 +116,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.ml_for_analytics:
             self.feature_ranges = []
             # Grab the ranges for each feature
-            try:
+            # try:
+            if scipy.sparse.issparse(X):
                 print('X.shape')
                 print(X.shape)
                 for col_idx in range(X.shape[1]):
-                    self.feature_ranges.append(col_idx)
-            except:
-                pass
+                    col_vals = X.getcol(col_idx).toarray()
+
+                    # TODO: optimize.
+                    twentieth_percentile = np.percentile(col_vals, 20)
+                    eightieth_percentile = np.percentile(col_vals, 80)
+                    # print('twentieth_percentile')
+                    # print(twentieth_percentile)
+                    self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
+            # except:
+            #     pass
 
 
         # we can perform GridSearchCV (or, eventually, RandomizedSearchCV) on just our final estimator.
