@@ -22,7 +22,7 @@ class Predictor(object):
         self.output_column = output_column
 
 
-    def _construct_pipeline(self, user_input_func=None, optimize_final_model=False, ml_for_analytics=False, model_name='LogisticRegression'):
+    def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -30,14 +30,27 @@ class Predictor(object):
 
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning()))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, ml_for_analytics=ml_for_analytics)))
+        # We have to include ml_for_analytics here to tell that stage to save the feature ranges.
+        # TODO(PRESTON): refactor to do this inside _construct_pipeline_search_params instead
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
 
 
-    def _construct_pipeline_search_params(self):
-        return {}
+    def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False):
+
+        gs_params = {}
+        if optimize_final_model:
+            gs_params['final_model__perform_grid_search_on_model'] = [True, False]
+
+        if ml_for_analytics:
+            gs_params['final_model__ml_for_analytics'] = [True]
+        else:
+            if optimize_entire_pipeline:
+                gs_params['final_model__model_name'] = ['RandomForestClassifier', 'LogisticRegression']
+
+        return gs_params
 
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
@@ -48,16 +61,44 @@ class Predictor(object):
 
         ppl = self._construct_pipeline(user_input_func, optimize_final_model)
 
-        if optimize_entire_pipeline:
-            self.grid_search_params = {
-                'final_model__model_name': ['RandomForestClassifier', 'LogisticRegression']
-            }
+        self.gs_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model)
 
-            # Note that this is computationally expensive and extremely time consuming.
-            if optimize_final_model:
-                # We can alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline.
-                # We could choose to bake this into the broader pipeline GridSearchCV, but that risks becoming too cumbersome, and might be impossible since we're trying so many different models that have different parameters.
-                self.grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
+        # We will be performing GridSearchCV every time, even if the space we are searching over is null
+        gs = GridSearchCV(
+            # Fit on the pipeline.
+            ppl,
+            self.grid_search_params,
+            # Train across all cores.
+            n_jobs=-1,
+            # Be verbose (lots of printing).
+            verbose=10,
+            # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+            error_score=10,
+            # TODO(PRESTON): change scoring to be RMSE by default
+            scoring=None
+        )
+
+        gs.fit(X, y)
+
+        self.trained_pipeline = gs.best_estimator_
+
+        return self
+
+
+
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
+
+        # split out out output column so we have a proper X, y dataset
+        output_splitter = utils.SplitOutput(self.output_column)
+        X, y = output_splitter.transform(raw_training_data)
+
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True)
+
+        for model_name in ['LogisticRegression', 'RandomForestClassifier']:
+
+            self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=True)
+
+            self.grid_search_params['final_model__model_name'] = [model_name]
 
             gs = GridSearchCV(
                 # Fit on the pipeline.
@@ -74,85 +115,30 @@ class Predictor(object):
             )
 
             gs.fit(X, y)
-            self.trained_pipeline = gs
+            self.trained_pipeline = gs.best_estimator_
 
-        else:
-            ppl.fit(X, y)
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-            self.trained_pipeline = ppl
+            if model_name in ('LogisticRegression', 'Ridge'):
 
-        return self
+                trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
 
+                feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
+                feature_summary = []
+                for col_idx, feature_name in enumerate(trained_feature_names):
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
+                    potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
+                    summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
+                    feature_summary.append(summary_tuple)
 
-        # split out out output column so we have a proper X, y dataset
-        output_splitter = utils.SplitOutput(self.output_column)
-        X, y = output_splitter.transform(raw_training_data)
+                sorted_feature_summary = sorted(feature_summary, key=lambda x: x[2])
 
-
-        for model_name in ['LogisticRegression', 'RandomForestClassifier']:
-
-            ppl = self._construct_pipeline(user_input_func, optimize_final_model, ml_for_analytics=True, model_name=model_name)
-
-            self.grid_search_params = {
-                'final_model__model_name' = [model_name]
-            }
-
-            if optimize_entire_pipeline:
-                # TODO TODO(PRESTON): add in the logic to grab the grid search params for the whole pipeline
-                # Note that this is computationally expensive and extremely time consuming.
-                if optimize_final_model:
-                    # We can alternately try the raw, default, non-optimized algorithm used in our final_model stage, and also test optimizing that algorithm, in addition to optimizing the entire pipeline.
-                    # We could choose to bake this into the broader pipeline GridSearchCV, but that risks becoming too cumbersome, and might be impossible since we're trying so many different models that have different parameters.
-                    self.grid_search_params['final_model__perform_grid_search_on_model'] = [True, False]
-
-
-                    gs = GridSearchCV(
-                        # Fit on the pipeline.
-                        ppl,
-                        self.grid_search_params,
-                        # Train across all cores.
-                        n_jobs=-1,
-                        # Be verbose (lots of printing).
-                        verbose=10,
-                        # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-                        error_score=10,
-                        # TODO(PRESTON): change scoring to be RMSE by default
-                        scoring=None
-                    )
-
-                    gs.fit(X, y)
-                    self.trained_pipeline = gs.best_estimator_
-                    trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-
-                    if model_name in ('LogisticRegression', 'Ridge'):
-
-                        trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
-
-                        feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
-
-                        feature_summary = []
-                        for col_idx, feature_name in enumerate(trained_feature_names):
-
-                            potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
-                            summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
-                            feature_summary.append(summary_tuple)
-
-                        sorted_feature_summary = sorted(feature_summary, key=lambda x: x[2])
-
-                        print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
-                        print('This printed list will only contain the top 50 features.')
-                        for summary in sorted_feature_summary[:50]:
-                            print(summary[0] + ': ' + str(round(summary[1], 4)))
-                            print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
-
-
-            else:
-                ppl.fit(X, y)
-                self.trained_pipeline = ppl
-
+                print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
+                print('This printed list will only contain the top 50 features.')
+                for summary in sorted_feature_summary[:50]:
+                    print(summary[0] + ': ' + str(round(summary[1], 4)))
+                    print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
 
         # TODO(PRESTON)
         # Figure out how to access the FinalModelATC from our pipeline
