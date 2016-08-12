@@ -1,5 +1,5 @@
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.linear_model import LogisticRegression
+# from sklearn.linear_model import LogisticRegression
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
@@ -50,7 +50,7 @@ class Predictor(object):
 
         else:
             if optimize_entire_pipeline:
-                gs_params['final_model__model_name'] = ['RandomForestClassifier', 'LogisticRegression']
+                gs_params['final_model__model_name'] = self._get_estimator_names(ml_for_analytics=ml_for_analytics)
 
         return gs_params
 
@@ -85,7 +85,25 @@ class Predictor(object):
 
         return self
 
+    def _get_estimator_names(self, ml_for_analytics=False):
+        if self.type_of_algo == 'regressor':
+            base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge']
+            if ml_for_analytics:
+                return base_estimators
+            else:
+                # base_estimators.append()
+                return base_estimators
 
+        elif self.type_of_algo == 'classifier':
+            base_estimators = ['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier']
+            if ml_for_analytics:
+                return base_estimators
+            else:
+                # base_estimators.append()
+                return base_estimators
+
+        else:
+            raise('TypeError: type_of_algo must be either "classifier" or "regressor".')
 
     def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
 
@@ -94,7 +112,9 @@ class Predictor(object):
 
         ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True)
 
-        for model_name in ['LogisticRegression', 'RandomForestClassifier']:
+        estimator_names = self._get_estimator_names(ml_for_analytics=True)
+
+        for model_name in estimator_names:
 
             self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=True)
 
@@ -117,9 +137,9 @@ class Predictor(object):
             gs.fit(X, y)
             self.trained_pipeline = gs.best_estimator_
 
-            if model_name in ('LogisticRegression', 'Ridge'):
+            if model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()
-            elif model_name == 'RandomForestClassifier':
+            elif model_name in ['RandomForestClassifier', 'RandomForestRegressor']:
                 self._print_ml_analytics_results_random_forest()
 
     def _print_ml_analytics_results_random_forest(self):
