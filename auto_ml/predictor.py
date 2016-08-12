@@ -55,7 +55,7 @@ class Predictor(object):
         return gs_params
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False):
 
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
@@ -105,7 +105,7 @@ class Predictor(object):
         else:
             raise('TypeError: type_of_algo must be either "classifier" or "regressor".')
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, print_analytics_output=False):
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False):
 
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
