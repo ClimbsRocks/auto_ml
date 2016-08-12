@@ -2,6 +2,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression, RidgeClassifier, Ridge
+from sklearn.metrics import mean_squared_error
 
 import scipy
 import numpy as np
@@ -55,6 +56,11 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 # 1. Model selection (try a bunch of different mdoels, see which one is best)
 # 2. Model hyperparameter optimization (or not). This class will allow you to use the base estimator, or optimize the estimator's hyperparameters.
 class FinalModelATC(BaseEstimator, TransformerMixin):
+
+    def _rmse_scoring(estimator, X, y):
+        predictions = estimator.predict_proba(X)
+        rmse = mean_squared_error(y, predictions)**0.5
+        return rmse
 
 
     def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False):
