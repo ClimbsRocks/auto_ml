@@ -1,7 +1,7 @@
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.ensemble import RandomForestClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import LogisticRegression
+from sklearn.linear_model import LogisticRegression, LinearRegression, RidgeClassifier, Ridge
 
 import scipy
 import numpy as np
@@ -73,8 +73,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def set_model_map(self):
         self.model_map = {
+            # Classifiers
             'LogisticRegression': LogisticRegression(n_jobs=-2),
-            'RandomForestClassifier': RandomForestClassifier(n_jobs=-2)
+            'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
+            'RidgeClassifier': RidgeClassifier(),
+
+            # Regressors
+            'LinearRegression': LinearRegression(n_jobs=-2),
+            'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
+            'Ridge': Ridge()
         }
 
 
@@ -86,6 +93,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'class_weight': [None, 'balanced'],
                 'solver': ['newton-cg', 'lbfgs', 'sag']
             },
+            'LinearRegression': {
+
+            },
             'RandomForestClassifier': {
                 'criterion': ['entropy', 'gini'],
                 'class_weight': [None, 'balanced'],
@@ -93,6 +103,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'min_samples_split': [1, 2, 5, 20, 50, 100],
                 'min_samples_leaf': [1, 2, 5, 20, 50, 100],
                 'bootstrap': [True, False]
+            },
+            'RandomForestRegressor': {
+
+            },
+            'RidgeClassifier': {
+                'alpha': scipy.stats.expon(.0001, 1000),
+                'class_weight': [None, 'balanced'],
+                'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
+            },
+            'Ridge': {
+
             }
 
         }
@@ -158,4 +179,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def predict_proba(self, X):
-        return self.model.predict_proba(X)
+        try:
+            return self.model.predict_proba(X)
+        except AttributeError:
+            print('This model has no predict_proba method. Returning results of .predict instead.')
+        except Exception as e:
+            raise(e)
+
