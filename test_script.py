@@ -48,8 +48,8 @@ ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target
 # ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
 ml_predictor.ml_for_analytics(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
 
-output_splitter = utils.SplitOutput('target')
-X_test, y_test = output_splitter.transform(testing_data)
+# split out out output column so we have a proper X, y dataset
+X_test, y_test = utils.split_output(testing_data, 'target')
 
 ml_predictor.predict_proba(X_test)
 print(ml_predictor.score(X_test, y_test))
