@@ -136,18 +136,19 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if scipy.sparse.issparse(X):
                 for col_idx in range(X.shape[1]):
                     col_vals = X.getcol(col_idx).toarray()
+                    col_vals = sorted(col_vals)
 
                     # if the entire range is 0 - 1, just append the entire range.
                     # This works well for binary variables.
                     # This will break when we do min-max normalization to the range of 0,1
                     # TODO(PRESTON): check if all values are 0's and 1's, or if we have any values in between.
-                    if np.min(col_vals) == 0 and np.max(col_vals) == 1:
+                    if col_vals[0] == 0 and col_vals[-1] == 1:
                         self.feature_ranges.append(1)
-                    # TODO: optimize.
-                    twentieth_percentile = np.percentile(col_vals, 20)
-                    eightieth_percentile = np.percentile(col_vals, 80)
+                    else:
+                        twentieth_percentile = col_vals[int(len(col_vals) * 0.2)]
+                        eightieth_percentile = col_vals[int(len(col_vals) * 0.8)]
 
-                    self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
+                        self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
                     del col_vals
 
 
