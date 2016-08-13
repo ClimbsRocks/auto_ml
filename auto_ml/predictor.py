@@ -29,7 +29,7 @@ class Predictor(object):
             pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
 
         # These parts will be included no matter what.
-        pipeline_list.append(('basic_transform', utils.BasicDataCleaning()))
+        pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
 
         pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model)))

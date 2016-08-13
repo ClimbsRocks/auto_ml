@@ -22,7 +22,8 @@ def split_output(X, output_column_name):
 class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self):
+    def __init__(self, column_descriptions=None):
+        self.column_descriptions = column_descriptions
         pass
 
 
@@ -31,12 +32,24 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
 
     def turn_strings_to_floats(self, X, y=None):
-        for row in X:
-            for key, val in row.items():
-                try:
-                    row[key] = float(val)
-                except:
-                    pass
+
+        for key, val in self.column_descriptions.items():
+
+            if val == 'categorical':
+                for row in X:
+                    for key, val in row.items():
+                        try:
+                            row[key] = str(val)
+                        except:
+                            pass
+
+            else:
+                for row in X:
+                    for key, val in row.items():
+                        try:
+                            row[key] = float(val)
+                        except:
+                            pass
 
         return X
 
