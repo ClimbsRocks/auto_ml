@@ -33,23 +33,35 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def turn_strings_to_floats(self, X, y=None):
 
-        for key, val in self.column_descriptions.items():
+        for row in X:
+            for key, val in row.items():
+                col_desc = self.column_descriptions.get(key)
+                if col_desc == 'categorical':
+                    row[key] = str(val)
+                elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
+                    row[key] = float(val)
+                else:
+                    # covers cases for dates, target, etc.
+                    pass
 
-            if val == 'categorical':
-                for row in X:
-                    for key, val in row.items():
-                        try:
-                            row[key] = str(val)
-                        except:
-                            pass
 
-            else:
-                for row in X:
-                    for key, val in row.items():
-                        try:
-                            row[key] = float(val)
-                        except:
-                            pass
+        # for key, val in self.column_descriptions.items():
+
+        #     if val == 'categorical':
+        #         for row in X:
+        #             for key, val in row.items():
+        #                 try:
+        #                     row[key] = str(val)
+        #                 except:
+        #                     pass
+
+        #     elif va:
+        #         for row in X:
+        #             for key, val in row.items():
+        #                 try:
+        #                     row[key] = float(val)
+        #                 except:
+        #                     pass
 
         return X
 
