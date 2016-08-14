@@ -146,7 +146,6 @@ class Predictor(object):
             # scoring = 'roc_auc'
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
             self._scorer = scoring
-            # scoring = _stupid_test_scorer
         else:
             scoring = self._rmse_scoring
             self._scorer = scoring

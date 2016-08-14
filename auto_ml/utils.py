@@ -1,14 +1,14 @@
+import xgboost as xgb
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression, RidgeClassifier, Ridge
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 
 import scipy
-import numpy as np
 
 
-# originally implemented to be consistent with sklearn's API, but currently used outside of a pipeline
 def split_output(X, output_column_name):
     y = []
     for row in X:
@@ -44,25 +44,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # covers cases for dates, target, etc.
                     pass
 
-
-        # for key, val in self.column_descriptions.items():
-
-        #     if val == 'categorical':
-        #         for row in X:
-        #             for key, val in row.items():
-        #                 try:
-        #                     row[key] = str(val)
-        #                 except:
-        #                     pass
-
-        #     elif va:
-        #         for row in X:
-        #             for key, val in row.items():
-        #                 try:
-        #                     row[key] = float(val)
-        #                 except:
-        #                     pass
-
         return X
 
 
@@ -81,11 +62,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 # 1. Model selection (try a bunch of different mdoels, see which one is best)
 # 2. Model hyperparameter optimization (or not). This class will allow you to use the base estimator, or optimize the estimator's hyperparameters.
 class FinalModelATC(BaseEstimator, TransformerMixin):
-
-    def _rmse_scoring(estimator, X, y):
-        predictions = estimator.predict_proba(X)
-        rmse = mean_squared_error(y, predictions)**0.5
-        return rmse
 
 
     def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False):
@@ -108,11 +84,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'LogisticRegression': LogisticRegression(n_jobs=-2),
             'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
             'RidgeClassifier': RidgeClassifier(),
+            'XGBClassifier': xgb.XGBClassifier(),
 
             # Regressors
             'LinearRegression': LinearRegression(n_jobs=-2),
             'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
-            'Ridge': Ridge()
+            'Ridge': Ridge(),
+            'XGBRegressor': xgb.XGBRegressor()
         }
 
 
@@ -144,6 +122,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
             },
             'Ridge': {
+
+            },
+            'XGBClassifier': {
+                'max_depth': [1, 2, 5, 20, 50, 100]
+                # 'learning_rate': np.random.uniform(0.0, 1.0)
+            },
+            'XGBRegressor': {
 
             }
 
@@ -179,6 +164,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
+            scorer = make_scorer(brier_score_loss, greater_is_better=True)
 
             gs_params = self.get_search_params()
             self.rscv = RandomizedSearchCV(
@@ -192,7 +178,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
                 error_score=10,
                 # TOOD(PRESTON): change to be RMSE by default
-                scoring=None
+                scoring=scorer
             )
             self.rscv.fit(X, y)
             self.model = self.rscv.best_estimator_
@@ -215,6 +201,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return self.model.predict_proba(X)
         except AttributeError:
             print('This model has no predict_proba method. Returning results of .predict instead.')
+            raw_predictions = self.model.predict(X)
+            tupled_predictions = []
+            for prediction in raw_predictions:
+                if prediction == 1:
+                    tupled_predictions.append([0,1])
+                else:
+                    tupled_predictions.append([1,0])
+            return tupled_predictions
         except Exception as e:
             raise(e)
 
+    def predict(self, X):
+        return self.model.predict(X)
