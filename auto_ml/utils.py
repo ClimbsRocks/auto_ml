@@ -1,4 +1,6 @@
-import xgboost as xgb
+import csv
+import datetime
+import os
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
@@ -7,6 +9,8 @@ from sklearn.linear_model import LogisticRegression, LinearRegression, RidgeClas
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 
 import scipy
+
+import xgboost as xgb
 
 
 def split_output(X, output_column_name):
@@ -174,7 +178,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
                 n_iter=5,
                 n_jobs=-1,
-                verbose=1,
+                # verbose=1,
                 # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
                 error_score=10,
                 # TOOD(PRESTON): change to be RMSE by default
@@ -214,3 +218,22 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def predict(self, X):
         return self.model.predict(X)
+
+
+def write_gs_param_results_to_file(trained_gs):
+    timestamp_time = datetime.datetime.now()
+    grid_scores = trained_gs.grid_scores_
+    scorer = trained_gs.scorer_
+    best_score = trained_gs.best_score_
+
+    file_name = 'pipeline_grid_search_results.csv'
+    write_header = False
+    if not os.path.isfile(file_name):
+        write_header = True
+
+    with open(file_name, 'a') as results_file:
+        writer = csv.writer(results_file, dialect='excel')
+        if write_header:
+            writer.writerow(['timestamp', 'scorer', 'best_score', 'all_grid_scores'])
+        writer.writerow([timestamp_time, scorer, best_score, grid_scores])
+
