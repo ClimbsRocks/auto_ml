@@ -66,7 +66,7 @@ class Predictor(object):
         return rmse
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
 
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
@@ -101,6 +101,10 @@ class Predictor(object):
 
         self.trained_pipeline = gs.best_estimator_
 
+        # write the results for each param combo to file for user analytics.
+        if write_gs_param_results_to_file:
+            utils.write_gs_param_results_to_file(gs)
+
         return self
 
     def _get_estimator_names(self, ml_for_analytics=False):
@@ -124,7 +128,7 @@ class Predictor(object):
             raise('TypeError: type_of_algo must be either "classifier" or "regressor".')
 
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False):
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
 
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
@@ -164,7 +168,7 @@ class Predictor(object):
                 # Train across all cores.
                 n_jobs=-1,
                 # Be verbose (lots of printing).
-                verbose=10,
+                # verbose=10,
                 # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                 error_score=10,
                 # TODO(PRESTON): change scoring to be RMSE by default
@@ -178,6 +182,10 @@ class Predictor(object):
                 self._print_ml_analytics_results_regression()
             elif model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
                 self._print_ml_analytics_results_random_forest()
+
+            # write the results for each param combo to file for user analytics.
+            if write_gs_param_results_to_file:
+                utils.write_gs_param_results_to_file(gs)
 
     def _print_ml_analytics_results_random_forest(self):
 
