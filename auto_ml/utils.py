@@ -220,8 +220,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         return self.model.predict(X)
 
 
-def write_gs_param_results_to_file(trained_gs):
+def write_gs_param_results_to_file(trained_gs, most_recent_filename):
+
     timestamp_time = datetime.datetime.now()
+    write_most_recent_gs_result_to_file(trained_gs, most_recent_filename, timestamp_time)
+
     grid_scores = trained_gs.grid_scores_
     scorer = trained_gs.scorer_
     best_score = trained_gs.best_score_
@@ -237,3 +240,40 @@ def write_gs_param_results_to_file(trained_gs):
             writer.writerow(['timestamp', 'scorer', 'best_score', 'all_grid_scores'])
         writer.writerow([timestamp_time, scorer, best_score, grid_scores])
 
+
+def write_most_recent_gs_result_to_file(trained_gs, most_recent_filename, timestamp):
+
+    timestamp_time = timestamp
+    grid_scores = trained_gs.grid_scores_
+    scorer = trained_gs.scorer_
+    best_score = trained_gs.best_score_
+
+    file_name = most_recent_filename
+
+    write_header = False
+    make_header = False
+    if not os.path.isfile(most_recent_filename):
+        header_row = ['timestamp', 'scorer', 'best_score', 'cv_mean', 'cv_all']
+        write_header = True
+        make_header = True
+
+    rows_to_write = []
+
+    for score in grid_scores:
+
+        row = [timestamp_time, scorer, best_score, score[1], score[2]]
+
+        for k, v in score[0].items():
+            if make_header:
+                header_row.append(k)
+            row.append(v)
+        rows_to_write.append(row)
+        make_header = False
+
+
+    with open(file_name, 'a') as results_file:
+        writer = csv.writer(results_file, dialect='excel')
+        if write_header:
+            writer.writerow(header_row)
+        for row in rows_to_write:
+            writer.writerow(row)
