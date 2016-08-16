@@ -1,3 +1,5 @@
+import os
+
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
@@ -68,6 +70,13 @@ class Predictor(object):
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
 
+        if write_gs_param_results_to_file:
+            gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
+            try:
+                os.remove(gs_param_file_name)
+            except:
+                pass
+
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
 
@@ -103,7 +112,7 @@ class Predictor(object):
 
         # write the results for each param combo to file for user analytics.
         if write_gs_param_results_to_file:
-            utils.write_gs_param_results_to_file(gs)
+            utils.write_gs_param_results_to_file(gs, gs_param_file_name)
 
         return self
 
@@ -129,6 +138,13 @@ class Predictor(object):
 
 
     def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
+
+        if write_gs_param_results_to_file:
+            gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
+            try:
+                os.remove(gs_param_file_name)
+            except:
+                pass
 
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
@@ -185,7 +201,7 @@ class Predictor(object):
 
             # write the results for each param combo to file for user analytics.
             if write_gs_param_results_to_file:
-                utils.write_gs_param_results_to_file(gs)
+                utils.write_gs_param_results_to_file(gs, gs_param_file_name)
 
     def _print_ml_analytics_results_random_forest(self):
 
