@@ -4,3 +4,5 @@ numerai*/*
 *.npy
 *.pkl
 docs/build/*
+t2.py
+dev_script*.py
