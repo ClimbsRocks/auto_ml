@@ -186,9 +186,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if self.type_of_model == 'classifier':
                 scorer = make_scorer(brier_score_loss, greater_is_better=True)
             else:
-                scorer = None
-                # scorer = 'mean_squared_error'
-                # scorer = rmse_scoring
+                # scorer = None
+                # # scorer = 'mean_squared_error'
+                scorer = rmse_scoring
 
             gs_params = self.get_search_params()
 
@@ -360,7 +360,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
 def rmse_scoring(estimator, X, y):
-    predictions = estimator.predict_proba(X)
+    predictions = estimator.predict(X)
     rmse = mean_squared_error(y, predictions)**0.5
     return rmse
 
