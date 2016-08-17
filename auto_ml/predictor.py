@@ -1,4 +1,5 @@
 import os
+import warnings
 
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
@@ -7,6 +8,9 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
 import utils
+
+# with warnings.catch_warnings():
+warnings.filterwarnings("ignore", category=UserWarning)
 
 
 class Predictor(object):
@@ -63,7 +67,9 @@ class Predictor(object):
                 gs_params['final_model__model_name'] = self._get_estimator_names(ml_for_analytics=ml_for_analytics)
 
         if perform_feature_selection:
-            gs_params['feature_selection__feature_selection_model'] = ['RFECV', 'SelectFromModel', 'GenericUnivariateSelect', 'RandomizedSparse']
+            # We also have support built in for RFECV, but that typically takes way too long
+            # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
+            gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect'] #, 'RandomizedSparse', 'RFECV']
 
         return gs_params
 
@@ -165,8 +171,6 @@ class Predictor(object):
                 pass
 
         ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
-        print('ppl')
-        print(ppl)
 
         estimator_names = self._get_estimator_names(ml_for_analytics=True)
 
@@ -183,15 +187,12 @@ class Predictor(object):
 
             self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
 
-            print('self.grid_search_params')
-            print(self.grid_search_params)
-
             self.grid_search_params['final_model__model_name'] = [model_name]
 
             gs = GridSearchCV(
                 # Fit on the pipeline.
                 ppl,
-                self.grid_search_params,
+                param_grid=self.grid_search_params,
                 # Train across all cores.
                 n_jobs=-1,
                 # Be verbose (lots of printing).
@@ -215,8 +216,16 @@ class Predictor(object):
                 utils.write_gs_param_results_to_file(gs, gs_param_file_name)
 
     def _print_ml_analytics_results_random_forest(self):
+        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
-        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        if self.trained_pipeline.named_steps.get('feature_selection', False):
+
+            selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
+            feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
+            trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
+
+        else:
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
         trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
 
@@ -224,13 +233,23 @@ class Predictor(object):
 
         sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
+        print('Here are the feature_importances from the tree-based model:')
+        print('The printed list will only contain at most the top 50 features.')
         for feature in sorted_feature_infos[:50]:
             print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
     def _print_ml_analytics_results_regression(self):
+        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
-        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        if self.trained_pipeline.named_steps.get('feature_selection', False):
+
+            selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
+            feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
+            trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
+
+        else:
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
         trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
 
@@ -247,7 +266,7 @@ class Predictor(object):
         sorted_feature_summary = sorted(feature_summary, key=lambda x: abs(x[2]))
 
         print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
-        print('This printed list will only contain the top 50 features.')
+        print('This printed list will contain at most the top 50 features.')
         for summary in sorted_feature_summary[:50]:
             print(summary[0] + ': ' + str(round(summary[1], 4)))
             print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
