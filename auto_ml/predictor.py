@@ -24,7 +24,7 @@ class Predictor(object):
         self.output_column = output_column
 
 
-    def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False):
+    def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -33,6 +33,9 @@ class Predictor(object):
         # These parts will be included no matter what.
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
+
+        if perform_feature_selection:
+            pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_model=self.type_of_algo, feature_selection_model='SelectFromModel') ))
 
         # if any xgboost estimators are part of our pipeline, we will need to use our DMatrixTransformer to get the data into the right format for XGBoost
         # for estimator_name in self.gs_params.get('final_model__model_name'):
@@ -45,7 +48,7 @@ class Predictor(object):
         return constructed_pipeline
 
 
-    def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False):
+    def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False, perform_feature_selection=True):
 
         gs_params = {}
 
@@ -58,6 +61,9 @@ class Predictor(object):
         else:
             if optimize_entire_pipeline:
                 gs_params['final_model__model_name'] = self._get_estimator_names(ml_for_analytics=ml_for_analytics)
+
+        if perform_feature_selection:
+            gs_params['feature_selection__feature_selection_model'] = ['RFECV', 'SelectFromModel', 'GenericUnivariateSelect', 'RandomizedSparse']
 
         return gs_params
 
@@ -137,7 +143,7 @@ class Predictor(object):
             raise('TypeError: type_of_algo must be either "classifier" or "regressor".')
 
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True):
 
         if write_gs_param_results_to_file:
             gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
@@ -158,7 +164,9 @@ class Predictor(object):
             except:
                 pass
 
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True)
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
+        print('ppl')
+        print(ppl)
 
         estimator_names = self._get_estimator_names(ml_for_analytics=True)
 
@@ -173,7 +181,10 @@ class Predictor(object):
 
         for model_name in estimator_names:
 
-            self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=True)
+            self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
+
+            print('self.grid_search_params')
+            print(self.grid_search_params)
 
             self.grid_search_params['final_model__model_name'] = [model_name]
 
