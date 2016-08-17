@@ -157,6 +157,7 @@ class Predictor(object):
         # split out out output column so we have a proper X, y dataset
         X, y = utils.split_output(raw_training_data, self.output_column)
 
+        # TODO: modularize into clean_y_vals function
         if self.type_of_algo == 'classifier':
             try:
                 y_ints = []
@@ -188,9 +189,6 @@ class Predictor(object):
                 print(bad_vals)
                 indices_to_delete = set(indices_to_delete)
                 X = [row for idx, row in enumerate(X) if idx not in indices_to_delete]
-                print(len(X))
-                print(len(y))
-
 
         ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
 
@@ -275,7 +273,10 @@ class Predictor(object):
         else:
             trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-        trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+        if self.type_of_algo == 'classifier':
+            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+        else:
+            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
 
         feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
