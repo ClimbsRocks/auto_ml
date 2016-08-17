@@ -44,8 +44,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 if col_desc == 'categorical':
                     row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    print(val)
-                    row[key] = float(val)
+                    if val is not None:
+                        row[key] = float(val)
                 else:
                     # covers cases for dates, target, etc.
                     pass
@@ -70,13 +70,14 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False):
+    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False, type_of_model='classifier'):
 
         self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train
         self.perform_grid_search_on_model = perform_grid_search_on_model
         self.ml_for_analytics = ml_for_analytics
+        self.type_of_model=type_of_model
 
         if model_map is not None:
             self.model_map = model_map

@@ -28,7 +28,7 @@ class Predictor(object):
         self.output_column = output_column
 
 
-    def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True):
+    def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -46,7 +46,7 @@ class Predictor(object):
         #     if estimator_name.lower()[:3] == 'xgb':
         #         pipeline_list.append(('xgb_dmatrix_transformer', utils.DMatrixTransformer() ))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_model=self.type_of_algo)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
