@@ -69,15 +69,9 @@ class Predictor(object):
         if perform_feature_selection:
             # We also have support built in for RFECV, but that typically takes way too long
             # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
-            gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect'] #, 'RandomizedSparse', 'RFECV']
+            gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll'] #, 'RandomizedSparse', 'RFECV']
 
         return gs_params
-
-
-    def _rmse_scoring(estimator, X, y):
-        predictions = estimator.predict_proba(X)
-        rmse = mean_squared_error(y, predictions)**0.5
-        return rmse
 
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
@@ -101,7 +95,7 @@ class Predictor(object):
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
 
         else:
-            scoring = self._rmse_scoring
+            scoring = utils.rmse_scoring
 
         # We will be performing GridSearchCV every time, even if the space we are searching over is null
         gs = GridSearchCV(
@@ -179,7 +173,7 @@ class Predictor(object):
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
             self._scorer = scoring
         else:
-            scoring = self._rmse_scoring
+            scoring = utils.rmse_scoring
             self._scorer = scoring
 
 
