@@ -190,7 +190,7 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True):
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None):
 
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
         if verbose:
@@ -250,6 +250,10 @@ class Predictor(object):
             # write the results for each param combo to file for user analytics.
             if write_gs_param_results_to_file:
                 utils.write_gs_param_results_to_file(gs, gs_param_file_name)
+
+            if X_test and y_test:
+                print('The results from the holdout data passed into ml_for_analytics')
+                print(self.score(X_test, y_test))
 
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
