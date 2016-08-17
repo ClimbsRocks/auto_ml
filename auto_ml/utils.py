@@ -283,44 +283,38 @@ def write_most_recent_gs_result_to_file(trained_gs, most_recent_filename, timest
 class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
-
     def __init__(self, type_of_model, feature_selection_model='SelectFromModel'):
 
 
         self.type_of_model = type_of_model
+        self.feature_selection_model = feature_selection_model
+        self._set_model_map()
+
+
+    def _set_model_map(self):
+        # TODO(PRESTON): eventually let threshold be user-configurable (or grid_searchable)
         # TODO(PRESTON): optimize the params used here
         self._model_map = {
             'classifier': {
                 'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1)),
                 'RFECV': RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
                 'GenericUnivariateSelect': GenericUnivariateSelect(),
-                'RandomizedSearch': RandomizedLogisticRegression()
+                'RandomizedSparse': RandomizedLogisticRegression()
             },
             'regressor': {
                 'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1)),
                 'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
                 'GenericUnivariateSelect': GenericUnivariateSelect(),
-                'RandomizedSearch': RandomizedLasso()
+                'RandomizedSparse': RandomizedLasso()
             }
         }
 
-        print('self.type_of_model')
-        print(self.type_of_model)
-        print('feature_selection_model')
-        print(feature_selection_model)
-        # ['SelectFromModel', 'RFECV', 'GenericUnivariateSelect', 'RandomizedSearch']
-
-        # TODO(PRESTON): build in different params for regressors and classifiers
-        # TODO(PRSTON): eventually let threshold be user-configurable (or grid_searchable)
-        # TODO(PRESTON): verify we can use max in threshold below. if not, just hardcode in some values depending on the estimator used.
-        self.selector = self._model_map[self.type_of_model][feature_selection_model]
-
-
-
     def fit(self, X, y=None):
+        self.selector = self._model_map[self.type_of_model][self.feature_selection_model]
         # TODO(PRESTON): get feature names that were selected.
         #   Then make sure to get feature_names from this transformer rather than DV, if this transformer exists
         self.selector.fit(X, y)
+        self.support_mask = self.selector.get_support()
         return self
 
 
