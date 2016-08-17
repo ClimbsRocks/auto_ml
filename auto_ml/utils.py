@@ -115,8 +115,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['newton-cg', 'lbfgs', 'sag']
             },
             'LinearRegression': {
-                'fit_intercept': [True, False, True, False],
-                'normalize': [True, False, True, False]
+                'fit_intercept': [True, False]
+                'normalize': [True, False]
             },
             'RandomForestClassifier': {
                 'criterion': ['entropy', 'gini'],
@@ -186,6 +186,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # scorer = rmse_scoring
 
             gs_params = self.get_search_params()
+
+            n_iter = 5
+            if self.model_name == 'LinearRegression':
+                # There's just not much to optimize on a linear regression
+                n_iter = 4
             self.rscv = RandomizedSearchCV(
                 self.model_map[self.model_name],
                 gs_params,
