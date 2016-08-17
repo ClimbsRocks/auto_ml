@@ -115,7 +115,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['newton-cg', 'lbfgs', 'sag']
             },
             'LinearRegression': {
-
+                'fit_intercept': [True, False, True, False],
+                'normalize': [True, False, True, False]
             },
             'RandomForestClassifier': {
                 'criterion': ['entropy', 'gini'],
@@ -180,7 +181,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if self.type_of_model == 'classifier':
                 scorer = make_scorer(brier_score_loss, greater_is_better=True)
             else:
-                scorer = rmse_scoring
+                scorer = None
+                # scorer = 'mean_squared_error'
+                # scorer = rmse_scoring
 
             gs_params = self.get_search_params()
             self.rscv = RandomizedSearchCV(
@@ -323,6 +326,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         }
 
     def fit(self, X, y=None):
+
         self.selector = self._model_map[self.type_of_model][self.feature_selection_model]
 
         if self.selector == 'KeepAll':

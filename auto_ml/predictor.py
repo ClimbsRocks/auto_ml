@@ -95,7 +95,9 @@ class Predictor(object):
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
 
         else:
-            scoring = utils.rmse_scoring
+            scoring = None
+            # scoring = 'mean_squared_error'
+            # scoring = utils.rmse_scoring
 
         # We will be performing GridSearchCV every time, even if the space we are searching over is null
         gs = GridSearchCV(
@@ -164,6 +166,32 @@ class Predictor(object):
             except:
                 pass
 
+        else:
+            indices_to_delete = []
+            y_floats = []
+            bad_vals = []
+            for idx, val in enumerate(y):
+                try:
+                    float_val = float(val)
+                    y_floats.append(float_val)
+                except:
+                    indices_to_delete.append(idx)
+                    bad_vals.append(val)
+
+            y = y_floats
+
+            if len(indices_to_delete) > 0:
+                print('The y values given included some bad values')
+                print('The rows at these indices have been deleted because their y value could not be turned into a float')
+                print(indices_to_delete)
+                print('These were the bad values')
+                print(bad_vals)
+                indices_to_delete = set(indices_to_delete)
+                X = [row for idx, row in enumerate(X) if idx not in indices_to_delete]
+                print(len(X))
+                print(len(y))
+
+
         ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
 
         estimator_names = self._get_estimator_names(ml_for_analytics=True)
@@ -173,7 +201,9 @@ class Predictor(object):
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
             self._scorer = scoring
         else:
-            scoring = utils.rmse_scoring
+            scoring = None
+            # scoring = 'mean_squared_error'
+            # scoring = utils.rmse_scoring
             self._scorer = scoring
 
 
