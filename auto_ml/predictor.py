@@ -190,7 +190,7 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None):
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True):
 
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
         if verbose:
@@ -255,6 +255,10 @@ class Predictor(object):
                 print('The results from the holdout data passed into ml_for_analytics')
                 print(self.score(X_test, y_test))
 
+            if print_training_summary:
+                self.print_training_summary(gs)
+
+
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
@@ -267,7 +271,6 @@ class Predictor(object):
         else:
             trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-        print(self.trained_pipeline.named_steps['final_model'].model)
         trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
 
         feature_infos = zip(trained_feature_names, trained_feature_importances)
@@ -316,8 +319,11 @@ class Predictor(object):
             print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
 
 
-    def print_training_summary(self):
-        pass
+    def print_training_summary(self, gs):
+        print('The best CV score on the held out training data is')
+        print(gs.best_score_)
+        print('The best params were')
+        print(gs.best_params_)
         # Print some nice summary output of all the training we did.
         # maybe allow the user to pass in a flag to write info to a file
 
