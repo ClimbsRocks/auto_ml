@@ -44,6 +44,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 if col_desc == 'categorical':
                     row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
+                    print(val)
                     row[key] = float(val)
                 else:
                     # covers cases for dates, target, etc.
@@ -169,7 +170,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
-            scorer = make_scorer(brier_score_loss, greater_is_better=True)
+            # TODO(PRESTON): add in RMSE
+            if self.type_of_model == 'classifier':
+                scorer = make_scorer(brier_score_loss, greater_is_better=True)
+            else:
+                scorer = rmse_scoring
 
             gs_params = self.get_search_params()
             self.rscv = RandomizedSearchCV(
@@ -299,24 +304,45 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
                 'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1)),
                 'RFECV': RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
                 'GenericUnivariateSelect': GenericUnivariateSelect(),
-                'RandomizedSparse': RandomizedLogisticRegression()
+                'RandomizedSparse': RandomizedLogisticRegression(),
+                'KeepAll': 'KeepAll'
             },
             'regressor': {
                 'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1)),
                 'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
                 'GenericUnivariateSelect': GenericUnivariateSelect(),
-                'RandomizedSparse': RandomizedLasso()
+                'RandomizedSparse': RandomizedLasso(),
+                'KeepAll': 'KeepAll'
             }
         }
 
     def fit(self, X, y=None):
         self.selector = self._model_map[self.type_of_model][self.feature_selection_model]
-        # TODO(PRESTON): get feature names that were selected.
-        #   Then make sure to get feature_names from this transformer rather than DV, if this transformer exists
-        self.selector.fit(X, y)
-        self.support_mask = self.selector.get_support()
+
+        if self.selector == 'KeepAll':
+            if scipy.sparse.issparse(X):
+                num_cols = X.shape[0]
+            else:
+                num_cols = len(X[0])
+
+            self.support_mask = [True for col_idx in range(num_cols) ]
+        else:
+            self.selector.fit(X, y)
+            self.support_mask = self.selector.get_support()
         return self
 
 
     def transform(self, X, y=None):
-        return self.selector.transform(X)
+        if self.selector == 'KeepAll':
+            return X
+        else:
+            return self.selector.transform(X)
+
+
+def rmse_scoring(estimator, X, y):
+    predictions = estimator.predict_proba(X)
+    rmse = mean_squared_error(y, predictions)**0.5
+    return rmse
+
+
+
