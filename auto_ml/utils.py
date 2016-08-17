@@ -115,7 +115,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['newton-cg', 'lbfgs', 'sag']
             },
             'LinearRegression': {
-                'fit_intercept': [True, False]
+                'fit_intercept': [True, False],
                 'normalize': [True, False]
             },
             'RandomForestClassifier': {
@@ -127,7 +127,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'bootstrap': [True, False]
             },
             'RandomForestRegressor': {
-
+                'max_features': ['auto', 'sqrt', 'log2', None],
+                'min_samples_split': [1, 2, 5, 20, 50, 100],
+                'min_samples_leaf': [1, 2, 5, 20, 50, 100],
+                'bootstrap': [True, False]
             },
             'RidgeClassifier': {
                 'alpha': scipy.stats.expon(.0001, 1000),
@@ -135,13 +138,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
             },
             'Ridge': {
-
+                'alpha': scipy.stats.expon(.0001, 1000),
+                'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
             },
             'XGBClassifier': {
                 'max_depth': [1, 2, 5, 20, 50, 100]
                 # 'learning_rate': np.random.uniform(0.0, 1.0)
             },
             'XGBRegressor': {
+                'max_depth': [1, 2, 5, 20, 50, 100]
 
             }
 
@@ -196,7 +201,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 gs_params,
                 # Pick n_iter combinations of hyperparameters to fit on and score.
                 # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
-                n_iter=5,
+                n_iter=n_iter,
                 n_jobs=-1,
                 # verbose=1,
                 # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
