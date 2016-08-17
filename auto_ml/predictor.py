@@ -95,9 +95,9 @@ class Predictor(object):
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
 
         else:
-            scoring = None
-            # scoring = 'mean_squared_error'
-            # scoring = utils.rmse_scoring
+            # scoring = None
+            # # scoring = 'mean_squared_error'
+            scoring = utils.rmse_scoring
 
         # We will be performing GridSearchCV every time, even if the space we are searching over is null
         gs = GridSearchCV(
@@ -144,9 +144,7 @@ class Predictor(object):
         else:
             raise('TypeError: type_of_algo must be either "classifier" or "regressor".')
 
-
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True):
-
+    def _prepare_for_training(self, raw_training_data, write_gs_param_results_to_file=True):
         if write_gs_param_results_to_file:
             gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
             try:
@@ -190,7 +188,18 @@ class Predictor(object):
                 indices_to_delete = set(indices_to_delete)
                 X = [row for idx, row in enumerate(X) if idx not in indices_to_delete]
 
+        return X, y, gs_param_file_name
+
+    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True):
+
+        X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
+        if verbose:
+            print('Successfully performed basic preparations and y-value cleaning')
+
         ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
+
+        if verbose:
+            print('Successfully constructed the pipeline')
 
         estimator_names = self._get_estimator_names(ml_for_analytics=True)
 
@@ -199,11 +208,13 @@ class Predictor(object):
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
             self._scorer = scoring
         else:
-            scoring = None
-            # scoring = 'mean_squared_error'
-            # scoring = utils.rmse_scoring
+            # scoring = None
+            # # scoring = 'mean_squared_error'
+            scoring = utils.rmse_scoring
             self._scorer = scoring
 
+        if verbose:
+            print('Created estimator_names and scoring')
 
         for model_name in estimator_names:
 
@@ -224,6 +235,9 @@ class Predictor(object):
                 # TODO(PRESTON): change scoring to be RMSE by default
                 scoring=scoring
             )
+
+            if verbose:
+                print('About to fit the GridSearchCV on the pipeline for the model ' + model_name)
 
             gs.fit(X, y)
             self.trained_pipeline = gs.best_estimator_
