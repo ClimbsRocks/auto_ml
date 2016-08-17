@@ -111,7 +111,9 @@ class Predictor(object):
             # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
             error_score=10,
             # TODO(PRESTON): change scoring to be RMSE by default
-            scoring=scoring
+            scoring=scoring,
+            pre_dispatch='1*n_jobs'
+
         )
 
         gs.fit(X, y)
@@ -192,6 +194,9 @@ class Predictor(object):
 
     def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True):
 
+        if verbose:
+            print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
+
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
@@ -233,10 +238,12 @@ class Predictor(object):
                 # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                 error_score=10,
                 # TODO(PRESTON): change scoring to be RMSE by default
-                scoring=scoring
+                scoring=scoring,
+                pre_dispatch='1*n_jobs'
             )
 
             if verbose:
+                print('\n\n********************************************************************************************')
                 print('About to fit the GridSearchCV on the pipeline for the model ' + model_name)
 
             gs.fit(X, y)
@@ -252,7 +259,7 @@ class Predictor(object):
                 utils.write_gs_param_results_to_file(gs, gs_param_file_name)
 
             if X_test and y_test:
-                print('The results from the holdout data passed into ml_for_analytics')
+                print('The results from the X_test and y_text data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
                 print(self.score(X_test, y_test))
 
             if print_training_summary:
@@ -320,7 +327,7 @@ class Predictor(object):
 
 
     def print_training_summary(self, gs):
-        print('The best CV score on the held out training data is')
+        print('The best CV score from GridSearchCV (most likely averaging across k-fold CV) is:')
         print(gs.best_score_)
         print('The best params were')
         print(gs.best_params_)
