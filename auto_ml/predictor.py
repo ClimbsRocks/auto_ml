@@ -126,11 +126,11 @@ class Predictor(object):
 
     def _get_estimator_names(self, ml_for_analytics=False):
         if self.type_of_algo == 'regressor':
-            base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
+            base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge']
             if ml_for_analytics:
                 return base_estimators
             else:
-                # base_estimators.append()
+                base_estimators.append('XGBRegressor')
                 return base_estimators
 
         elif self.type_of_algo == 'classifier':
@@ -249,6 +249,7 @@ class Predictor(object):
         else:
             trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
+        print(self.trained_pipeline.named_steps['final_model'].model)
         trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
 
         feature_infos = zip(trained_feature_names, trained_feature_importances)
