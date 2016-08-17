@@ -1,5 +1,6 @@
 import csv
 import datetime
+import math
 import os
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -38,13 +39,17 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def turn_strings_to_floats(self, X, y=None):
 
+        vals_to_del = set([None, float('nan'), float('Inf')])
+
         for row in X:
             for key, val in row.items():
                 col_desc = self.column_descriptions.get(key)
                 if col_desc == 'categorical':
                     row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    if val is not None:
+                    if val in vals_to_del:
+                        del row[key]
+                    else:
                         row[key] = float(val)
                 else:
                     # covers cases for dates, target, etc.
