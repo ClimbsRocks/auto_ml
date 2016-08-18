@@ -4,10 +4,10 @@ import math
 import os
 
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron
+from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron, RANSACRegressor
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 
 import scipy
@@ -109,7 +109,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
             'Ridge': Ridge(),
             'XGBRegressor': xgb.XGBRegressor(),
-            'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1)
+            'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
+            'AdaBoostRegressor': AdaBoostRegressor(),
+            'RANSACRegressor': RANSACRegressor()
         }
 
 
@@ -165,6 +167,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'AdaBoostRegressor': {
                 'base_estimator': [None, Perceptron(n_jobs=-1)],
                 'loss': ['linear','square','exponential']
+            },
+            'RANSACRegressor': {
+                'min_samples': [None, .1, 100, 1000, 10000],
+                'stop_probability': [0.99, 0.98, 0.95, 0.90]
             }
 
         }

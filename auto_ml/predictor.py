@@ -81,13 +81,14 @@ class Predictor(object):
 
     def _get_estimator_names(self, only_analytics=False):
         if self.type_of_algo == 'regressor':
+            base_estimators = []
             base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
-            # base_estimators = ['RandomForestRegressor', 'XGBRegressor']
             if only_analytics:
                 return base_estimators
             else:
                 base_estimators.append('ExtraTreesRegressor')
                 base_estimators.append('AdaBoostRegressor')
+                base_estimators.append('RANSACRegressor')
                 return base_estimators
 
         elif self.type_of_algo == 'classifier':
