@@ -8,6 +8,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
 import utils
+import date_feature_engineering
 
 # with warnings.catch_warnings():
 warnings.filterwarnings("ignore", category=UserWarning)
@@ -17,15 +18,24 @@ class Predictor(object):
 
 
     def __init__(self, type_of_algo, column_descriptions, verbose=True):
-        self.type_of_algo = type_of_algo
+        self.type_of_algo = type_of_algo.lower()
         self.column_descriptions = column_descriptions
         self.verbose = verbose
         self.trained_pipeline = None
         self._scorer = None
+        self.date_cols = []
 
-        # figure out which column has a value 'output'
-        output_column = [key for key, value in column_descriptions.items() if value.lower() == 'output'][0]
-        self.output_column = output_column
+        # TODO: add in some input validation
+        for key, value in column_descriptions.items():
+            value = value.lower()
+            column_descriptions[key] = value
+            if value == 'output':
+                self.output_column = key
+            elif value == 'date':
+                self.date_cols.append(key)
+        # # figure out which column has a value 'output'
+        # output_column = [key for key, value in column_descriptions.items() if value.lower() == 'output'][0]
+        # self.output_column = output_column
 
 
     def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True):
@@ -34,17 +44,15 @@ class Predictor(object):
         if user_input_func is not None:
             pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
 
+        if len(self.date_cols) > 0:
+            pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
+
         # These parts will be included no matter what.
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
 
         if perform_feature_selection:
             pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_model=self.type_of_algo, feature_selection_model='SelectFromModel') ))
-
-        # if any xgboost estimators are part of our pipeline, we will need to use our DMatrixTransformer to get the data into the right format for XGBoost
-        # for estimator_name in self.gs_params.get('final_model__model_name'):
-        #     if estimator_name.lower()[:3] == 'xgb':
-        #         pipeline_list.append(('xgb_dmatrix_transformer', utils.DMatrixTransformer() ))
 
         pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_model=self.type_of_algo)))
 
@@ -84,7 +92,7 @@ class Predictor(object):
                 pass
 
         # split out out output column so we have a proper X, y dataset
-        X, y = utils.split_output(raw_training_data, self.output_column)
+        X, y = utils.split_output(raw_training_data, self.output_column, verbose=self.verbose)
 
         self.gs_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model)
 
@@ -128,11 +136,12 @@ class Predictor(object):
 
     def _get_estimator_names(self, ml_for_analytics=False):
         if self.type_of_algo == 'regressor':
-            base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge']
+            base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
+            # base_estimators = ['RandomForestRegressor', 'XGBRegressor']
             if ml_for_analytics:
                 return base_estimators
             else:
-                base_estimators.append('XGBRegressor')
+                # base_estimators.append('XGBRegressor')
                 return base_estimators
 
         elif self.type_of_algo == 'classifier':
@@ -266,28 +275,62 @@ class Predictor(object):
                 self.print_training_summary(gs)
 
 
+
+    def _get_xgb_feat_importances(self, clf):
+        import pandas as pd
+        import xgboost as xgb
+
+        if isinstance(clf, xgb.XGBModel):
+            # clf has been created by calling
+            # xgb.XGBClassifier.fit() or xgb.XGBRegressor().fit()
+            fscore = clf.booster().get_fscore()
+        else:
+            # clf has been created by calling xgb.train.
+            # Thus, clf is an instance of xgb.Booster.
+            fscore = clf.get_fscore()
+
+        feat_importances = []
+        for ft, score in fscore.iteritems():
+            feat_importances.append({'Feature': ft, 'Importance': score})
+        feat_importances = pd.DataFrame(feat_importances)
+        feat_importances = feat_importances.sort_values(
+            by='Importance', ascending=False).reset_index(drop=True)
+        # Divide the importances by the sum of all importances
+        # to get relative importances. By using relative importances
+        # the sum of all importances will equal to 1, i.e.,
+        # np.sum(feat_importances['importance']) == 1
+        feat_importances['Importance'] /= feat_importances['Importance'].sum()
+        # Print the most important features and their importances
+        print feat_importances.head()
+        return feat_importances
+
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
-        if self.trained_pipeline.named_steps.get('feature_selection', False):
-
-            selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
-            feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
-            trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
+        # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
+        if self.trained_pipeline.named_steps['final_model'].model_name == 'XGBRegressor':
+            self._get_xgb_feat_importances(self.trained_pipeline.named_steps['final_model'].model)
 
         else:
-            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+            if self.trained_pipeline.named_steps.get('feature_selection', False):
 
-        trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+                selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
+                feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
+                trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
 
-        feature_infos = zip(trained_feature_names, trained_feature_importances)
+            else:
+                trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-        sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+            trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
 
-        print('Here are the feature_importances from the tree-based model:')
-        print('The printed list will only contain at most the top 50 features.')
-        for feature in sorted_feature_infos[:50]:
-            print(feature[0] + ': ' + str(round(feature[1], 4)))
+            feature_infos = zip(trained_feature_names, trained_feature_importances)
+
+            sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+
+            print('Here are the feature_importances from the tree-based model:')
+            print('The printed list will only contain at most the top 50 features.')
+            for feature in sorted_feature_infos[:50]:
+                print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
     def _print_ml_analytics_results_regression(self):
