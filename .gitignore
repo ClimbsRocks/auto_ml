@@ -6,3 +6,5 @@ numerai*/*
 docs/build/*
 t2.py
 dev_script*.py
+.DS_Store
+old_data/*
