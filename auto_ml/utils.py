@@ -4,10 +4,10 @@ import math
 import os
 
 from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge
+from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 
 import scipy
@@ -108,7 +108,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'LinearRegression': LinearRegression(n_jobs=-2),
             'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
             'Ridge': Ridge(),
-            'XGBRegressor': xgb.XGBRegressor()
+            'XGBRegressor': xgb.XGBRegressor(),
+            'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1)
         }
 
 
@@ -154,6 +155,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'XGBRegressor': {
                 'max_depth': [1, 2, 5, 20, 50, 100]
 
+            },
+            'ExtraTreesRegressor': {
+                'max_features': ['auto', 'sqrt', 'log2', None],
+                'min_samples_split': [1, 2, 5, 20, 50, 100],
+                'min_samples_leaf': [1, 2, 5, 20, 50, 100],
+                'bootstrap': [True, False]
+            },
+            'AdaBoostRegressor': {
+                'base_estimator': [None, Perceptron(n_jobs=-1)],
+                'loss': ['linear','square','exponential']
             }
 
         }

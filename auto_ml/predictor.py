@@ -86,7 +86,8 @@ class Predictor(object):
             if only_analytics:
                 return base_estimators
             else:
-                # base_estimators.append('XGBRegressor')
+                base_estimators.append('ExtraTreesRegressor')
+                base_estimators.append('AdaBoostRegressor')
                 return base_estimators
 
         elif self.type_of_algo == 'classifier':
