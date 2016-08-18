@@ -10,7 +10,6 @@ from sklearn.preprocessing import FunctionTransformer
 import utils
 import date_feature_engineering
 
-# with warnings.catch_warnings():
 warnings.filterwarnings("ignore", category=UserWarning)
 
 
@@ -36,7 +35,7 @@ class Predictor(object):
 
         self.grid_search_pipelines = []
 
-    def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True):
+    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -80,11 +79,11 @@ class Predictor(object):
         return gs_params
 
 
-    def _get_estimator_names(self, ml_for_analytics=False):
+    def _get_estimator_names(self, only_analytics=False):
         if self.type_of_algo == 'regressor':
             base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
             # base_estimators = ['RandomForestRegressor', 'XGBRegressor']
-            if ml_for_analytics:
+            if only_analytics:
                 return base_estimators
             else:
                 # base_estimators.append('XGBRegressor')
@@ -92,7 +91,7 @@ class Predictor(object):
 
         elif self.type_of_algo == 'classifier':
             base_estimators = ['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'XGBClassifier']
-            if ml_for_analytics:
+            if only_analytics:
                 return base_estimators
             else:
                 # base_estimators.append()
@@ -147,9 +146,10 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False):
 
-        self.ml_for_analytics
+        self.ml_for_analytics = ml_for_analytics
+        self.only_analytics = only_analytics
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -158,12 +158,12 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=self.ml_for_analytics, perform_feature_selection=perform_feature_selection)
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, perform_feature_selection=perform_feature_selection)
 
         if verbose:
             print('Successfully constructed the pipeline')
 
-        estimator_names = self._get_estimator_names(ml_for_analytics=self.ml_for_analytics)
+        estimator_names = self._get_estimator_names(only_analytics=self.only_analytics)
 
         if self.type_of_algo == 'classifier':
             # scoring = 'roc_auc'
