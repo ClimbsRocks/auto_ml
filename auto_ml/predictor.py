@@ -329,7 +329,7 @@ class Predictor(object):
 
             print('Here are the feature_importances from the tree-based model:')
             print('The printed list will only contain at most the top 50 features.')
-            for feature in sorted_feature_infos[:50]:
+            for feature in sorted_feature_infos[-50:]:
                 print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
@@ -364,7 +364,7 @@ class Predictor(object):
 
         print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
         print('This printed list will contain at most the top 50 features.')
-        for summary in sorted_feature_summary[:50]:
+        for summary in sorted_feature_summary[-50:]:
             print(summary[0] + ': ' + str(round(summary[1], 4)))
             print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
 
