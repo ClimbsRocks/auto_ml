@@ -80,58 +80,6 @@ class Predictor(object):
         return gs_params
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True):
-
-        if write_gs_param_results_to_file:
-            gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
-            try:
-                os.remove(gs_param_file_name)
-            except:
-                pass
-
-        # split out out output column so we have a proper X, y dataset
-        X, y = utils.split_output(raw_training_data, self.output_column, verbose=self.verbose)
-
-        self.gs_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model)
-
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model)
-
-        if self.type_of_algo == 'classifier':
-            # scoring = 'roc_auc'
-            scoring = make_scorer(brier_score_loss, greater_is_better=True)
-
-        else:
-            # scoring = None
-            # # scoring = 'mean_squared_error'
-            scoring = utils.rmse_scoring
-
-        # We will be performing GridSearchCV every time, even if the space we are searching over is null
-        gs = GridSearchCV(
-            # Fit on the pipeline.
-            ppl,
-            self.grid_search_params,
-            # Train across all cores.
-            n_jobs=-1,
-            # Be verbose (lots of printing).
-            verbose=10,
-            # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-            error_score=10,
-            # TODO(PRESTON): change scoring to be RMSE by default
-            scoring=scoring,
-            pre_dispatch='1*n_jobs'
-
-        )
-
-        gs.fit(X, y)
-
-        self.trained_pipeline = gs.best_estimator_
-
-        # write the results for each param combo to file for user analytics.
-        if write_gs_param_results_to_file:
-            utils.write_gs_param_results_to_file(gs, gs_param_file_name)
-
-        return self
-
     def _get_estimator_names(self, ml_for_analytics=False):
         if self.type_of_algo == 'regressor':
             base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
@@ -199,7 +147,9 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def ml_for_analytics(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True):
+
+        self.ml_for_analytics
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -208,12 +158,12 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, ml_for_analytics=self.ml_for_analytics, perform_feature_selection=perform_feature_selection)
 
         if verbose:
             print('Successfully constructed the pipeline')
 
-        estimator_names = self._get_estimator_names(ml_for_analytics=True)
+        estimator_names = self._get_estimator_names(ml_for_analytics=self.ml_for_analytics)
 
         if self.type_of_algo == 'classifier':
             # scoring = 'roc_auc'
@@ -230,7 +180,7 @@ class Predictor(object):
 
         for model_name in estimator_names:
 
-            self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=True, perform_feature_selection=perform_feature_selection)
+            self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=self.ml_for_analytics, perform_feature_selection=perform_feature_selection)
 
             self.grid_search_params['final_model__model_name'] = [model_name]
 
@@ -289,6 +239,8 @@ class Predictor(object):
         best_result_list = sorted_gs_pipeline_results[0]
         best_trained_gs = best_result_list[-1]
         self.trained_pipeline = best_trained_gs.best_estimator_
+
+        del self.grid_search_pipelines
 
 
     def _get_xgb_feat_importances(self, clf):
