@@ -33,10 +33,8 @@ class Predictor(object):
                 self.output_column = key
             elif value == 'date':
                 self.date_cols.append(key)
-        # # figure out which column has a value 'output'
-        # output_column = [key for key, value in column_descriptions.items() if value.lower() == 'output'][0]
-        # self.output_column = output_column
 
+        self.grid_search_pipelines = []
 
     def _construct_pipeline(self, user_input_func=None, ml_for_analytics=False, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True):
 
@@ -267,13 +265,30 @@ class Predictor(object):
             if write_gs_param_results_to_file:
                 utils.write_gs_param_results_to_file(gs, gs_param_file_name)
 
+            # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
+            pipeline_results = []
+
             if X_test and y_test:
                 print('The results from the X_test and y_text data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
-                print(self.score(X_test, y_test))
+                holdout_data_score = self.score(X_test, y_test)
+                print(holdout_data_score)
+                pipeline_results.append(holdout_data_score)
 
             if print_training_summary:
                 self.print_training_summary(gs)
 
+            pipeline_results.append(gs.best_score_)
+            pipeline_results.append(gs)
+            self.grid_search_pipelines.append(pipeline_results)
+
+        # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
+        # 1. Holdout data
+        # 2. CV data
+
+        sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0])
+        best_result_list = sorted_gs_pipeline_results[0]
+        best_trained_gs = best_result_list[-1]
+        self.trained_pipeline = best_trained_gs.best_estimator_
 
 
     def _get_xgb_feat_importances(self, clf):
@@ -380,10 +395,12 @@ class Predictor(object):
 
     def predict(self, prediction_data):
 
+        # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
         return self.trained_pipeline.predict(prediction_data)
 
     def predict_proba(self, prediction_data):
 
+        # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
