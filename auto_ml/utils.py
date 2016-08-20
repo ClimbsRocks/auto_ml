@@ -165,7 +165,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'bootstrap': [True, False]
             },
             'AdaBoostRegressor': {
-                'base_estimator': [None, Perceptron(n_jobs=-1)],
+                'base_estimator': [None, LinearRegression(n_jobs=-1)],
                 'loss': ['linear','square','exponential']
             },
             'RANSACRegressor': {

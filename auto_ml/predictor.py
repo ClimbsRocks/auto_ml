@@ -355,6 +355,8 @@ class Predictor(object):
 
     def print_training_summary(self, gs):
         print('The best CV score from GridSearchCV (most likely averaging across k-fold CV) is:')
+        if self.took_log_of_y:
+            print('    Note that this score is calculated using the natural logs of the y values.')
         print(gs.best_score_)
         print('The best params were')
         print(gs.best_params_)
