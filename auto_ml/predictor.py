@@ -147,8 +147,8 @@ class Predictor(object):
             y = y_floats
 
             if len(indices_to_delete) > 0:
-                print('The y values given included some bad values')
-                print('The rows at these indices have been deleted because their y value could not be turned into a float')
+                print('The y values given included some bad values that the machine learning algorithms will not be able to train on.')
+                print('The rows at these indices have been deleted because their y value could not be turned into a float:')
                 print(indices_to_delete)
                 print('These were the bad values')
                 print(bad_vals)
@@ -157,8 +157,9 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, amount_of_computing=3):
 
+        self.amount_of_computing = amount_of_computing
         self.ml_for_analytics = ml_for_analytics
         self.only_analytics = only_analytics
 
@@ -377,7 +378,7 @@ class Predictor(object):
         if self.took_log_of_y:
             for idx, val in predicted_vals:
                 predicted_vals[idx] = math.exp(val)
-        return
+        return predicted_vals
 
     def predict_proba(self, prediction_data):
 
