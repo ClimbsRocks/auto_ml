@@ -1,3 +1,4 @@
+import math
 import os
 import warnings
 
@@ -23,6 +24,8 @@ class Predictor(object):
         self.trained_pipeline = None
         self._scorer = None
         self.date_cols = []
+        # Later on, if this is a regression problem, we will probably take the natural log of our y values for training, but we will still want to return the predictions in their normal scale (not the natural log values)
+        self.took_log_of_y = False
 
         # TODO: add in some input validation
         for key, value in column_descriptions.items():
@@ -49,9 +52,9 @@ class Predictor(object):
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
 
         if perform_feature_selection:
-            pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_model=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
+            pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_model=self.type_of_estimator)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_estimator=self.type_of_estimator)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -71,10 +74,10 @@ class Predictor(object):
             if optimize_entire_pipeline:
                 gs_params['final_model__model_name'] = self._get_estimator_names(ml_for_analytics=ml_for_analytics)
 
-        if perform_feature_selection:
-            # We also have support built in for RFECV, but that typically takes way too long
-            # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
-            gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll'] #, 'RandomizedSparse', 'RFECV']
+        # if perform_feature_selection:
+        #     # We also have support built in for RFECV, but that typically takes way too long
+        #     # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
+        #     gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll'] #, 'RandomizedSparse', 'RFECV']
 
         return gs_params
 
@@ -157,6 +160,15 @@ class Predictor(object):
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
+
+        if self.type_of_estimator == 'regressor':
+            # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
+            # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
+            self.took_log_of_y = True
+            # print(y)
+            for idx, val in enumerate(y):
+                y[idx] = math.log(val)
+
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
@@ -177,8 +189,10 @@ class Predictor(object):
             scoring = utils.rmse_scoring
             self._scorer = scoring
 
+        grid_search_verbose = 0
         if verbose:
             print('Created estimator_names and scoring')
+            grid_search_verbose = 1
 
         for model_name in estimator_names:
 
@@ -189,11 +203,12 @@ class Predictor(object):
             gs = GridSearchCV(
                 # Fit on the pipeline.
                 ppl,
+                cv=2,
                 param_grid=self.grid_search_params,
                 # Train across all cores.
                 n_jobs=-1,
                 # Be verbose (lots of printing).
-                # verbose=10,
+                verbose=grid_search_verbose,
                 # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                 error_score=10,
                 # TODO(PRESTON): change scoring to be RMSE by default
@@ -350,7 +365,11 @@ class Predictor(object):
     def predict(self, prediction_data):
 
         # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
-        return self.trained_pipeline.predict(prediction_data)
+        predicted_vals = self.trained_pipeline.predict(prediction_data)
+        if self.took_log_of_y:
+            for idx, val in predicted_vals:
+                predicted_vals[idx] = math.exp(val)
+        return
 
     def predict_proba(self, prediction_data):
 
@@ -360,7 +379,7 @@ class Predictor(object):
 
     def score(self, X_test, y_test):
         if self._scorer is not None:
-            return self._scorer(self.trained_pipeline, X_test, y_test)
+            return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 
