@@ -73,36 +73,36 @@ class Predictor(object):
         if optimize_final_model or self.compute_power >= 5:
             gs_params['final_model__perform_grid_search_on_model'] = [True, False]
 
-        else:
-            if optimize_entire_pipeline:
-                gs_params['final_model__model_name'] = self._get_estimator_names(ml_for_analytics=ml_for_analytics)
+        gs_params['final_model__model_name'] = self._get_estimator_names()
 
-        # if perform_feature_selection:
-        #     # We also have support built in for RFECV, but that typically takes way too long
-        #     # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
-        #     gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll'] #, 'RandomizedSparse', 'RFECV']
+        # Only optimize our feature selection methods this deeply if the user really, really wants to.
+        if self.compute_power >= 10:
+            # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
+            gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll', 'RFECV'] # , 'RandomizedSparse'
 
         return gs_params
 
 
-    def _get_estimator_names(self, only_analytics=False):
+    def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            base_estimators = []
-            base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
-            if only_analytics:
+            base_estimators = ['LinearRegression', 'XGBRegressor']
+            if self.compute_power < 7:
                 return base_estimators
             else:
-                base_estimators.append('ExtraTreesRegressor')
-                base_estimators.append('AdaBoostRegressor')
                 base_estimators.append('RANSACRegressor')
+                base_estimators.append('RandomForestRegressor')
+                base_estimators.append('Ridge')
+                base_estimators.append('AdaBoostRegressor')
+                base_estimators.append('ExtraTreesRegressor')
                 return base_estimators
 
         elif self.type_of_estimator == 'classifier':
-            base_estimators = ['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'XGBClassifier']
-            if only_analytics:
+            base_estimators = ['LogisticRegression', 'XGBClassifier']
+            if compute_power < 7:
                 return base_estimators
             else:
-                # base_estimators.append()
+                base_estimators.append('RidgeClassifier')
+                base_estimators.append('RandomForestClassifier')
                 return base_estimators
 
         else:
@@ -180,7 +180,7 @@ class Predictor(object):
         if verbose:
             print('Successfully constructed the pipeline')
 
-        estimator_names = self._get_estimator_names(only_analytics=self.only_analytics)
+        estimator_names = self._get_estimator_names()
 
         if self.type_of_estimator == 'classifier':
             # scoring = 'roc_auc'
