@@ -18,7 +18,13 @@ class Predictor(object):
 
 
     def __init__(self, type_of_estimator, column_descriptions, verbose=True):
-        self.type_of_estimator = type_of_estimator.lower()
+        if type_of_estimator.lower() in ['regressor','regression', 'regressions', 'regressors', 'number', 'numeric', 'continuous']:
+            self.type_of_estimator = 'regressor'
+        elif type_of_estimator.lower() in ['classifier', 'classification', 'categorizer', 'categorization', 'categories', 'labels', 'labeled', 'label']:
+            self.type_of_estimator = 'classifier'
+        else:
+            print('Invalid value for "type_of_estimator". Please pass in either "regressor" or "classifier". You passed in: ' + type_of_estimator)
+            raise ValueError('Invalid value for "type_of_estimator". Please pass in either "regressor" or "classifier". You passed in: ' + type_of_estimator)
         self.column_descriptions = column_descriptions
         self.verbose = verbose
         self.trained_pipeline = None
@@ -161,13 +167,13 @@ class Predictor(object):
 
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
 
-        if self.type_of_estimator == 'regressor':
-            # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
-            # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
-            self.took_log_of_y = True
-            # print(y)
-            for idx, val in enumerate(y):
-                y[idx] = math.log(val)
+        # if self.type_of_estimator == 'regressor':
+        #     # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
+        #     # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
+        #     self.took_log_of_y = True
+        #     # print(y)
+        #     for idx, val in enumerate(y):
+        #         y[idx] = math.log(val)
 
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
@@ -192,7 +198,7 @@ class Predictor(object):
         grid_search_verbose = 0
         if verbose:
             print('Created estimator_names and scoring')
-            grid_search_verbose = 1
+            grid_search_verbose = 5
 
         for model_name in estimator_names:
 
