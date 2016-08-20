@@ -44,7 +44,7 @@ class Predictor(object):
 
         self.grid_search_pipelines = []
 
-    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True):
+    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True, perform_feature_scaling=True):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -55,6 +55,10 @@ class Predictor(object):
 
         # These parts will be included no matter what.
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
+
+        if perform_feature_scaling:
+            pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
+
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
 
         if perform_feature_selection:

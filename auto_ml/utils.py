@@ -2,6 +2,7 @@ import csv
 import datetime
 import math
 import os
+import random
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor
@@ -395,7 +396,7 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False):
 def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
     attribute_hash = {}
     for dictionary in list_of_dictionaries:
-        for k, v in dictionary:
+        for k, v in dictionary.items():
             attribute_hash[k] = True
 
     # All of the columns in column_descriptions should be avoided. They're probably either categorical or NLP data, both of which cannot be scaled.
@@ -406,13 +407,12 @@ def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
 
 # Scale sparse data to the 90th and 10th percentile
 # Only do so for values that actuall exist (do absolutely nothing with rows that do not have this data point)
-def CustomSparseScaler(BaseEstimator, TransformerMixin):
+class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 
     def __init__(self, column_descriptions):
         self.column_descriptions = column_descriptions
         self.cols_to_avoid = set([k for k, v in column_descriptions.items()])
-        pass
 
 
     def fit(self, X, y=None):
@@ -435,19 +435,29 @@ def CustomSparseScaler(BaseEstimator, TransformerMixin):
 
             for row in X:
                 for k, v in row.items():
-                    attributes_summary[k].append(v)
+                    if k in attributes_to_summarize:
+                        attributes_summary[k].append(v)
 
             for attribute in bucket:
 
                 # Sort our collected data for that column
-                attributes_summary[attribute] = sorted(attributes_summary[attribute])
+                attributes_summary[attribute].sort()
                 col_vals = attributes_summary[attribute]
                 tenth_percentile = col_vals[int(0.1 * len(col_vals))]
                 ninetieth_percentile = col_vals[int(0.9 * len(col_vals))]
-                attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]
+
+                # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
+                col_range = ninetieth_percentile - tenth_percentile
+                if col_range > 0:
+                    attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]
+                else:
+                    del attributes_summary[attribute]
+                    self.cols_to_avoid.add(attribute)
+
                 del col_vals
 
         self.attributes_summary = attributes_summary
+        return self
 
 
     # Perform basic min/max scaling, with the minor caveat that our min and max values are the 10th and 90th percentile values, to avoid outliers.
@@ -459,8 +469,6 @@ def CustomSparseScaler(BaseEstimator, TransformerMixin):
                     max_val = self.attributes_summary[k][1]
                     attribute_range = self.attributes_summary[k][2]
                     row[k] = (v - min_val) / attribute_range
-        print(X[10])
-        print(X[100])
 
         return X
 
