@@ -81,14 +81,14 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False, type_of_model='classifier'):
+    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False, type_of_estimator='classifier'):
 
         self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train
         self.perform_grid_search_on_model = perform_grid_search_on_model
         self.ml_for_analytics = ml_for_analytics
-        self.type_of_model=type_of_model
+        self.type_of_estimator = type_of_estimator
 
         if model_map is not None:
             self.model_map = model_map
@@ -206,7 +206,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
             # TODO(PRESTON): add in RMSE
-            if self.type_of_model == 'classifier':
+            if self.type_of_estimator == 'classifier':
                 scorer = make_scorer(brier_score_loss, greater_is_better=True)
             else:
                 # scorer = None
@@ -330,10 +330,10 @@ def write_most_recent_gs_result_to_file(trained_gs, most_recent_filename, timest
 class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, type_of_model, feature_selection_model='SelectFromModel'):
+    def __init__(self, type_of_estimator, feature_selection_model='SelectFromModel'):
 
 
-        self.type_of_model = type_of_model
+        self.type_of_estimator = type_of_estimator
         self.feature_selection_model = feature_selection_model
         self._set_model_map()
 
@@ -360,7 +360,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
 
-        self.selector = self._model_map[self.type_of_model][self.feature_selection_model]
+        self.selector = self._model_map[self.type_of_estimator][self.feature_selection_model]
 
         if self.selector == 'KeepAll':
             if scipy.sparse.issparse(X):

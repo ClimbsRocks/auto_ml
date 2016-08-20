@@ -16,8 +16,8 @@ warnings.filterwarnings("ignore", category=UserWarning)
 class Predictor(object):
 
 
-    def __init__(self, type_of_algo, column_descriptions, verbose=True):
-        self.type_of_algo = type_of_algo.lower()
+    def __init__(self, type_of_estimator, column_descriptions, verbose=True):
+        self.type_of_estimator = type_of_estimator.lower()
         self.column_descriptions = column_descriptions
         self.verbose = verbose
         self.trained_pipeline = None
@@ -49,9 +49,9 @@ class Predictor(object):
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
 
         if perform_feature_selection:
-            pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_model=self.type_of_algo, feature_selection_model='SelectFromModel') ))
+            pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_model=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_model=self.type_of_algo)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_model=self.type_of_estimator)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -80,7 +80,7 @@ class Predictor(object):
 
 
     def _get_estimator_names(self, only_analytics=False):
-        if self.type_of_algo == 'regressor':
+        if self.type_of_estimator == 'regressor':
             base_estimators = []
             base_estimators = ['LinearRegression', 'RandomForestRegressor', 'Ridge', 'XGBRegressor']
             if only_analytics:
@@ -91,7 +91,7 @@ class Predictor(object):
                 base_estimators.append('RANSACRegressor')
                 return base_estimators
 
-        elif self.type_of_algo == 'classifier':
+        elif self.type_of_estimator == 'classifier':
             base_estimators = ['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'XGBClassifier']
             if only_analytics:
                 return base_estimators
@@ -100,7 +100,7 @@ class Predictor(object):
                 return base_estimators
 
         else:
-            raise('TypeError: type_of_algo must be either "classifier" or "regressor".')
+            raise('TypeError: type_of_estimator must be either "classifier" or "regressor".')
 
     def _prepare_for_training(self, raw_training_data, write_gs_param_results_to_file=True):
         if write_gs_param_results_to_file:
@@ -114,7 +114,7 @@ class Predictor(object):
         X, y = utils.split_output(raw_training_data, self.output_column)
 
         # TODO: modularize into clean_y_vals function
-        if self.type_of_algo == 'classifier':
+        if self.type_of_estimator == 'classifier':
             try:
                 y_ints = []
                 for val in y:
@@ -167,7 +167,7 @@ class Predictor(object):
 
         estimator_names = self._get_estimator_names(only_analytics=self.only_analytics)
 
-        if self.type_of_algo == 'classifier':
+        if self.type_of_estimator == 'classifier':
             # scoring = 'roc_auc'
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
             self._scorer = scoring
@@ -314,7 +314,7 @@ class Predictor(object):
         else:
             trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
-        if self.type_of_algo == 'classifier':
+        if self.type_of_estimator == 'classifier':
             trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
         else:
             trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
