@@ -17,8 +17,6 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
     def extract_features(self, row, date_val, date_col):
 
         row[date_col + '_day_of_week'] = str(date_val.weekday())
-        row[date_col + '_day_of_month'] = date_val.day
-        row[date_col + '_month'] = date_val.month
         row[date_col + '_hour'] = date_val.hour
 
         minutes_into_day = date_val.hour * 60 + date_val.minute
