@@ -170,11 +170,11 @@ class Predictor(object):
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
 
 
-        if self.type_of_estimator == 'regressor':
-            # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
-            # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
-            self.took_log_of_y = True
-            y = [math.log(val) for val in y]
+        # if self.type_of_estimator == 'regressor':
+        #     # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
+        #     # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
+        #     self.took_log_of_y = True
+        #     y = [math.log(val) for val in y]
 
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
@@ -200,6 +200,9 @@ class Predictor(object):
         if verbose:
             print('Created estimator_names and scoring')
             grid_search_verbose = 5
+
+        vals_to_test_for_take_log_of_y = [True]
+
 
         for model_name in estimator_names:
 
@@ -259,9 +262,15 @@ class Predictor(object):
         # 1. Holdout data
         # 2. CV data
 
-        sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0])
+        # First, sort all of the tuples that hold our scores in their first position(s), and our actual trained pipeline in their final position
+        # Since a more positive score is better, we want to make sure that the first item in our sorted list is the highest score, thus, reverse=True
+        sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0], reverse=True)
+
+        # Next, grab the thing at position 0 in our sorted list, which is itself a list of the scores(s), and the pipeline itself
         best_result_list = sorted_gs_pipeline_results[0]
+        # Our best grid search result is the thing at the end of that list.
         best_trained_gs = best_result_list[-1]
+        # And the pipeline is the best estimator within that grid search object.
         self.trained_pipeline = best_trained_gs.best_estimator_
 
         del self.grid_search_pipelines

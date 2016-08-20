@@ -390,7 +390,7 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False):
         for idx, val in enumerate(predictions):
             predictions[idx] = math.exp(val)
     rmse = mean_squared_error(y, predictions)**0.5
-    return rmse
+    return - 1 * rmse
 
 
 def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
