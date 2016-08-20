@@ -110,7 +110,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'Ridge': Ridge(),
             'XGBRegressor': xgb.XGBRegressor(),
             'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-            'AdaBoostRegressor': AdaBoostRegressor(),
+            'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
             'RANSACRegressor': RANSACRegressor()
         }
 
@@ -383,8 +383,11 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             return X
 
 
-def rmse_scoring(estimator, X, y):
+def rmse_scoring(estimator, X, y, took_log_of_y=False):
     predictions = estimator.predict(X)
+    if took_log_of_y:
+        for idx, val in enumerate(predictions):
+            predictions[idx] = math.exp(val)
     rmse = mean_squared_error(y, predictions)**0.5
     return rmse
 
