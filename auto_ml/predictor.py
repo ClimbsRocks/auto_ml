@@ -44,7 +44,7 @@ class Predictor(object):
 
         self.grid_search_pipelines = []
 
-    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True):
+    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True):
 
         pipeline_list = []
         if user_input_func is not None:
@@ -60,7 +60,7 @@ class Predictor(object):
         if perform_feature_selection:
             pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_estimator=self.type_of_estimator)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -70,11 +70,8 @@ class Predictor(object):
 
         gs_params = {}
 
-        if optimize_final_model:
+        if optimize_final_model or self.compute_power >= 5:
             gs_params['final_model__perform_grid_search_on_model'] = [True, False]
-
-        if ml_for_analytics:
-            gs_params['final_model__ml_for_analytics'] = [True]
 
         else:
             if optimize_entire_pipeline:
@@ -157,9 +154,9 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, compute_power=3):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True):
 
-        self.amount_of_computing = amount_of_computing
+        self.compute_power = compute_power
         self.ml_for_analytics = ml_for_analytics
         self.only_analytics = only_analytics
 
@@ -168,18 +165,17 @@ class Predictor(object):
 
         X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
 
-        # if self.type_of_estimator == 'regressor':
-        #     # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
-        #     # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
-        #     self.took_log_of_y = True
-        #     # print(y)
-        #     for idx, val in enumerate(y):
-        #         y[idx] = math.log(val)
+
+        if self.type_of_estimator == 'regressor':
+            # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
+            # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
+            self.took_log_of_y = True
+            y = [math.log(val) for val in y]
 
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, perform_feature_selection=perform_feature_selection)
+        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, perform_feature_selection=perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
 
         if verbose:
             print('Successfully constructed the pipeline')
