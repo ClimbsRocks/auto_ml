@@ -157,7 +157,7 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, amount_of_computing=3):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, compute_power=3):
 
         self.amount_of_computing = amount_of_computing
         self.ml_for_analytics = ml_for_analytics
