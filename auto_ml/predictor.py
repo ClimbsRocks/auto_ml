@@ -277,82 +277,51 @@ class Predictor(object):
 
 
     def _get_xgb_feat_importances(self, clf):
-        import pandas as pd
-        import xgboost as xgb
 
         try:
-            # clf has been created by calling
+            # Handles case when clf has been created by calling
             # xgb.XGBClassifier.fit() or xgb.XGBRegressor().fit()
             fscore = clf.booster().get_fscore()
         except:
-            # clf has been created by calling xgb.train.
+            # Handles case when clf has been created by calling xgb.train.
             # Thus, clf is an instance of xgb.Booster.
             fscore = clf.get_fscore()
 
         if self.trained_pipeline.named_steps.get('feature_selection', False):
 
-            print('heard we had feature selection')
-
             selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
             feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
             trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
-            print('selected_indices')
-            print(selected_indices)
-            print('len(selected_indices)')
-            print(len(selected_indices))
 
         else:
-            print('did not have feature selection')
             trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-            print('trained_feature_names')
-            print(trained_feature_names)
-
 
         feat_importances = []
 
-        print('fscore')
-        print(fscore)
-
+        # Somewhat annoying. XGBoost only returns importances for the features it finds useful.
+        # So we have to go in, get the index of the feature from the "feature name" by removing the f before the feature name, and grabbing the rest of that string, which is actually the index of that feature name.
         fscore_list = [[int(k[1:]), v] for k, v in fscore.viewitems()]
-        print('fscore_list')
-        print(fscore_list)
-        sorted_fscore = fscore_list.sort(key=lambda x: x[0])
-        print('fscore_list after sorting')
-        print(fscore_list)
-
-        print('len(fscore_list)')
-        print(len(fscore_list))
-        print('len(trained_feature_names)')
-        print(len(trained_feature_names))
 
 
-        # for idx, result_list in fscore.view:
-        #     print result_list
-        #     score = result_list[1]
-        #     feature_name = trained_feature_names[idx]
-        #     feat_importances.append([feature_name, score])
+        feature_infos = []
+        sum_of_all_feature_importances = 0.0
 
-        sorted_feature_infos = sorted(feat_importances, key=lambda x: x[1])
+        for idx_and_result in fscore_list:
+            idx = idx_and_result[0]
+            # Use the index that we grabbed above to find the human-readable feature name
+            feature_name = trained_feature_names[idx]
+            feat_importance = idx_and_result[1]
+
+            # If we sum up all the feature importances and then divide by that sum, we will be able to have each feature importance as it's relative feature imoprtance, and the sum of all of them will sum up to 1, just as it is in scikit-learn.
+            sum_of_all_feature_importances += feat_importance
+            feature_infos.append([feature_name, feat_importance])
+
+        sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
         print('Here are the feature_importances from the tree-based model:')
         print('The printed list will only contain at most the top 50 features.')
         for feature in sorted_feature_infos[-50:]:
-            print(feature)
-            # print(feature[0] + ': ' + str(round(feature[1], 4)))
-
-
-        #     feat_importances.append({'Feature': ft, 'Importance': score})
-        # feat_importances = pd.DataFrame(feat_importances)
-        # feat_importances = feat_importances.sort_values(
-        #     by='Importance', ascending=False).reset_index(drop=True)
-        # # Divide the importances by the sum of all importances
-        # # to get relative importances. By using relative importances
-        # # the sum of all importances will equal to 1, i.e.,
-        # # np.sum(feat_importances['importance']) == 1
-        # feat_importances['Importance'] /= feat_importances['Importance'].sum()
-        # # Print the most important features and their importances
-        # print feat_importances.head()
-        # return feat_importances
+            print(feature[0] + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
