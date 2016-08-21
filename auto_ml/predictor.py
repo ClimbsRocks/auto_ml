@@ -70,14 +70,21 @@ class Predictor(object):
         return constructed_pipeline
 
 
-    def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False, perform_feature_selection=True):
+    def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False, perform_feature_selection=True, user_defined_model_names=None):
 
         gs_params = {}
 
         if optimize_final_model or self.compute_power >= 5:
             gs_params['final_model__perform_grid_search_on_model'] = [True, False]
 
-        gs_params['final_model__model_name'] = self._get_estimator_names()
+        if self.compute_power >= 3:
+            gs_params['scaler__truncate_large_values'] = [True, False]
+
+        if user_defined_model_names:
+            model_names = user_defined_model_names
+        else:
+            model_names = self._get_estimator_names()
+        gs_params['final_model__model_name'] = model_names
 
         # Only optimize our feature selection methods this deeply if the user really, really wants to.
         if self.compute_power >= 10:
@@ -158,7 +165,7 @@ class Predictor(object):
 
         return X, y, gs_param_file_name
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None):
 
         self.compute_power = compute_power
         self.ml_for_analytics = ml_for_analytics
@@ -184,7 +191,10 @@ class Predictor(object):
         if verbose:
             print('Successfully constructed the pipeline')
 
-        estimator_names = self._get_estimator_names()
+        if model_names:
+            estimator_names = model_names
+        else:
+            estimator_names = self._get_estimator_names()
 
         if self.type_of_estimator == 'classifier':
             # scoring = 'roc_auc'
@@ -201,7 +211,14 @@ class Predictor(object):
             print('Created estimator_names and scoring')
             grid_search_verbose = 5
 
-        vals_to_test_for_take_log_of_y = [True]
+        natural_log_or_not = [True]
+
+        if self.compute_power >= 3:
+            natural_log_or_not.append(False)
+
+        # for natural_log in natural_log_or_not:
+        #     if natural_log:
+
 
 
         for model_name in estimator_names:
@@ -246,9 +263,12 @@ class Predictor(object):
             pipeline_results = []
 
             if X_test and y_test:
-                print('The results from the X_test and y_text data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
+                print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
                 holdout_data_score = self.score(X_test, y_test)
                 print(holdout_data_score)
+                if self.took_log_of_y:
+                    print('Here is what that translates to in the log form, so you can compare to the final results on X_test and y_test to see how much better the model gets when trained on more data:')
+                    print(self.score(X_test, y_test, took_log_of_y=False))
                 pipeline_results.append(holdout_data_score)
 
             if print_training_summary:
@@ -414,9 +434,11 @@ class Predictor(object):
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
-    def score(self, X_test, y_test):
+    def score(self, X_test, y_test, took_log_of_y=None):
+        if took_log_of_y is None:
+            took_log_of_y = self.took_log_of_y
         if self._scorer is not None:
-            return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
+            return self._scorer(self.trained_pipeline, X_test, y_test, took_log_of_y)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 
