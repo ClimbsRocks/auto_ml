@@ -119,11 +119,11 @@ class Predictor(object):
         else:
             raise('TypeError: type_of_estimator must be either "classifier" or "regressor".')
 
-    def _prepare_for_training(self, raw_training_data, write_gs_param_results_to_file=True):
-        if write_gs_param_results_to_file:
-            gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
+    def _prepare_for_training(self, raw_training_data):
+        if self.write_gs_param_results_to_file:
+            self.gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
             try:
-                os.remove(gs_param_file_name)
+                os.remove(self.gs_param_file_name)
             except:
                 pass
 
@@ -163,25 +163,28 @@ class Predictor(object):
                 indices_to_delete = set(indices_to_delete)
                 X = [row for idx, row in enumerate(X) if idx not in indices_to_delete]
 
-        return X, y, gs_param_file_name
+        return X, y
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None):
 
+        self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.compute_power = compute_power
         self.ml_for_analytics = ml_for_analytics
         self.only_analytics = only_analytics
+        self.X_test = X_test
+        self.y_test = y_test
+        self.print_training_summary_to_viewer = print_training_summary_to_viewer
+        if self.type_of_estimator == 'regressor':
+            self.take_log_of_y = take_log_of_y
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
-        X, y, gs_param_file_name = self._prepare_for_training(raw_training_data, write_gs_param_results_to_file)
+        X, y = self._prepare_for_training(raw_training_data)
 
-
-        # if self.type_of_estimator == 'regressor':
-        #     # By default, take the natural log of the y values when we're doing regression. This is a standard best practice for regression problems.
-        #     # We will make sure to return predicted values on the same scale as they were passed in (not the natural logs of those values), but for training, models will typically be more accurate if trained on the natural logs.
-        #     self.took_log_of_y = True
-        #     y = [math.log(val) for val in y]
+        if self.take_log_of_y:
+            y = [math.log(val) for val in y]
+            self.took_log_of_y = True
 
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
@@ -197,86 +200,17 @@ class Predictor(object):
             estimator_names = self._get_estimator_names()
 
         if self.type_of_estimator == 'classifier':
-            # scoring = 'roc_auc'
             scoring = make_scorer(brier_score_loss, greater_is_better=True)
             self._scorer = scoring
         else:
-            # scoring = None
-            # # scoring = 'mean_squared_error'
             scoring = utils.rmse_scoring
             self._scorer = scoring
 
-        grid_search_verbose = 0
         if verbose:
             print('Created estimator_names and scoring')
-            grid_search_verbose = 5
-
-        natural_log_or_not = [True]
-
-        if self.compute_power >= 3:
-            natural_log_or_not.append(False)
-
-        # for natural_log in natural_log_or_not:
-        #     if natural_log:
 
 
-
-        for model_name in estimator_names:
-
-            self.grid_search_params = self._construct_pipeline_search_params(optimize_entire_pipeline=optimize_entire_pipeline, optimize_final_model=optimize_final_model, ml_for_analytics=self.ml_for_analytics, perform_feature_selection=perform_feature_selection)
-
-            self.grid_search_params['final_model__model_name'] = [model_name]
-
-            gs = GridSearchCV(
-                # Fit on the pipeline.
-                ppl,
-                cv=2,
-                param_grid=self.grid_search_params,
-                # Train across all cores.
-                n_jobs=-1,
-                # Be verbose (lots of printing).
-                verbose=grid_search_verbose,
-                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-                error_score=10,
-                # TODO(PRESTON): change scoring to be RMSE by default
-                scoring=scoring,
-                pre_dispatch='1*n_jobs'
-            )
-
-            if verbose:
-                print('\n\n********************************************************************************************')
-                print('About to fit the GridSearchCV on the pipeline for the model ' + model_name)
-
-            gs.fit(X, y)
-            self.trained_pipeline = gs.best_estimator_
-
-            if model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-                self._print_ml_analytics_results_regression()
-            elif model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
-                self._print_ml_analytics_results_random_forest()
-
-            # write the results for each param combo to file for user analytics.
-            if write_gs_param_results_to_file:
-                utils.write_gs_param_results_to_file(gs, gs_param_file_name)
-
-            # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
-            pipeline_results = []
-
-            if X_test and y_test:
-                print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
-                holdout_data_score = self.score(X_test, y_test)
-                print(holdout_data_score)
-                if self.took_log_of_y:
-                    print('Here is what that translates to in the log form, so you can compare to the final results on X_test and y_test to see how much better the model gets when trained on more data:')
-                    print(self.score(X_test, y_test, took_log_of_y=False))
-                pipeline_results.append(holdout_data_score)
-
-            if print_training_summary:
-                self.print_training_summary(gs)
-
-            pipeline_results.append(gs.best_score_)
-            pipeline_results.append(gs)
-            self.grid_search_pipelines.append(pipeline_results)
+        self.perform_grid_search_by_model_names(estimator_names, ppl, scoring, X, y)
 
         # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
         # 1. Holdout data
@@ -294,6 +228,67 @@ class Predictor(object):
         self.trained_pipeline = best_trained_gs.best_estimator_
 
         del self.grid_search_pipelines
+
+    def perform_grid_search_by_model_names(self, estimator_names, ppl, scoring, X, y):
+
+        for model_name in estimator_names:
+
+            self.grid_search_params = self._construct_pipeline_search_params()
+
+            self.grid_search_params['final_model__model_name'] = [model_name]
+            if self.verbose:
+                grid_search_verbose = 5
+            else:
+                grid_search_verbose = 0
+
+            gs = GridSearchCV(
+                # Fit on the pipeline.
+                ppl,
+                cv=2,
+                param_grid=self.grid_search_params,
+                # Train across all cores.
+                n_jobs=-1,
+                # Be verbose (lots of printing).
+                verbose=grid_search_verbose,
+                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                error_score=10,
+                # TODO(PRESTON): change scoring to be RMSE by default
+                scoring=scoring,
+                pre_dispatch='1*n_jobs'
+            )
+
+            if self.verbose:
+                print('\n\n********************************************************************************************')
+                print('About to fit the GridSearchCV on the pipeline for the model ' + model_name)
+
+            gs.fit(X, y)
+            self.trained_pipeline = gs.best_estimator_
+
+            if model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+                self._print_ml_analytics_results_regression()
+            elif model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
+                self._print_ml_analytics_results_random_forest()
+
+            # write the results for each param combo to file for user analytics.
+            if self.write_gs_param_results_to_file:
+                utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
+
+            # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
+            pipeline_results = []
+
+            if self.X_test and self.y_test:
+                print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
+                holdout_data_score = self.score(self.X_test, self.y_test)
+                print(holdout_data_score)
+
+                pipeline_results.append(holdout_data_score)
+
+            if self.print_training_summary_to_viewer:
+                self.print_training_summary(gs)
+
+            pipeline_results.append(gs.best_score_)
+            pipeline_results.append(gs)
+            self.grid_search_pipelines.append(pipeline_results)
 
 
     def _get_xgb_feat_importances(self, clf):
@@ -434,11 +429,9 @@ class Predictor(object):
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
-    def score(self, X_test, y_test, took_log_of_y=None):
-        if took_log_of_y is None:
-            took_log_of_y = self.took_log_of_y
+    def score(self, X_test, y_test):
         if self._scorer is not None:
-            return self._scorer(self.trained_pipeline, X_test, y_test, took_log_of_y)
+            return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 
