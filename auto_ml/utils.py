@@ -409,9 +409,10 @@ def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
 class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, column_descriptions):
+    def __init__(self, column_descriptions, truncate_large_values=False):
         self.column_descriptions = column_descriptions
         self.cols_to_avoid = set([k for k, v in column_descriptions.items()])
+        self.truncate_large_values = truncate_large_values
 
 
     def fit(self, X, y=None):
@@ -442,8 +443,8 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                 # Sort our collected data for that column
                 attributes_summary[attribute].sort()
                 col_vals = attributes_summary[attribute]
-                tenth_percentile = col_vals[int(0.1 * len(col_vals))]
-                ninetieth_percentile = col_vals[int(0.9 * len(col_vals))]
+                tenth_percentile = col_vals[int(0.05 * len(col_vals))]
+                ninetieth_percentile = col_vals[int(0.95 * len(col_vals))]
 
                 # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
                 col_range = ninetieth_percentile - tenth_percentile
@@ -467,7 +468,13 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                     min_val = self.attributes_summary[k][0]
                     max_val = self.attributes_summary[k][1]
                     attribute_range = self.attributes_summary[k][2]
-                    row[k] = (v - min_val) / attribute_range
+                    scaled_value = (v - min_val) / attribute_range
+                    if self.truncate_large_values:
+                        if scaled_value < 0:
+                            scaled_value = 0
+                        elif scaled_value > 1:
+                            scaled_value = 1
+                    row[k] =scaled_value
 
         return X
 
