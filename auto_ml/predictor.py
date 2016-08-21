@@ -89,23 +89,23 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            base_estimators = ['LinearRegression', 'XGBRegressor']
+            base_estimators = ['Ridge', 'XGBRegressor']
             if self.compute_power < 7:
                 return base_estimators
             else:
                 base_estimators.append('RANSACRegressor')
                 base_estimators.append('RandomForestRegressor')
-                base_estimators.append('Ridge')
+                base_estimators.append('LinearRegression')
                 base_estimators.append('AdaBoostRegressor')
                 base_estimators.append('ExtraTreesRegressor')
                 return base_estimators
 
         elif self.type_of_estimator == 'classifier':
-            base_estimators = ['LogisticRegression', 'XGBClassifier']
+            base_estimators = ['RidgeClassifier', 'XGBClassifier']
             if compute_power < 7:
                 return base_estimators
             else:
-                base_estimators.append('RidgeClassifier')
+                base_estimators.append('LogisticRegression')
                 base_estimators.append('RandomForestClassifier')
                 return base_estimators
 
@@ -280,29 +280,79 @@ class Predictor(object):
         import pandas as pd
         import xgboost as xgb
 
-        if isinstance(clf, xgb.XGBModel):
+        try:
             # clf has been created by calling
             # xgb.XGBClassifier.fit() or xgb.XGBRegressor().fit()
             fscore = clf.booster().get_fscore()
-        else:
+        except:
             # clf has been created by calling xgb.train.
             # Thus, clf is an instance of xgb.Booster.
             fscore = clf.get_fscore()
 
+        if self.trained_pipeline.named_steps.get('feature_selection', False):
+
+            print('heard we had feature selection')
+
+            selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
+            feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
+            trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
+            print('selected_indices')
+            print(selected_indices)
+            print('len(selected_indices)')
+            print(len(selected_indices))
+
+        else:
+            print('did not have feature selection')
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+            print('trained_feature_names')
+            print(trained_feature_names)
+
+
         feat_importances = []
-        for ft, score in fscore.iteritems():
-            feat_importances.append({'Feature': ft, 'Importance': score})
-        feat_importances = pd.DataFrame(feat_importances)
-        feat_importances = feat_importances.sort_values(
-            by='Importance', ascending=False).reset_index(drop=True)
-        # Divide the importances by the sum of all importances
-        # to get relative importances. By using relative importances
-        # the sum of all importances will equal to 1, i.e.,
-        # np.sum(feat_importances['importance']) == 1
-        feat_importances['Importance'] /= feat_importances['Importance'].sum()
-        # Print the most important features and their importances
-        print feat_importances.head()
-        return feat_importances
+
+        print('fscore')
+        print(fscore)
+
+        fscore_list = [[int(k[1:]), v] for k, v in fscore.viewitems()]
+        print('fscore_list')
+        print(fscore_list)
+        sorted_fscore = fscore_list.sort(key=lambda x: x[0])
+        print('fscore_list after sorting')
+        print(fscore_list)
+
+        print('len(fscore_list)')
+        print(len(fscore_list))
+        print('len(trained_feature_names)')
+        print(len(trained_feature_names))
+
+
+        # for idx, result_list in fscore.view:
+        #     print result_list
+        #     score = result_list[1]
+        #     feature_name = trained_feature_names[idx]
+        #     feat_importances.append([feature_name, score])
+
+        sorted_feature_infos = sorted(feat_importances, key=lambda x: x[1])
+
+        print('Here are the feature_importances from the tree-based model:')
+        print('The printed list will only contain at most the top 50 features.')
+        for feature in sorted_feature_infos[-50:]:
+            print(feature)
+            # print(feature[0] + ': ' + str(round(feature[1], 4)))
+
+
+        #     feat_importances.append({'Feature': ft, 'Importance': score})
+        # feat_importances = pd.DataFrame(feat_importances)
+        # feat_importances = feat_importances.sort_values(
+        #     by='Importance', ascending=False).reset_index(drop=True)
+        # # Divide the importances by the sum of all importances
+        # # to get relative importances. By using relative importances
+        # # the sum of all importances will equal to 1, i.e.,
+        # # np.sum(feat_importances['importance']) == 1
+        # feat_importances['Importance'] /= feat_importances['Importance'].sum()
+        # # Print the most important features and their importances
+        # print feat_importances.head()
+        # return feat_importances
 
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)

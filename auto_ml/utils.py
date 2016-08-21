@@ -380,8 +380,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         if self.selector == 'KeepAll':
             return X
         else:
-            self.selector.transform(X)
-            return X
+            return self.selector.transform(X)
 
 
 def rmse_scoring(estimator, X, y, took_log_of_y=False):
