@@ -1,6 +1,7 @@
 import csv
 import datetime
 import math
+import numpy as np
 import os
 import random
 
@@ -511,7 +512,7 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
             'RANSACRegressor': RANSACRegressor(),
 
             # Clustering
-            'MiniBatchKMeans': MiniBatchKMeans(batch_size=1000)
+            'MiniBatchKMeans': MiniBatchKMeans()
         }
 
 
@@ -543,8 +544,19 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         predictions = self.model.predict(X)
+        # if self.type_of_estimator == 'classifier' or self.model_name == 'MiniBatchKMeans':
+        #     predictions = [str(x) for x in predictions]
+            # TODO: if these are categorical predictions, we will have to one-hot-encode them
+        predictions = [[x] for x in predictions]
+        # predictions = scipy.sparse.csc_matrix(predictions)
+        # predictions = np.reshape(predictions, -1)
+        print(predictions[:100])
+        print('len(predictions)')
+        print(len(predictions))
+        print('X.shape')
+        print(X.shape)
         if self.include_original_X:
-            X = hstack((X, predictions))
+            X = scipy.sparse.hstack((X, predictions), format='csr')
             return X
         else:
             return predictions
