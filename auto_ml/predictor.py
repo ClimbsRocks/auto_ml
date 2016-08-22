@@ -2,6 +2,7 @@ import math
 import os
 import warnings
 
+from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
@@ -62,6 +63,7 @@ class Predictor(object):
         pipeline_list.append(('dv', DictVectorizer(sparse=True)))
 
         if perform_feature_selection:
+            # pipeline_list.append(('pca', TruncatedSVD()))
             pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
         pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
