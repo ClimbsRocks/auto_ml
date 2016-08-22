@@ -5,6 +5,7 @@ import os
 import random
 
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
@@ -488,5 +489,68 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                     row[k] =scaled_value
 
         return X
+
+
+class AddPredictedFeature(BaseEstimator, TransformerMixin):
+
+    def set_model_map(self):
+        self.model_map = {
+            # Classifiers
+            'LogisticRegression': LogisticRegression(n_jobs=-2),
+            'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
+            'RidgeClassifier': RidgeClassifier(),
+            'XGBClassifier': xgb.XGBClassifier(),
+
+            # Regressors
+            'LinearRegression': LinearRegression(n_jobs=-2),
+            'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
+            'Ridge': Ridge(),
+            'XGBRegressor': xgb.XGBRegressor(),
+            'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
+            'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
+            'RANSACRegressor': RANSACRegressor(),
+
+            # Clustering
+            'MiniBatchKMeans': MiniBatchKMeans(batch_size=1000)
+        }
+
+
+    def __init__(self, type_of_estimator=None, model_name='MiniBatchKMeans', include_original_X=False, y_train=None):
+        # 'regressor' or 'classifier'
+        self.type_of_estimator = type_of_estimator
+        # Name of the model to fit.
+        self.model_name = model_name
+        # WHether to append a single new feature onto the entire existing X feature set and return the entire X dataset plus this new feature, or whether to only return a single feature for the predcicted value
+        self.include_original_X = include_original_X
+        # If this is for an esembled subpredictor, these are the y values we will train the predictor on while running .fit()
+        self.y_train = y_train
+        self.set_model_map()
+
+
+    def fit(self, X, y=None):
+        self.model = self.model_map[self.model_name]
+
+        if self.y_train is not None:
+            y = y_train
+
+        if self.model_name == 'MiniBatchKMeans':
+            self.model.fit(X)
+        else:
+            self.model.fit(X, y)
+
+        return self
+
+
+    def transform(self, X, y=None):
+        predictions = self.model.predict(X)
+        if self.include_original_X:
+            X = hstack((X, predictions))
+            return X
+        else:
+            return predictions
+
+
+
+
 
 
