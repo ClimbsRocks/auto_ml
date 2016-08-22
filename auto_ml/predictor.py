@@ -13,6 +13,7 @@ import utils
 import date_feature_engineering
 
 warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 class Predictor(object):
@@ -268,9 +269,9 @@ class Predictor(object):
             gs.fit(X, y)
             self.trained_pipeline = gs.best_estimator_
 
-            if model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+            if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()
-            elif model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
+            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
                 self._print_ml_analytics_results_random_forest()
 
             # write the results for each param combo to file for user analytics.
