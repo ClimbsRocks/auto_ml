@@ -67,7 +67,8 @@ class Predictor(object):
             # pipeline_list.append(('pca', TruncatedSVD()))
             pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
-        pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
+        if self.add_cluster_prediction or self.compute_power >=7:
+            pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
 
         pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
 
@@ -170,7 +171,7 @@ class Predictor(object):
 
         return X, y
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False):
 
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.compute_power = compute_power
@@ -181,6 +182,7 @@ class Predictor(object):
         self.print_training_summary_to_viewer = print_training_summary_to_viewer
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
+        self.add_cluster_prediction = add_cluster_prediction
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -307,14 +309,7 @@ class Predictor(object):
             # Thus, clf is an instance of xgb.Booster.
             fscore = clf.get_fscore()
 
-        if self.trained_pipeline.named_steps.get('feature_selection', False):
-
-            selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
-            feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
-            trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
-
-        else:
-            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        trained_feature_names = self._get_trained_feature_names()
 
         feat_importances = []
 
@@ -351,14 +346,7 @@ class Predictor(object):
             self._get_xgb_feat_importances(self.trained_pipeline.named_steps['final_model'].model)
 
         else:
-            if self.trained_pipeline.named_steps.get('feature_selection', False):
-
-                selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
-                feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
-                trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
-
-            else:
-                trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+            trained_feature_names = self._get_trained_feature_names()
 
             trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
 
@@ -371,10 +359,7 @@ class Predictor(object):
             for feature in sorted_feature_infos[-50:]:
                 print(feature[0] + ': ' + str(round(feature[1], 4)))
 
-
-    def _print_ml_analytics_results_regression(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
-
+    def _get_trained_feature_names(self):
         if self.trained_pipeline.named_steps.get('feature_selection', False):
 
             selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
@@ -383,6 +368,20 @@ class Predictor(object):
 
         else:
             trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+
+        # Every transformer that adds a feature after DictVectorizer must start with "add", and must have a .added_feature_names_ attribute.
+        # Get all the feature names that were added by ensembled predictors of any type
+        for step in self.trained_pipeline.named_steps:
+            if step[:3] == 'add':
+                trained_feature_names = trained_feature_names + self.trained_pipeline.named_steps[step].added_feature_names_
+
+        return trained_feature_names
+
+
+    def _print_ml_analytics_results_regression(self):
+        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+
+        trained_feature_names = self._get_trained_feature_names()
 
         if self.type_of_estimator == 'classifier':
             trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
