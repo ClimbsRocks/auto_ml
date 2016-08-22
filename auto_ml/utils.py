@@ -12,6 +12,7 @@ from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFrom
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron, RANSACRegressor
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
+from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 
 import scipy
 
@@ -512,7 +513,7 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
             'RANSACRegressor': RANSACRegressor(),
 
             # Clustering
-            'MiniBatchKMeans': MiniBatchKMeans()
+            'MiniBatchKMeans': MiniBatchKMeans(self.n_clusters)
         }
 
 
@@ -525,6 +526,7 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
         self.include_original_X = include_original_X
         # If this is for an esembled subpredictor, these are the y values we will train the predictor on while running .fit()
         self.y_train = y_train
+        self.n_clusters = 8
         self.set_model_map()
 
 
@@ -539,16 +541,27 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
         else:
             self.model.fit(X, y)
 
+        # For ml_for_analytics, we'll want to save these feature names somewhere easily accessible
+        self.added_feature_names_ = ['prdicted_cluster_group_' + str(x) for x in range(self.n_clusters)]
+
         return self
 
 
     def transform(self, X, y=None):
         predictions = self.model.predict(X)
-        # if self.type_of_estimator == 'classifier' or self.model_name == 'MiniBatchKMeans':
-        #     predictions = [str(x) for x in predictions]
-            # TODO: if these are categorical predictions, we will have to one-hot-encode them
-            # and in that case, we won't need the list comprehension below to reshape our predictions
-        predictions = [[x] for x in predictions]
+        if self.model_name == 'MiniBatchKMeans':
+
+            # KMeans will return an int cluster prediction. We need to turn that into categorical variables our models can recognize (cluster=1: True, cluster=2: False, etc.)
+            encoded_predictions = []
+            for prediction in predictions:
+                blank_prediction_row = [0 for x in range(self.n_clusters)]
+                blank_prediction_row[prediction] = 1
+                encoded_predictions.append(blank_prediction_row)
+
+            predictions = encoded_predictions
+        else:
+            # We need to reshape our predictions to each be very clearly one row
+            predictions = [[x] for x in predictions]
         if self.include_original_X:
             X = scipy.sparse.hstack((X, predictions), format='csr')
             return X
