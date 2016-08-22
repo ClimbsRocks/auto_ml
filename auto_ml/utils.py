@@ -156,7 +156,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # 'learning_rate': np.random.uniform(0.0, 1.0)
             },
             'XGBRegressor': {
-                'max_depth': [1, 2, 5, 20, 50, 100]
+                # Add in max_delta_step if classes are extremely imbalanced
+                'max_depth': [1, 2, 5, 20, 50, 100],
+                # 'lossl': ['ls', 'lad', 'huber', 'quantile']
+                # 'booster': ['gbtree', 'gblinear', 'dart'],
+                'objective': ['reg:linear', 'reg:gamma', 'rank:pairwise'],
+                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.5, 1],
 
             },
             'ExtraTreesRegressor': {
@@ -217,9 +223,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             gs_params = self.get_search_params()
 
             n_iter = 5
+            if self.model_name == 'XGBRegressor':
+                n_iter = 20
             if self.model_name == 'LinearRegression':
                 # There's just not much to optimize on a linear regression
                 n_iter = 4
+
+            # # print the settable parameter names
+            # print(self.model_map[self.model_name].get_params().keys())
             self.rscv = RandomizedSearchCV(
                 self.model_map[self.model_name],
                 gs_params,
