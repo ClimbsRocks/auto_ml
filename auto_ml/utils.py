@@ -547,14 +547,8 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
         # if self.type_of_estimator == 'classifier' or self.model_name == 'MiniBatchKMeans':
         #     predictions = [str(x) for x in predictions]
             # TODO: if these are categorical predictions, we will have to one-hot-encode them
+            # and in that case, we won't need the list comprehension below to reshape our predictions
         predictions = [[x] for x in predictions]
-        # predictions = scipy.sparse.csc_matrix(predictions)
-        # predictions = np.reshape(predictions, -1)
-        print(predictions[:100])
-        print('len(predictions)')
-        print(len(predictions))
-        print('X.shape')
-        print(X.shape)
         if self.include_original_X:
             X = scipy.sparse.hstack((X, predictions), format='csr')
             return X
