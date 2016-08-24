@@ -618,7 +618,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
     def __init__(self, trained_subpredictors, include_original_X=True):
         self.trained_subpredictors = trained_subpredictors
         self.include_original_X = include_original_X
-        self.sub_names = [pred.output_column_name for pred in self.trained_subpredictors]
+        self.sub_names = [pred.output_column for pred in self.trained_subpredictors]
 
 
     def fit(self, X, y=None):
@@ -629,12 +629,12 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
         predictions = []
         for predictor in self.trained_subpredictors:
             if predictor.type_of_estimator == 'regressor':
-                predictions.append(self.trained_subpredictors.predict(X))
+                predictions.append(predictor.predict(X))
             else:
                 # TODO: Future- if it's a classifier, get both the predicted class, as well as the predict_proba
                 pass
         if self.include_original_X:
-            X_copy
+            X_copy = []
             for row_idx, row in enumerate(X):
                 row_copy = row.copy()
                 for pred_idx, name in enumerate(self.sub_names):
