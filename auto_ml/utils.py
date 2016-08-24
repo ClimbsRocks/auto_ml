@@ -40,38 +40,72 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
-        pass
+        self.vals_to_del = set([None, float('nan'), float('Inf')])
 
 
     def fit(self, X, y=None):
         return self
 
 
-    def turn_strings_to_floats(self, X, y=None):
+    # def turn_strings_to_floats(self, X, y=None):
 
-        vals_to_del = set([None, float('nan'), float('Inf')])
-
-        for row in X:
-            for key, val in row.items():
-                col_desc = self.column_descriptions.get(key)
-                if col_desc == 'categorical':
-                    row[key] = str(val)
-                elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    if val in vals_to_del:
-                        del row[key]
-                    else:
-                        row[key] = float(val)
-                else:
-                    # covers cases for dates, target, etc.
-                    pass
-
-        return X
 
 
     def transform(self, X, y=None):
+        clean_X = []
+
+        for row in X:
+            clean_row = {}
+
+            for key, val in row.items():
+                col_desc = self.column_descriptions.get(key)
+                if col_desc == 'categorical':
+                    clean_row[key] = str(val)
+                elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
+                    if val not in self.vals_to_del:
+                        clean_row[key] = float(val)
+                elif col_desc == 'date':
+                    clean_row = add_date_features(val, clean_row, key)
+            clean_X.append(clean_row)
+
+        return clean_X
         X = self.turn_strings_to_floats(X, y)
 
         return X
+
+def add_date_features(date_val, target_row, date_col):
+
+    row[date_col + '_day_of_week'] = str(date_val.weekday())
+    row[date_col + '_hour'] = date_val.hour
+
+    minutes_into_day = date_val.hour * 60 + date_val.minute
+
+    if row[date_col + '_day_of_week'] in (5,6):
+        row[date_col + '_is_weekend'] = True
+    elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
+        row[date_col + '_is_weekend'] = True
+    else:
+        row[date_col + '_is_weekend'] = False
+
+        # Grab rush hour times for the weekdays.
+        # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
+        if minutes_into_day < 120:
+            row[date_col + '_is_late_night'] = True
+        elif minutes_into_day < 11.5 * 60:
+            row[date_col + '_is_off_peak'] = True
+        elif minutes_into_day < 13.5 * 60:
+            row[date_col + '_is_lunch_rush_hour'] = True
+        elif minutes_into_day < 17.5 * 60:
+            row[date_col + '_is_off_peak'] = True
+        elif minutes_into_day < 20 * 60:
+            row[date_col + '_is_dinner_rush_hour'] = True
+        elif minutes_into_day < 22.5 * 60:
+            row[date_col + '_is_off_peak'] = True
+        else:
+            row[date_col + '_is_late_night'] = True
+
+    return row
+
 
 
 
