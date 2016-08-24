@@ -7,7 +7,7 @@ import random
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron, RANSACRegressor
@@ -41,6 +41,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
         self.vals_to_del = set([None, float('nan'), float('Inf')])
+        self.vals_to_ignore = set(['regressor', 'classifer', 'output', 'ignore'])
 
 
     def fit(self, X, y=None):
@@ -64,6 +65,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                         clean_row[key] = float(val)
                 elif col_desc == 'date':
                     clean_row = add_date_features(val, clean_row, key)
+                elif col_desc in self.vals_to_ignore:
+                    pass
                 else:
                     # If we have gotten here, the value is not any that we recognize
                     # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
@@ -133,7 +136,8 @@ def get_model_from_name(model_name):
         'XGBRegressor': xgb.XGBRegressor(),
         'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
         'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
-        'RANSACRegressor': RANSACRegressor()
+        'RANSACRegressor': RANSACRegressor(),
+        'GradientBoostingRegressor': GradientBoostingRegressor(presort=False)
     }
     # TODO: eventually, don't create new instances except for what the user requests
     # Then have a params_to_set hash, where we've got all the params we're interested in setting
@@ -322,6 +326,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             raise(e)
 
     def predict(self, X):
+        if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+            X = X.todense()
         return self.model.predict(X)
 
 
