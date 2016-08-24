@@ -35,16 +35,36 @@ class Predictor(object):
         # Later on, if this is a regression problem, we will probably take the natural log of our y values for training, but we will still want to return the predictions in their normal scale (not the natural log values)
         self.took_log_of_y = False
 
-        # TODO: add in some input validation
+        self._validate_input_col_descriptions(column_descriptions)
+
+        self.grid_search_pipelines = []
+
+
+    def _validate_input_col_descriptions(self, column_descriptions):
+        found_output_column = False
+        self.subpredictor_count = 0
+        subpredictor_vals = set(['regressor', 'classifier'])
+        expected_vals = set(['categorical'])
+
         for key, value in column_descriptions.items():
             value = value.lower()
             column_descriptions[key] = value
             if value == 'output':
                 self.output_column = key
+                found_output_column = True
             elif value == 'date':
                 self.date_cols.append(key)
+            elif value in expected_vals:
+                pass
+            elif value in subpredictor_vals:
+                self.subpredictor_count += 1
+            else:
+                raise ValueError('We are not sure how to process this column of data: ' + str(value) + '. Please pass in "output", "categorical", "date", or for more advances subpredictor ensembling, "regressor" or "classifier"')
+        if found_output_column is False:
+            print('Here is the column_descriptions that was passed in:')
+            print(column_descriptions)
+            raise ValueError('In your column_descriptions, please make sure exactly one column has the value "output", which is the value we will be training models to predict.')
 
-        self.grid_search_pipelines = []
 
     def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True, perform_feature_scaling=True):
 
@@ -171,6 +191,25 @@ class Predictor(object):
 
         return X, y
 
+    def _make_subpredictor_column_descriptions(self, column_descriptions):
+        subpredictor_types = set(['classifier', 'regressor'])
+        dup_descs = {}
+        subpredictor_type_of_estimator = 'regressor'
+
+        for key, val in column_descriptions.iteritems():
+
+            # Obviously, skip the parent ensembler's output column
+            if val != 'output':
+                if val in subpredictor_types:
+
+                    # set our new output column for this subpredictor problem
+                    dup_descs[key] = 'output'
+                    subpredictor_type_of_estimator = val
+                else:
+                    dup_descs[key] = val
+
+        return dup_descs, subpredictor_type_of_estimator
+
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False):
 
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
@@ -188,6 +227,15 @@ class Predictor(object):
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
         X, y = self._prepare_for_training(raw_training_data)
+
+
+        subpredictor_column_descriptions, subpredictor_type_of_estimator = self._make_subpredictor_column_descriptions(self.column_descriptions)
+
+        subpredictor1 = Predictor(type_of_estimator=subpredictor_type_of_estimator, column_descriptions=subpredictor_column_descriptions)
+
+        # NOTE that we will be mutating the input X here by stripping off the y values.
+        subpredictor1.train(raw_training_data=X, perform_feature_selection=True, X_test=X_test, y_test=y_test, ml_for_analytics=True, compute_power=1, take_log_of_y=False, add_cluster_prediction=False, model_names=['XGBRegressor'])
+        print('made it past subpredictor1')
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
