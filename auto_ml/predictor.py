@@ -2,6 +2,7 @@ import math
 import os
 import warnings
 
+from sklearn.cross_validation import train_test_split
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
@@ -246,6 +247,14 @@ class Predictor(object):
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
         if len(self.subpredictors) > 0:
 
+            # Split out a percentage of our dataset to use ONLY for training subpredictors.
+            # We will batch train the subpredictors once at the start, before GridSearchCV, to avoide computationally expensive repetitive training of these same models.
+            # However, this means we'll have to train our subpredictors on a different dataset than we train our larger ensemble predictor on.
+            # X_ensemble is the X data we'll be using to train our ensemble (the bulk of our data), and y_ensemble is, of course, the relevant y data for training our ensemble.
+            # X_subpredictors is the smaller subset of data we'll be using to train our subpredictors on. y_subpredictors doesn't make any sense- it's the y values for our ensemble, but split to mirror the data we're using to train our subpredictors. Thus, we'll ignore it.
+            X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X, y, test_size=0.33)
+            X = X_ensemble
+            y = y_ensemble
             for idx, sub_name in enumerate(self.subpredictors):
                 sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
 
@@ -254,7 +263,7 @@ class Predictor(object):
                 sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
 
                 # NOTE that we will be mutating the input X here by stripping off the y values.
-                ml_predictor.train(raw_training_data=X
+                ml_predictor.train(raw_training_data=X_subpredictors
                     , perform_feature_selection=True
                     , X_test=sub_X_test
                     , y_test=sub_y_test
