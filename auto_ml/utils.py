@@ -23,7 +23,7 @@ def split_output(X, output_column_name, verbose=False):
     y = []
     for row in X:
         y.append(
-            row.pop(output_column_name)
+            row.pop(output_column_name, None)
         )
 
     if verbose:
@@ -45,10 +45,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
         return self
-
-
-    # def turn_strings_to_floats(self, X, y=None):
-
 
 
     def transform(self, X, y=None):
@@ -80,7 +76,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             clean_X.append(clean_row)
 
         if len(deleted_values_sample) > 0:
-            print('We have encountered some values in column_descriptions that are not currently supported. The values stored at these keys have been deleted to allow the rest of the pipeline to run. Here\'s some info about these columns:' )
+            print('When transforming the data, we have encountered some values in column_descriptions that are not currently supported. The values stored at these keys have been deleted to allow the rest of the pipeline to run. Here\'s some info about these columns:' )
             print(deleted_info)
             print('And some example values from these columns:')
             print(deleted_values_sample)
@@ -121,6 +117,29 @@ def add_date_features(date_val, target_row, date_col):
     return row
 
 
+def get_model_from_name(model_name):
+    import xgboost as xgb
+    model_map = {
+        # Classifiers
+        'LogisticRegression': LogisticRegression(n_jobs=-2),
+        'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
+        'RidgeClassifier': RidgeClassifier(),
+        'XGBClassifier': xgb.XGBClassifier(),
+
+        # Regressors
+        'LinearRegression': LinearRegression(n_jobs=-2),
+        'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
+        'Ridge': Ridge(),
+        'XGBRegressor': xgb.XGBRegressor(),
+        'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
+        'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
+        'RANSACRegressor': RANSACRegressor()
+    }
+    # TODO: eventually, don't create new instances except for what the user requests
+    # Then have a params_to_set hash, where we've got all the params we're interested in setting
+
+    return model_map[model_name]
+
 
 
 
@@ -133,7 +152,7 @@ def add_date_features(date_val, target_row, date_col):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, model_map=None, ml_for_analytics=False, type_of_estimator='classifier'):
+    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, ml_for_analytics=False, type_of_estimator='classifier'):
 
         self.model_name = model_name
         self.X_train = X_train
@@ -141,30 +160,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.perform_grid_search_on_model = perform_grid_search_on_model
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
-
-        if model_map is not None:
-            self.model_map = model_map
-        else:
-            self.set_model_map()
-
-
-    def set_model_map(self):
-        self.model_map = {
-            # Classifiers
-            'LogisticRegression': LogisticRegression(n_jobs=-2),
-            'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
-            'RidgeClassifier': RidgeClassifier(),
-            'XGBClassifier': xgb.XGBClassifier(),
-
-            # Regressors
-            'LinearRegression': LinearRegression(n_jobs=-2),
-            'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
-            'Ridge': Ridge(),
-            'XGBRegressor': xgb.XGBRegressor(),
-            'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-            'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
-            'RANSACRegressor': RANSACRegressor()
-        }
 
 
     # It would be optimal to store large objects like this elsewhere, but storing it all inside FinalModelATC ensures that each instance will always be self-contained, which is helpful when saving and transferring to different environments.
@@ -238,6 +233,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y):
 
+        model_to_fit = get_model_from_name(self.model_name)
+
         if self.ml_for_analytics:
             self.feature_ranges = []
 
@@ -263,12 +260,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
-            # TODO(PRESTON): add in RMSE
             if self.type_of_estimator == 'classifier':
                 scorer = make_scorer(brier_score_loss, greater_is_better=True)
             else:
-                # scorer = None
-                # # scorer = 'mean_squared_error'
                 scorer = rmse_scoring
 
             gs_params = self.get_search_params()
@@ -283,7 +277,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             # # print the settable parameter names
             # print(self.model_map[self.model_name].get_params().keys())
             self.rscv = RandomizedSearchCV(
-                self.model_map[self.model_name],
+                model_to_fit,
                 gs_params,
                 # Pick n_iter combinations of hyperparameters to fit on and score.
                 # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
@@ -292,7 +286,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # verbose=1,
                 # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
                 error_score=10,
-                # TOOD(PRESTON): change to be RMSE by default
                 scoring=scorer
             )
             self.rscv.fit(X, y)
@@ -300,7 +293,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         # or, we can just use the default estimator
         else:
-            self.model = self.model_map[self.model_name]
+            # self.model = self.model_map[self.model_name]
+            self.model = get_model_from_name(self.model_name)
 
             self.model.fit(X, y)
 
@@ -389,6 +383,27 @@ def write_most_recent_gs_result_to_file(trained_gs, most_recent_filename, timest
         for row in rows_to_write:
             writer.writerow(row)
 
+def get_feature_selection_model_from_name(type_of_estimator, model_name):
+    # TODO(PRESTON): eventually let threshold be user-configurable (or grid_searchable)
+    # TODO(PRESTON): optimize the params used here
+    model_map = {
+        'classifier': {
+            'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1)),
+            'RFECV': RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
+            'GenericUnivariateSelect': GenericUnivariateSelect(),
+            'RandomizedSparse': RandomizedLogisticRegression(),
+            'KeepAll': 'KeepAll'
+        },
+        'regressor': {
+            'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1)),
+            'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
+            'GenericUnivariateSelect': GenericUnivariateSelect(),
+            'RandomizedSparse': RandomizedLasso(),
+            'KeepAll': 'KeepAll'
+        }
+    }
+
+    return model_map[type_of_estimator][model_name]
 
 class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
@@ -398,32 +413,12 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
         self.type_of_estimator = type_of_estimator
         self.feature_selection_model = feature_selection_model
-        self._set_model_map()
 
-
-    def _set_model_map(self):
-        # TODO(PRESTON): eventually let threshold be user-configurable (or grid_searchable)
-        # TODO(PRESTON): optimize the params used here
-        self._model_map = {
-            'classifier': {
-                'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1)),
-                'RFECV': RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
-                'GenericUnivariateSelect': GenericUnivariateSelect(),
-                'RandomizedSparse': RandomizedLogisticRegression(),
-                'KeepAll': 'KeepAll'
-            },
-            'regressor': {
-                'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1)),
-                'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
-                'GenericUnivariateSelect': GenericUnivariateSelect(),
-                'RandomizedSparse': RandomizedLasso(),
-                'KeepAll': 'KeepAll'
-            }
-        }
 
     def fit(self, X, y=None):
 
-        self.selector = self._model_map[self.type_of_estimator][self.feature_selection_model]
+        # self.selector = self._model_map[self.type_of_estimator][self.feature_selection_model]
+        self.selector = get_feature_selection_model_from_name(self.type_of_estimator, self.feature_selection_model)
 
         if self.selector == 'KeepAll':
             if scipy.sparse.issparse(X):
@@ -615,9 +610,4 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
             return X
         else:
             return predictions
-
-
-
-
-
 
