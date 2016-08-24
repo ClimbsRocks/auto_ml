@@ -262,7 +262,7 @@ class Predictor(object):
                     , compute_power=1
                     , take_log_of_y=False
                     , add_cluster_prediction=False
-                    , model_names=['XGBRegressor']
+                    # , model_names=['XGBRegressor']
                 )
                 self.subpredictors[idx] = [sub_name, ml_predictor]
 
