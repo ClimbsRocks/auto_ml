@@ -70,6 +70,9 @@ class Predictor(object):
     def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True, perform_feature_scaling=True):
 
         pipeline_list = []
+
+        if len(self.subpredictors) > 0:
+            pipeline_list.append(('subpredictors', utils.AddSubpredictorPredictions(trained_subpredictors=self.subpredictors)))
         if user_input_func is not None:
             pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
 
@@ -273,7 +276,7 @@ class Predictor(object):
                     , add_cluster_prediction=False
                     # , model_names=['XGBRegressor']
                 )
-                self.subpredictors[idx] = [sub_name, ml_predictor]
+                self.subpredictors[idx] = ml_predictor
 
         print('made it past subpredictor1')
 
@@ -374,6 +377,8 @@ class Predictor(object):
             if self.X_test and self.y_test:
                 print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
                 holdout_data_score = self.score(self.X_test, self.y_test)
+                del self.X_test
+                del self.y_test
                 print(holdout_data_score)
 
                 pipeline_results.append(holdout_data_score)
