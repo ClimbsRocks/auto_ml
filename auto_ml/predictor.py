@@ -45,7 +45,7 @@ class Predictor(object):
         found_output_column = False
         self.subpredictors = []
         subpredictor_vals = set(['regressor', 'classifier'])
-        expected_vals = set(['categorical'])
+        expected_vals = set(['categorical', 'ignore'])
 
         for key, value in column_descriptions.items():
             value = value.lower()
@@ -126,8 +126,8 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            base_estimators = ['LinearRegression']
-            # base_estimators = ['Ridge', 'XGBRegressor']
+            # base_estimators = ['LinearRegression']
+            base_estimators = ['Ridge', 'XGBRegressor']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -210,6 +210,8 @@ class Predictor(object):
                     # set the right sub_name to be output for this subpredictor
                     dup_descs[key] = 'output'
                     sub_type_of_estimator = val
+                elif val in subpredictor_types:
+                    dup_descs[key] = 'ignore'
 
                 # Include all other subpredictor names, so that we know to ignore them later on inside this subpredictor
                 else:
@@ -218,15 +220,15 @@ class Predictor(object):
         return dup_descs, sub_type_of_estimator
 
     def make_sub_x_and_y_test(self, X_test, sub_name):
-        vals_to_ignore = set([None, float('nan'), float('Inf')])
-        clean_X = []
+        vals_to_ignore = set([None, float('nan'), float('Inf'), 'ignore'])
+        clean_X_test = []
         clean_y = []
         for row in X_test:
             y_val = row.pop(sub_name, None)
             if y_val not in vals_to_ignore:
-                clean_X.append(row)
+                clean_X_test.append(row)
                 clean_y.append(y_val)
-        return clean_X, clean_y
+        return clean_X_test, clean_y
 
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False):
@@ -247,8 +249,13 @@ class Predictor(object):
 
         X, y = self._prepare_for_training(raw_training_data)
 
+        # print('To compare to our current predictions, we are only training our master ensemble on two thirds of the data')
+        # X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X, y, test_size=0.33)
+        # X = X_ensemble
+        # y = y_ensemble
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
         if len(self.subpredictors) > 0:
+            print('We are going to be training up several subpredictors before training up our final ensembled predictor')
 
             # Split out a percentage of our dataset to use ONLY for training subpredictors.
             # We will batch train the subpredictors once at the start, before GridSearchCV, to avoide computationally expensive repetitive training of these same models.
@@ -259,6 +266,8 @@ class Predictor(object):
             X = X_ensemble
             y = y_ensemble
             for idx, sub_name in enumerate(self.subpredictors):
+                print('Now training a subpredictor for ' + sub_name)
+
                 sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
 
                 ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
@@ -274,7 +283,7 @@ class Predictor(object):
                     , compute_power=1
                     , take_log_of_y=False
                     , add_cluster_prediction=False
-                    # , model_names=['XGBRegressor']
+                    , model_names=['GradientBoostingRegressor']
                 )
                 self.subpredictors[idx] = ml_predictor
 
@@ -325,6 +334,7 @@ class Predictor(object):
         # And the pipeline is the best estimator within that grid search object.
         self.trained_pipeline = best_trained_gs.best_estimator_
 
+        del self.X_test
         del self.grid_search_pipelines
 
     def perform_grid_search_by_model_names(self, estimator_names, ppl, scoring, X, y):
@@ -377,8 +387,6 @@ class Predictor(object):
             if self.X_test and self.y_test:
                 print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
                 holdout_data_score = self.score(self.X_test, self.y_test)
-                del self.X_test
-                del self.y_test
                 print(holdout_data_score)
 
                 pipeline_results.append(holdout_data_score)
@@ -512,6 +520,10 @@ class Predictor(object):
 
 
     def predict(self, prediction_data):
+
+        # if self.model_name[:13] == 'GradientBoosting' and scipy.issparse(prediction_data):
+        #     prediction_data
+
 
         # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
         predicted_vals = self.trained_pipeline.predict(prediction_data)
