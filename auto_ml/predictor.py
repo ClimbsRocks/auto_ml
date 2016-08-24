@@ -42,7 +42,7 @@ class Predictor(object):
 
     def _validate_input_col_descriptions(self, column_descriptions):
         found_output_column = False
-        self.subpredictor_count = 0
+        self.subpredictors = []
         subpredictor_vals = set(['regressor', 'classifier'])
         expected_vals = set(['categorical'])
 
@@ -57,7 +57,7 @@ class Predictor(object):
             elif value in expected_vals:
                 pass
             elif value in subpredictor_vals:
-                self.subpredictor_count += 1
+                self.subpredictors.append(key)
             else:
                 raise ValueError('We are not sure how to process this column of data: ' + str(value) + '. Please pass in "output", "categorical", "date", or for more advances subpredictor ensembling, "regressor" or "classifier"')
         if found_output_column is False:
@@ -122,7 +122,8 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            base_estimators = ['Ridge', 'XGBRegressor']
+            base_estimators = ['LinearRegression']
+            # base_estimators = ['Ridge', 'XGBRegressor']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -191,25 +192,38 @@ class Predictor(object):
 
         return X, y
 
-    def _make_subpredictor_column_descriptions(self, column_descriptions):
+    def _make_sub_column_descriptions(self, column_descriptions, sub_name):
         # TODO: make this work for multiple subpredictors. right now it will grab all 'regressor' or 'classifier' values at once, instead of only grabbing on.
         subpredictor_types = set(['classifier', 'regressor'])
         dup_descs = {}
-        subpredictor_type_of_estimator = 'regressor'
+        # subpredictor_type_of_estimator = 'regressor'
 
         for key, val in column_descriptions.iteritems():
 
             # Obviously, skip the parent ensembler's output column
             if val != 'output':
-                if val in subpredictor_types:
-
-                    # set our new output column for this subpredictor problem
+                if key == sub_name:
+                    # set the right sub_name to be output for this subpredictor
                     dup_descs[key] = 'output'
-                    subpredictor_type_of_estimator = val
+                    sub_type_of_estimator = val
+
+                # Include all other subpredictor names, so that we know to ignore them later on inside this subpredictor
                 else:
                     dup_descs[key] = val
 
-        return dup_descs, subpredictor_type_of_estimator
+        return dup_descs, sub_type_of_estimator
+
+    def make_sub_x_and_y_test(self, X_test, sub_name):
+        vals_to_ignore = set([None, float('nan'), float('Inf')])
+        clean_X = []
+        clean_y = []
+        for row in X_test:
+            y_val = row.pop(sub_name, None)
+            if y_val not in vals_to_ignore:
+                clean_X.append(row)
+                clean_y.append(y_val)
+        return clean_X, clean_y
+
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False):
 
@@ -230,13 +244,28 @@ class Predictor(object):
         X, y = self._prepare_for_training(raw_training_data)
 
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
-        if self.subpredictor_count > 0:
-            subpredictor_column_descriptions, subpredictor_type_of_estimator = self._make_subpredictor_column_descriptions(self.column_descriptions)
+        if len(self.subpredictors) > 0:
 
-            subpredictor1 = Predictor(type_of_estimator=subpredictor_type_of_estimator, column_descriptions=subpredictor_column_descriptions)
-            # print(X[:3])
-            # NOTE that we will be mutating the input X here by stripping off the y values.
-            subpredictor1.train(raw_training_data=X, perform_feature_selection=True, X_test=X_test, y_test=y_test, ml_for_analytics=True, compute_power=1, take_log_of_y=False, add_cluster_prediction=False, model_names=['XGBRegressor'])
+            for idx, sub_name in enumerate(self.subpredictors):
+                sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
+
+                ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
+                # TODO: grab proper y_test values for this particular subpredictor
+                sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
+
+                # NOTE that we will be mutating the input X here by stripping off the y values.
+                ml_predictor.train(raw_training_data=X
+                    , perform_feature_selection=True
+                    , X_test=sub_X_test
+                    , y_test=sub_y_test
+                    , ml_for_analytics=False
+                    , compute_power=1
+                    , take_log_of_y=False
+                    , add_cluster_prediction=False
+                    , model_names=['XGBRegressor']
+                )
+                self.subpredictors[idx] = [sub_name, ml_predictor]
+
         print('made it past subpredictor1')
 
         if self.take_log_of_y:
@@ -458,7 +487,7 @@ class Predictor(object):
 
 
     def print_training_summary(self, gs):
-        print('The best CV score from GridSearchCV (most likely averaging across k-fold CV) is:')
+        print('The best CV score from GridSearchCV (by default averaging across k-fold CV) for ' + self.output_column + ' is:')
         if self.took_log_of_y:
             print('    Note that this score is calculated using the natural logs of the y values.')
         print(gs.best_score_)
