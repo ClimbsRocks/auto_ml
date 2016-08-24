@@ -53,6 +53,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
         clean_X = []
+        deleted_values_sample = []
+        deleted_info = {}
 
         for row in X:
             clean_row = {}
@@ -66,12 +68,24 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                         clean_row[key] = float(val)
                 elif col_desc == 'date':
                     clean_row = add_date_features(val, clean_row, key)
+                else:
+                    # If we have gotten here, the value is not any that we recognize
+                    # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
+                    # In either case, it's useful to log it.
+                    if len(deleted_values_sample) < 10:
+                        deleted_values_sample.append(row[key])
+                    deleted_info[key] = col_desc
+
+
             clean_X.append(clean_row)
 
-        return clean_X
-        X = self.turn_strings_to_floats(X, y)
+        if len(deleted_values_sample) > 0:
+            print('We have encountered some values in column_descriptions that are not currently supported. The values stored at these keys have been deleted to allow the rest of the pipeline to run. Here\'s some info about these columns:' )
+            print(deleted_info)
+            print('And some example values from these columns:')
+            print(deleted_values_sample)
 
-        return X
+        return clean_X
 
 def add_date_features(date_val, target_row, date_col):
 
