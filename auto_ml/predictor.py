@@ -192,6 +192,7 @@ class Predictor(object):
         return X, y
 
     def _make_subpredictor_column_descriptions(self, column_descriptions):
+        # TODO: make this work for multiple subpredictors. right now it will grab all 'regressor' or 'classifier' values at once, instead of only grabbing on.
         subpredictor_types = set(['classifier', 'regressor'])
         dup_descs = {}
         subpredictor_type_of_estimator = 'regressor'
@@ -228,13 +229,14 @@ class Predictor(object):
 
         X, y = self._prepare_for_training(raw_training_data)
 
+        # Once we have removed the applicable y-values, look into creating any subpredictors we might need
+        if self.subpredictor_count > 0:
+            subpredictor_column_descriptions, subpredictor_type_of_estimator = self._make_subpredictor_column_descriptions(self.column_descriptions)
 
-        subpredictor_column_descriptions, subpredictor_type_of_estimator = self._make_subpredictor_column_descriptions(self.column_descriptions)
-
-        subpredictor1 = Predictor(type_of_estimator=subpredictor_type_of_estimator, column_descriptions=subpredictor_column_descriptions)
-
-        # NOTE that we will be mutating the input X here by stripping off the y values.
-        subpredictor1.train(raw_training_data=X, perform_feature_selection=True, X_test=X_test, y_test=y_test, ml_for_analytics=True, compute_power=1, take_log_of_y=False, add_cluster_prediction=False, model_names=['XGBRegressor'])
+            subpredictor1 = Predictor(type_of_estimator=subpredictor_type_of_estimator, column_descriptions=subpredictor_column_descriptions)
+            # print(X[:3])
+            # NOTE that we will be mutating the input X here by stripping off the y values.
+            subpredictor1.train(raw_training_data=X, perform_feature_selection=True, X_test=X_test, y_test=y_test, ml_for_analytics=True, compute_power=1, take_log_of_y=False, add_cluster_prediction=False, model_names=['XGBRegressor'])
         print('made it past subpredictor1')
 
         if self.take_log_of_y:
@@ -314,7 +316,7 @@ class Predictor(object):
 
             if self.verbose:
                 print('\n\n********************************************************************************************')
-                print('About to fit the GridSearchCV on the pipeline for the model ' + model_name)
+                print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
             gs.fit(X, y)
             self.trained_pipeline = gs.best_estimator_
