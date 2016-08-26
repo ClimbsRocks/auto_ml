@@ -35,6 +35,7 @@ class Predictor(object):
         self.date_cols = []
         # Later on, if this is a regression problem, we will probably take the natural log of our y values for training, but we will still want to return the predictions in their normal scale (not the natural log values)
         self.took_log_of_y = False
+        self.take_log_of_y = False
 
         self._validate_input_col_descriptions(column_descriptions)
 
@@ -107,7 +108,7 @@ class Predictor(object):
         if optimize_final_model or self.compute_power >= 5:
             gs_params['final_model__perform_grid_search_on_model'] = [True, False]
 
-        if self.compute_power >= 3:
+        if self.compute_power >= 6:
             gs_params['scaler__truncate_large_values'] = [True, False]
 
         if user_defined_model_names:
@@ -140,7 +141,7 @@ class Predictor(object):
 
         elif self.type_of_estimator == 'classifier':
             base_estimators = ['RidgeClassifier', 'XGBClassifier']
-            if compute_power < 7:
+            if self.compute_power < 7:
                 return base_estimators
             else:
                 base_estimators.append('LogisticRegression')
@@ -163,14 +164,14 @@ class Predictor(object):
 
         # TODO: modularize into clean_y_vals function
         if self.type_of_estimator == 'classifier':
-            try:
-                y_ints = []
-                for val in y:
-                    y_ints.append(int(val))
-                y = y_ints
-            except:
-                pass
-
+            # try:
+            #     y_ints = []
+            #     for val in y:
+            #         y_ints.append(int(val))
+            #     y = y_ints
+            # except:
+            #     pass
+            pass
         else:
             indices_to_delete = []
             y_floats = []
@@ -233,6 +234,10 @@ class Predictor(object):
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False):
 
+        self.user_input_func = user_input_func
+        self.optimize_final_model = optimize_final_model
+        self.optimize_entire_pipeline = optimize_entire_pipeline
+        self.perform_feature_selection = perform_feature_selection
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.compute_power = compute_power
         self.ml_for_analytics = ml_for_analytics
@@ -268,7 +273,12 @@ class Predictor(object):
             for idx, sub_name in enumerate(self.subpredictors):
                 print('Now training a subpredictor for ' + sub_name)
 
+
                 sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
+                if sub_type_of_estimator == 'classifier':
+                    sub_model_names = ['XGBClassifier']
+                else:
+                    sub_model_names = ['XGBRegressor']
 
                 ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
                 # TODO: grab proper y_test values for this particular subpredictor
@@ -280,14 +290,13 @@ class Predictor(object):
                     , X_test=sub_X_test
                     , y_test=sub_y_test
                     , ml_for_analytics=False
-                    , compute_power=1
+                    , compute_power=5
                     , take_log_of_y=False
-                    , add_cluster_prediction=False
-                    , model_names=['GradientBoostingRegressor']
+                    , add_cluster_prediction=True
+                    , model_names=sub_model_names
                 )
                 self.subpredictors[idx] = ml_predictor
 
-        print('made it past subpredictor1')
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
@@ -307,7 +316,8 @@ class Predictor(object):
             estimator_names = self._get_estimator_names()
 
         if self.type_of_estimator == 'classifier':
-            scoring = make_scorer(brier_score_loss, greater_is_better=True)
+            # scoring = make_scorer(brier_score_loss, greater_is_better=True)
+            scoring = utils.brier_score_loss_wrapper
             self._scorer = scoring
         else:
             scoring = utils.rmse_scoring
@@ -339,6 +349,8 @@ class Predictor(object):
 
     def perform_grid_search_by_model_names(self, estimator_names, ppl, scoring, X, y):
 
+        ppl = self._construct_pipeline(self.user_input_func, optimize_final_model=self.optimize_final_model, perform_feature_selection=self.perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
+
         for model_name in estimator_names:
 
             self.grid_search_params = self._construct_pipeline_search_params()
@@ -361,8 +373,8 @@ class Predictor(object):
                 # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                 error_score=10,
                 # TODO(PRESTON): change scoring to be RMSE by default
-                scoring=scoring,
-                pre_dispatch='1*n_jobs'
+                scoring=scoring
+                # ,pre_dispatch='1*n_jobs'
             )
 
             if self.verbose:
@@ -540,7 +552,10 @@ class Predictor(object):
 
     def score(self, X_test, y_test):
         if self._scorer is not None:
-            return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
+            try:
+                return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
+            except:
+                return self._scorer(self.trained_pipeline, X_test, y_test)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 
