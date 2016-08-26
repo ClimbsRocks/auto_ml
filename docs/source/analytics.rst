@@ -10,6 +10,33 @@ Intended Audience:
 
 This is one of my favorite parts of this project: once the machines have learned all the complex patterns in the data, we can ask them what they've learned!
 
+
+The code to make this work
+--------------------------
+
+It's super simple. When you train, simply pass in ``ml_for_analytics=True``, like so: ``ml_predictor.train(training_data, ml_for_analytics=True)``
+
+Here's the whole code block that will get you analytics results in your console:
+
+.. code-block:: python
+
+  from auto_ml import Predictor
+
+  # If you pass in any categorical data as a number, tell us here and we'll take care of it.
+  col_desc_dictionary = {col_to_predict: 'output', state_code: 'categorical'}
+
+  ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
+  # Can pass in type_of_estimator='regressor' as well
+
+  ml_predictor.train(list_of_dictionaries, ml_for_analytics=True)
+  # Wait for the machine to learn all the complex and beautiful patterns in your data...
+
+  # And this time, in your shell, it will print out the results for what it found was useful in making predictions!
+
+  ml_predictor.predict(new_data)
+  # Where new_data is also a list of dictionaries
+
+
 Tangent time- what do you mean analytics from machine learning?
 ---------------------------------------------------------------
 One of my favorite analogies for this (and really, for machine learning in general), is to think of a loan officer at a regional bank in, say, the 1940's or some other pre-computer era. She's been there for 30 years. She's seen thousands of loans cross her desk, and over time she's figured out what makes a loan likely to default, or likely to be healthy.
@@ -21,4 +48,6 @@ It's the exact same process with machine learning. You feed the machine a ton of
 And just like our awesome loan officer, we can ask the machine to tell us what it learned.
 
 
+Interpreting Results
+--------------------
 
