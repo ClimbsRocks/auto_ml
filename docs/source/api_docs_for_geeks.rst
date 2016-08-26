@@ -4,8 +4,8 @@ Properly Formal API Documenation
 For those who prefer code over words.
 
 
-Core Functionality
-===================
+auto_ml
+-------
 
 .. py:class:: Predictor(type_of_estimator, column_descriptions)
 
@@ -27,7 +27,9 @@ Core Functionality
   :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Each row will hold a single value. For 'regressor' estimators, each value will be a number. For 'classifier' estimators, each row will be a sting of the predicted label (category), matching the categories passed in to the training data.
 
 .. py:method:: ml_predictor.predict_proba(prediction_rows)
+
   :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Only works for 'classifier' estimators. Each row in the returned list will now itself be a list, of length (number of categories in training data). The items in this row's list will represent the probability of each category.
 
 .. py:method:: ml_predictor.score(X_test, y_test)
+
   :rtype: number representing the trained estimator's score on the validation data. Note that you can also pass X_test and y_test into .train() to have scores on validation data reported out for each algorithm we try, and each subpredictor we build.
