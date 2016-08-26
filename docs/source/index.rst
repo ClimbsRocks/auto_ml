@@ -49,24 +49,6 @@ Before you go any further, try running the code. Load up some dictionaries in Py
 
 Everything else in these docs assumes you have done at least the above. Start there and everything else will build on top. But this part gets you the output you're probably interested in, without unnecessary complexity.
 
-Core Functionality
-===================
-
-.. py:class:: Predictor(type_of_algo, column_descriptions)
-
-  :param type_of_algo: Whether you want a classifier or regressor
-  :type type_of_algo: 'regressor' or 'classifier'
-  :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'`` or ``'categorical'``. See below for more details.
-  :type column_descriptions: dictionary
-
-.. py:method:: ml_predictor.train(raw_training_data, user_input_func=None)
-
-  :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
-  :param raw_training_data: The data to train on. See below for more information on formatting of this data.
-  :type raw_training_data: List of dictionaries, where each dictionary has both the input data as well as the target data the ml algo is trying to predict.
-  :param user_input_func: A function that you can define that will be called as the first step in the pipeline. The function will be passed the entire X dataset, must not alter the order or length of the X dataset, and must return the entire X dataset. You can perform any feature engineering you would like in this function. See below for more details.
-  :type user_input_func: function
-
 
 Passing in your own feature engineering function
 =================================================
