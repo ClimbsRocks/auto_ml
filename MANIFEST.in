@@ -1,0 +1,2 @@
+include *.py *.md LICENSE .gitignore *.txt
+recursive-include docs *.py
