@@ -7,7 +7,7 @@ import random
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron, RANSACRegressor
@@ -18,6 +18,12 @@ import scipy
 
 import xgboost as xgb
 
+
+# GET conflat from Jessica. Confirmation Latency. build that in as a subpredictor.
+# Recent deliveries that are comparable
+# Subpredictor for teh number of delivery events (communications between dasher and customer)
+# Batch rates, and triple batch rates. asslat as well. supply generally.
+#
 
 def split_output(X, output_column_name, verbose=False):
     y = []
@@ -122,12 +128,14 @@ def add_date_features(date_val, target_row, date_col):
 
 def get_model_from_name(model_name):
     import xgboost as xgb
+    from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
     model_map = {
         # Classifiers
         'LogisticRegression': LogisticRegression(n_jobs=-2),
         'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
         'RidgeClassifier': RidgeClassifier(),
         'XGBClassifier': xgb.XGBClassifier(),
+        'GradientBoostingClassifier': GradientBoostingClassifier(),
 
         # Regressors
         'LinearRegression': LinearRegression(n_jobs=-2),
@@ -137,12 +145,46 @@ def get_model_from_name(model_name):
         'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
         'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
         'RANSACRegressor': RANSACRegressor(),
-        'GradientBoostingRegressor': GradientBoostingRegressor(presort=False)
-    }
-    # TODO: eventually, don't create new instances except for what the user requests
-    # Then have a params_to_set hash, where we've got all the params we're interested in setting
+        'GradientBoostingRegressor': GradientBoostingRegressor(presort=False),
 
+        # Clustering
+        'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
+    }
     return model_map[model_name]
+    # model_map = {
+    #     # Classifiers
+    #     'LogisticRegression': LogisticRegression,
+    #     'RandomForestClassifier': RandomForestClassifier,
+    #     'RidgeClassifier': RidgeClassifier,
+    #     'XGBClassifier': xgb.XGBClassifier,
+    #     'GradientBoostingClassifier': GradientBoostingClassifier,
+
+    #     # Regressors
+    #     'LinearRegression': LinearRegression,
+    #     'RandomForestRegressor': RandomForestRegressor,
+    #     'Ridge': Ridge,
+    #     'XGBRegressor': xgb.XGBRegressor,
+    #     'ExtraTreesRegressor': ExtraTreesRegressor,
+    #     'AdaBoostRegressor': AdaBoostRegressor,
+    #     'RANSACRegressor': RANSACRegressor,
+    #     'GradientBoostingRegressor': GradientBoostingRegressor
+    # }
+
+    # new_instance = model_map[model_name]
+    # new_instance = new_instance()
+    # # Super crude, but we'll just try to set all the available params on this new instance
+    # try:
+    #     new_instance.set_params(n_jobs=-1)
+    # except:
+    #     pass
+    # try:
+    #     new_instance.set_params(presort=False)
+    # except:
+    #     pass
+    # # TODO: eventually, don't create new instances except for what the user requests
+    # # Then have a params_to_set hash, where we've got all the params we're interested in setting
+
+    # return new_instance
 
 
 
@@ -228,6 +270,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'RANSACRegressor': {
                 'min_samples': [None, .1, 100, 1000, 10000],
                 'stop_probability': [0.99, 0.98, 0.95, 0.90]
+            },
+            'GradientBoostingRegressor': {
+                # Add in max_delta_step if classes are extremely imbalanced
+                'max_depth': [1, 2, 5, 20, 50, 100],
+                # 'loss': ['ls', 'lad', 'huber', 'quantile']
+                # 'booster': ['gbtree', 'gblinear', 'dart'],
+                'loss': ['ls', 'lad', 'huber', 'quantile'],
+                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.5, 1]
+            },
+            'GradientBoostingClassifier': {
+                'loss': ['deviance', 'exponential'],
+                'max_depth': [1, 2, 5, 20, 50, 100],
+                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.5, 1]
             }
 
         }
@@ -265,13 +322,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
             if self.type_of_estimator == 'classifier':
-                scorer = make_scorer(brier_score_loss, greater_is_better=True)
+
+                scorer = brier_score_loss_wrapper
+                # scorer = make_scorer(brier_score_loss, greater_is_better=True)
             else:
                 scorer = rmse_scoring
 
             gs_params = self.get_search_params()
 
-            n_iter = 5
+            n_iter = 8
             if self.model_name == 'XGBRegressor':
                 n_iter = 20
             if self.model_name == 'LinearRegression':
@@ -447,12 +506,22 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
 def rmse_scoring(estimator, X, y, took_log_of_y=False):
+    if isinstance(estimator, GradientBoostingRegressor):
+        X = X.toarray()
     predictions = estimator.predict(X)
     if took_log_of_y:
         for idx, val in enumerate(predictions):
             predictions[idx] = math.exp(val)
     rmse = mean_squared_error(y, predictions)**0.5
     return - 1 * rmse
+
+
+raw_brier = make_scorer(brier_score_loss, greater_is_better=True)
+def brier_score_loss_wrapper(estimator, X, y):
+    predictions = estimator.predict_proba(X)
+    probas = [row[1] for row in predictions]
+    score = brier_score_loss(y, probas)
+    return -1 * score
 
 
 def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
@@ -527,7 +596,7 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         for row in X:
             for k, v in row.items():
-                if k not in self.cols_to_avoid:
+                if k not in self.cols_to_avoid and self.attributes_summary.get(k, False):
                     min_val = self.attributes_summary[k][0]
                     max_val = self.attributes_summary[k][1]
                     attribute_range = self.attributes_summary[k][2]
@@ -537,33 +606,33 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                             scaled_value = 0
                         elif scaled_value > 1:
                             scaled_value = 1
-                    row[k] =scaled_value
+                    row[k] = scaled_value
 
         return X
 
 
 class AddPredictedFeature(BaseEstimator, TransformerMixin):
 
-    def set_model_map(self):
-        self.model_map = {
-            # Classifiers
-            'LogisticRegression': LogisticRegression(n_jobs=-2),
-            'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
-            'RidgeClassifier': RidgeClassifier(),
-            'XGBClassifier': xgb.XGBClassifier(),
+    # def set_model_map(self):
+    #     self.model_map = {
+    #         # Classifiers
+    #         'LogisticRegression': LogisticRegression(n_jobs=-2),
+    #         'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
+    #         'RidgeClassifier': RidgeClassifier(),
+    #         'XGBClassifier': xgb.XGBClassifier(),
 
-            # Regressors
-            'LinearRegression': LinearRegression(n_jobs=-2),
-            'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
-            'Ridge': Ridge(),
-            'XGBRegressor': xgb.XGBRegressor(),
-            'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-            'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
-            'RANSACRegressor': RANSACRegressor(),
+    #         # Regressors
+    #         'LinearRegression': LinearRegression(n_jobs=-2),
+    #         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
+    #         'Ridge': Ridge(),
+    #         'XGBRegressor': xgb.XGBRegressor(),
+    #         'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
+    #         'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
+    #         'RANSACRegressor': RANSACRegressor(),
 
-            # Clustering
-            'MiniBatchKMeans': MiniBatchKMeans(self.n_clusters)
-        }
+    #         # Clustering
+    #         'MiniBatchKMeans': MiniBatchKMeans(self.n_clusters)
+    #     }
 
 
     def __init__(self, type_of_estimator=None, model_name='MiniBatchKMeans', include_original_X=False, y_train=None):
@@ -576,11 +645,12 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
         # If this is for an esembled subpredictor, these are the y values we will train the predictor on while running .fit()
         self.y_train = y_train
         self.n_clusters = 8
-        self.set_model_map()
+        # self.set_model_map()
 
 
     def fit(self, X, y=None):
-        self.model = self.model_map[self.model_name]
+        # self.model = self.model_map[self.model_name]
+        self.model = get_model_from_name(self.model_name)
 
         if self.y_train is not None:
             y = y_train
@@ -638,7 +708,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
                 predictions.append(predictor.predict(X))
             else:
                 # TODO: Future- if it's a classifier, get both the predicted class, as well as the predict_proba
-                pass
+                predictions.append(predictor.predict(X))
         if self.include_original_X:
             X_copy = []
             for row_idx, row in enumerate(X):
