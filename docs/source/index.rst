@@ -14,6 +14,9 @@ Contents:
    self
    getting_started.rst
    ensembling.rst
+   analytics.rst
+   formatting_data.rst
+   api_docs_for_geeks.rst
 
 Installation
 ------------
@@ -39,6 +42,12 @@ Core Functionality Example
   ml_predictor.predict(new_data)
   # Where new_data is also a list of dictionaries
 
+Advice
+------
+
+Before you go any further, try running the code. Load up some dictionaries in Python, where each dictionary is a row of data. Make a ``column_descriptions`` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into ``auto_ml``, and see what happens!
+
+Everything else in these docs assumes you have done at least the above. Start there and everything else will build on top. But this part gets you the output you're probably interested in, without unnecessary complexity.
 
 Core Functionality
 ===================
@@ -57,6 +66,8 @@ Core Functionality
   :type raw_training_data: List of dictionaries, where each dictionary has both the input data as well as the target data the ml algo is trying to predict.
   :param user_input_func: A function that you can define that will be called as the first step in the pipeline. The function will be passed the entire X dataset, must not alter the order or length of the X dataset, and must return the entire X dataset. You can perform any feature engineering you would like in this function. See below for more details.
   :type user_input_func: function
+
+
 
 Formatting the training data
 =============================
