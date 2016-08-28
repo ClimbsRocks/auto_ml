@@ -318,6 +318,10 @@ class Predictor(object):
                     weak_estimator_name = weak_estimator_list[len(weak_estimator_list) % sub_idx]
                     sub_model_names = [weak_estimator_name]
 
+                    # Now we have to give it the data to train on!
+                    for row_idx, row in enumerate(X_subpredictors):
+                        row[sub_name] = y_subpredictors[row_idx]
+
                 self._train_subpredictor(sub_name, type_of_estimator, X_subpredictors, sub_idx, sub_model_names=sub_model_names)
 
         if self.take_log_of_y:
