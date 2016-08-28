@@ -72,6 +72,12 @@ The first thing you do on this 62% of your data is to run it through your weak e
 Ensembling implementation in auto_ml
 --------------------------------------
 
+If you pass in 'regressor' or 'classifier' as one of the values in ``column_descriptions``, auto_ml will split out 20% of the dataset to train sub-estimators on.
 
+To do this, it will (predictably) use auto_ml! Each sub-estimator is a new instance of ``Predictor``, trained on only one of the sub-problems you pass in. Once these sub-estimators are trained, they are then put in as the first transformation step for our meta-estimator.
+
+This has the advantage of training up our sub-estimators only a single time, no matter how many rounds of cross-validation we run on our meta-estimator. It also has the advantage of avoiding over-fitting, and keeping our data pure, by training the sub-estimators on one set of data, and then training our meta-estimator (with predictions from our sub-estimators) on a different set of data than the sub-estimators were trained on.
+
+Right now, all our sub-estimators are optimized. Building in more direct support for training weak sub-estimators is a priority for future development.
 
 
