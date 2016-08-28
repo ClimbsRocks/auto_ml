@@ -33,6 +33,26 @@ auto_ml
   :param user_input_func: A user-provided function that is used to perform feature engineering. This function will be passed X as it's only parameter, and must return a list of the exact same length and order as the X list passed in. Highly useful if you want to make sure your feature engineering is applied evenly across train, test, and prediction data in an easy and consistent way. For more information, please consult the docs for scikit-learn's ``FunctionTransformer``.
   :type user_input_func: function
 
+  :param optimize_final_model: Whether or not to perform RandomizedSearchCV on the final model. Increases computation time significantly, but on a large enough dataset, will likely increase accuracy. Even if ``True``, we will try running a model without optimizing the hyperparameters of the final model just to see if that's better by avoiding overfitting.
+  :type optimize_final_model: Boolean
+
+  :param perform_feature_selection: Whether or not to run feature selection over our features before training the final model. Feature selection means picking only the most useful features, so we don't confuse the model with too much useless noise. Feature selection typically speeds up computation time by reducing the dimensionality of our dataset, and tends to combat overfitting as well.
+  :type perform_feature_selection: Boolean
+
+  :param X_test: Validation data. If you give validation data to auto_ml, it will report out on the results of the validation data automatically, and more frequently (once for each model that we try). Must be accompanied by y_test (the true observed values for the validation data). Typically, we recommend passing in 20% of your overall dataset as validation data.
+  :type X_test: list of dictionaries, same format as raw_training_data
+
+  :param y_test: The true values for the validation data X_test. This is to compare the accuracy of our trained models to the observed reality.
+  :type y_test: list, of length len(X_test)
+
+  :param take_log_of_y: For regression problems, accuracy is oftentimes improved by taking the natural log of y values during training. This is oftentimes a pain, because then predicted values must be exponented accordingly to get back to the scale the user expects. auto_ml can handle all this automatically if you pass in ``take_log_of_y=True``.
+  :type take_log_of_y: Boolean
+
+  :param model_names: Which models to try. Acceptable values are ['Ridge', 'XGBRegressor', 'RANSACRegressor', 'RandomForestRegressor', 'LinearRegression', 'AdaBoostRegressor', 'ExtraTreesRegressor', 'RidgeClassifier', 'XGBClassifier', 'LogisticRegression', 'RandomForestClassifier']. Note that this parameter must be a list of strings, not a single string.
+  :type model_names: list of strings
+
+  :param add_cluster_prediction: Whether or not to run a computationally optimized version of unsupervised k-means clustering clustering on the data to group it into the 8 clusters of most similar observations. This simply adds a new feature to each row with the prediction from the k means algorithm as to which of the 8 groups this row falls into. Note that this is not typically effective for high-dimensional spaces.
+  :type add_cluster_prediction: Boolean
 
 
 .. py:method:: ml_predictor.predict(prediction_rows)
