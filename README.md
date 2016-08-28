@@ -1,6 +1,7 @@
 # auto_ml
 > Get a trained and optimized machine learning predictor at the push of a button (and, admittedly, an extended coffee break while your computer does the heavy lifting and you get to claim "compiling" https://xkcd.com/303/).
 
+
 ## Installation
 
 - `pip install auto_ml`
@@ -28,12 +29,17 @@ ml_predictor.predict(new_data)
 # Where new_data is also a list of dictionaries
 ```
 
-
 ### Advice
 
 Before you go any further, try running the code. Load up some dictionaries in Python, where each dictionary is a row of data. Make a `column_descriptions` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into `auto_ml`, and see what happens!
 
 Everything else in these docs assumes you have done at least the above. Start there and everything else will build on top. But this part gets you the output you're probably interested in, without unnecessary complexity.
+
+
+## Docs
+
+The full docs are available at https://auto_ml.readthedocs.io
+Again though, I'd strongly recommend running this on an actual dataset before referencing the docs any futher.
 
 
 ## What this project does
