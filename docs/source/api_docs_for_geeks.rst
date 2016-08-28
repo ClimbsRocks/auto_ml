@@ -17,10 +17,23 @@ auto_ml
 .. py:method:: ml_predictor.train(raw_training_data, user_input_func=None)
 
   :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
+
   :param raw_training_data: The data to train on. See below for more information on formatting of this data.
   :type raw_training_data: List of dictionaries, where each dictionary has both the input data as well as the target data the ml estimator is trying to predict.
+
   :param user_input_func: A function that you can define that will be called as the first step in the pipeline. The function will be passed the entire X dataset, must not alter the order or length of the X dataset, and must return the entire X dataset. You can perform any feature engineering you would like in this function. See below for more details.
   :type user_input_func: function
+
+  :param compute_power: The higher the number, the more options for hyperparameters we'll try to train, which could lead to a more accurate model, but will definitely lead to more compute time.
+  :type compute_power: int, from 1 - 10
+
+  :param ml_for_analytics: Whether or not to print out results for which coefficients the trained model found useful. If ``True``, you will see results that an analyst might find interesting printed to the shell.
+  :type ml_for_analytics: Boolean
+
+  :param user_input_func: A user-provided function that is used to perform feature engineering. This function will be passed X as it's only parameter, and must return a list of the exact same length and order as the X list passed in. Highly useful if you want to make sure your feature engineering is applied evenly across train, test, and prediction data in an easy and consistent way. For more information, please consult the docs for scikit-learn's ``FunctionTransformer``.
+  :type user_input_func: function
+
+
 
 .. py:method:: ml_predictor.predict(prediction_rows)
 
