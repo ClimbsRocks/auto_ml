@@ -22,6 +22,15 @@ Code Example
   ml_predictor.predict(new_data)
 
 
+Code Description
+-----------------
+
+It's easy! On each row, simply pass in an attribute that is the correct y-value that you want a subpredictor to predict. And then in ``column_descriptions``, make sure to pass in either 'regressor' or 'classifier'  as the value for that key.
+
+That's it!
+
+
+
 What is ensembling?
 --------------------------------------
 
