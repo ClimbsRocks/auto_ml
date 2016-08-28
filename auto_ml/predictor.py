@@ -277,6 +277,16 @@ class Predictor(object):
         self.add_cluster_prediction = add_cluster_prediction
         self.num_weak_estimators = num_weak_estimators
 
+        # Put in place the markers that will tell us later on to train up a subpredictor for this problem
+        if self.num_weak_estimators > 0:
+            for idx in range(self.num_weak_estimators):
+                self.column_descriptions['weak_estimator_' + str(idx)] = self.type_of_estimator
+                self.subpredictors.append('weak_estimator_' + str(idx))
+            self.weak_estimator_store = {
+                'regressor': ['LinearRegression', 'Ridge'],
+                'classifier': ['LogisticRegression', 'RidgeClassifier']
+            }
+
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
