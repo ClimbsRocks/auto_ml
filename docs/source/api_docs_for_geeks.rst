@@ -1,8 +1,6 @@
 Properly Formal API Documenation
 ================================
 
-For those who prefer code over words.
-
 
 auto_ml
 -------

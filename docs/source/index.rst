@@ -13,9 +13,9 @@ Contents:
 
    self
    getting_started.rst
-   ensembling.rst
-   analytics.rst
    formatting_data.rst
+   analytics.rst
+   ensembling.rst
    api_docs_for_geeks.rst
 
 Installation
@@ -66,9 +66,23 @@ You cannot alter the length or ordering of the X dataset, since you will not hav
 
 What this project does
 =======================
-Automates the whole machine learning process!
+Automates the whole machine learning process, making it super easy to use for both analytics, and getting real-time predictions in production.
 
+A quick overview of buzzwords, this project automates:
 
+#. Analytics (pass in data, and auto_ml will tell you the relationship of each variable to what it is you're trying to predict).
+#. Feature Engineering (particularly around dates, and soon, NLP).
+#. Robust Scaling (turning all values into their scaled versions between the range of 0 and 1, in a way that is robust to outliers, and works with sparse matrices).
+#. Feature Selection (picking only the features that actually prove useful).
+#. Data formatting (turning a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems).
+#. Model Selection (which model works best for your problem).
+#. Hyperparameter Optimization (what hyperparameters work best for that model).
+#. Ensembling Subpredictors (automatically training up models to predict smaller problems within the meta problem).
+#. Ensembling Weak Estimators (automatically training up weak models on the larger problem itself, to inform the meta-estimator's decision).
+#. Big Data (feed it lots of data).
+#. Unicorns (you could conceivably train it to predict what is a unicorn and what is not).
+#. Ice Cream (mmm, tasty...).
+#. Hugs (this makes it much easier to do your job, hopefully leaving you more time to hug those those you care about).
 
 
 Future API features that I definitely haven't built out yet
