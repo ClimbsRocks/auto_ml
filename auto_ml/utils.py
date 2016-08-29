@@ -18,13 +18,6 @@ import scipy
 
 import xgboost as xgb
 
-
-# GET conflat from Jessica. Confirmation Latency. build that in as a subpredictor.
-# Recent deliveries that are comparable
-# Subpredictor for teh number of delivery events (communications between dasher and customer)
-# Batch rates, and triple batch rates. asslat as well. supply generally.
-#
-
 def split_output(X, output_column_name, verbose=False):
     y = []
     for row in X:
@@ -331,8 +324,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             gs_params = self.get_search_params()
 
             n_iter = 8
-            if self.model_name == 'XGBRegressor':
-                n_iter = 20
+            # if self.model_name == 'XGBRegressor':
+            #     n_iter = 20
             if self.model_name == 'LinearRegression':
                 # There's just not much to optimize on a linear regression
                 n_iter = 4

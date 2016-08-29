@@ -10,8 +10,8 @@ from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
-import utils
-import date_feature_engineering
+from auto_ml import utils
+from auto_ml import date_feature_engineering
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -255,7 +255,7 @@ class Predictor(object):
             , add_cluster_prediction=True
             , model_names=sub_model_names
         )
-        self.subpredictors[idx] = ml_predictor
+        self.subpredictors[sub_idx] = ml_predictor
 
 
 
