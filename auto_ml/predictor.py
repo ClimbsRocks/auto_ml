@@ -232,7 +232,7 @@ class Predictor(object):
         return clean_X_test, clean_y
 
 
-    def _train_subpredictor(self, sub_name, type_of_estimator, X_subpredictors, sub_idx, sub_model_names=None):
+    def _train_subpredictor(self, sub_name, X_subpredictors, sub_idx, sub_model_names=None):
 
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
@@ -312,9 +312,11 @@ class Predictor(object):
             for sub_idx, sub_name in enumerate(self.subpredictors):
                 print('Now training a subpredictor for ' + sub_name)
 
+
+
                 sub_model_names = None
                 if sub_name[:14] == 'weak_estimator':
-                    weak_estimator_list = self.weak_estimator_store[type_of_estimator]
+                    weak_estimator_list = self.weak_estimator_store[self.type_of_estimator]
                     weak_estimator_name = weak_estimator_list[len(weak_estimator_list) % sub_idx]
                     sub_model_names = [weak_estimator_name]
 
@@ -322,7 +324,7 @@ class Predictor(object):
                     for row_idx, row in enumerate(X_subpredictors):
                         row[sub_name] = y_subpredictors[row_idx]
 
-                self._train_subpredictor(sub_name, type_of_estimator, X_subpredictors, sub_idx, sub_model_names=sub_model_names)
+                self._train_subpredictor(sub_name, X_subpredictors, sub_idx, sub_model_names=sub_model_names)
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
