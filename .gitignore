@@ -9,3 +9,9 @@ dev_script*.py
 .DS_Store
 old_data/*
 *.txt
+27-wheel/*
+auto_ml.egg-info/*
+build/*
+dist/*
+venv/*
+xgboost/*
