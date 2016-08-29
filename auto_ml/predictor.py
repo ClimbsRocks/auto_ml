@@ -317,7 +317,9 @@ class Predictor(object):
                 sub_model_names = None
                 if sub_name[:14] == 'weak_estimator':
                     weak_estimator_list = self.weak_estimator_store[self.type_of_estimator]
-                    weak_estimator_name = weak_estimator_list[len(weak_estimator_list) % sub_idx]
+                    # Cycle through the weak estimator names in order.
+                    name_index = sub_idx % len(weak_estimator_list)
+                    weak_estimator_name = weak_estimator_list[name_index]
                     sub_model_names = [weak_estimator_name]
 
                     # Now we have to give it the data to train on!
