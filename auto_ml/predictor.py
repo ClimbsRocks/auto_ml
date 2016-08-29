@@ -10,8 +10,8 @@ from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
-import utils
-import date_feature_engineering
+from auto_ml import utils
+from auto_ml import date_feature_engineering
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -232,7 +232,34 @@ class Predictor(object):
         return clean_X_test, clean_y
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False):
+    def _train_subpredictor(self, sub_name, X_subpredictors, sub_idx, sub_model_names=None):
+
+        sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
+        if sub_model_names is None and sub_type_of_estimator == 'classifier':
+            sub_model_names = ['XGBClassifier']
+        elif sub_model_names is None and sub_type_of_estimator == 'regressor':
+            sub_model_names = ['XGBRegressor']
+
+        ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
+        # TODO: grab proper y_test values for this particular subpredictor
+        sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
+
+        # NOTE that we will be mutating the input X here by stripping off the y values.
+        ml_predictor.train(raw_training_data=X_subpredictors
+            , perform_feature_selection=True
+            , X_test=sub_X_test
+            , y_test=sub_y_test
+            , ml_for_analytics=False
+            , compute_power=5
+            , take_log_of_y=False
+            , add_cluster_prediction=True
+            , model_names=sub_model_names
+        )
+        self.subpredictors[sub_idx] = ml_predictor
+
+
+
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False, num_weak_estimators=0):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -248,6 +275,17 @@ class Predictor(object):
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
         self.add_cluster_prediction = add_cluster_prediction
+        self.num_weak_estimators = num_weak_estimators
+
+        # Put in place the markers that will tell us later on to train up a subpredictor for this problem
+        if self.num_weak_estimators > 0:
+            for idx in range(self.num_weak_estimators):
+                self.column_descriptions['weak_estimator_' + str(idx)] = self.type_of_estimator
+                self.subpredictors.append('weak_estimator_' + str(idx))
+            self.weak_estimator_store = {
+                'regressor': ['LinearRegression', 'Ridge'],
+                'classifier': ['LogisticRegression', 'RidgeClassifier']
+            }
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -270,33 +308,25 @@ class Predictor(object):
             X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X, y, test_size=0.33)
             X = X_ensemble
             y = y_ensemble
-            for idx, sub_name in enumerate(self.subpredictors):
+
+            for sub_idx, sub_name in enumerate(self.subpredictors):
                 print('Now training a subpredictor for ' + sub_name)
 
 
-                sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
-                if sub_type_of_estimator == 'classifier':
-                    sub_model_names = ['XGBClassifier']
-                else:
-                    sub_model_names = ['XGBRegressor']
 
-                ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
-                # TODO: grab proper y_test values for this particular subpredictor
-                sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
+                sub_model_names = None
+                if sub_name[:14] == 'weak_estimator':
+                    weak_estimator_list = self.weak_estimator_store[self.type_of_estimator]
+                    # Cycle through the weak estimator names in order.
+                    name_index = sub_idx % len(weak_estimator_list)
+                    weak_estimator_name = weak_estimator_list[name_index]
+                    sub_model_names = [weak_estimator_name]
 
-                # NOTE that we will be mutating the input X here by stripping off the y values.
-                ml_predictor.train(raw_training_data=X_subpredictors
-                    , perform_feature_selection=True
-                    , X_test=sub_X_test
-                    , y_test=sub_y_test
-                    , ml_for_analytics=False
-                    , compute_power=5
-                    , take_log_of_y=False
-                    , add_cluster_prediction=True
-                    , model_names=sub_model_names
-                )
-                self.subpredictors[idx] = ml_predictor
+                    # Now we have to give it the data to train on!
+                    for row_idx, row in enumerate(X_subpredictors):
+                        row[sub_name] = y_subpredictors[row_idx]
 
+                self._train_subpredictor(sub_name, X_subpredictors, sub_idx, sub_model_names=sub_model_names)
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
