@@ -43,15 +43,16 @@ else:
                 training_data.append(row)
 
 
-ml_predictor = Predictor(type_of_algo='classifier', column_descriptions={'target': 'output'})
-
-# ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
-ml_predictor.ml_for_analytics(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
+ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'target': 'output'})
 
 # split out out output column so we have a proper X, y dataset
 X_test, y_test = utils.split_output(testing_data, 'target')
 for idx, pred in enumerate(y_test):
     y_test[idx] = int(pred)
+
+# ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
+ml_predictor.train(training_data, X_test=X_test, y_test=y_test)
+
 
 # ml_predictor.predict_proba(X_test)
 print(ml_predictor.score(X_test, y_test))
