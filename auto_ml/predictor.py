@@ -164,13 +164,13 @@ class Predictor(object):
 
         # TODO: modularize into clean_y_vals function
         if self.type_of_estimator == 'classifier':
-            # try:
-            #     y_ints = []
-            #     for val in y:
-            #         y_ints.append(int(val))
-            #     y = y_ints
-            # except:
-            #     pass
+            try:
+                y_ints = []
+                for val in y:
+                    y_ints.append(int(val))
+                y = y_ints
+            except:
+                pass
             pass
         else:
             indices_to_delete = []
@@ -455,7 +455,7 @@ class Predictor(object):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
-        if self.trained_pipeline.named_steps['final_model'].model_name == 'XGBRegressor':
+        if self.trained_pipeline.named_steps['final_model'].model_name in ['XGBRegressor', 'XGBClassifier']:
             self._get_xgb_feat_importances(self.trained_pipeline.named_steps['final_model'].model)
 
         else:
