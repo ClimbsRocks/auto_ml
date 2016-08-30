@@ -203,7 +203,7 @@ class Predictor(object):
         dup_descs = {}
         # subpredictor_type_of_estimator = 'regressor'
 
-        for key, val in column_descriptions.iteritems():
+        for key, val in column_descriptions.items():
 
             # Obviously, skip the parent ensembler's output column
             if val != 'output':
