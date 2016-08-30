@@ -10,7 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor,                 LinearRegression Ridge Lasso ElasticNet LassoLars OrthogonalMatchingPursuit BayesianRidge ARDRegression SGDRegressor PassiveAggressiveRegressor LogisticRegression RidgeClassifier SGDClassifier Perceptron PassiveAggressiveClassifier
+from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor,                 LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 
@@ -150,7 +150,7 @@ def get_model_from_name(model_name):
         'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
         'BayesianRidge': BayesianRidge(),
         'ARDRegression': ARDRegression(),
-        'SGDRegressor': SGDRegressor(shuffle=False, n_jobs=-1),
+        'SGDRegressor': SGDRegressor(shuffle=False),
         'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False),
 
         # Clustering
@@ -334,7 +334,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             'SGDRegressor': {
                 'loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
                 'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-                'learning_rate': ['constant', 'optimal', 'invscaling']
+                'learning_rate': ['constant', 'optimal', 'invscaling'],
                 'alpha': scipy.stats.expon(.000000001, .0001),
             },
 
