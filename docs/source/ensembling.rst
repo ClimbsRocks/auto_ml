@@ -29,6 +29,23 @@ It's easy! On each row, simply pass in an attribute that is the correct y-value 
 
 That's it!
 
+Ok, some minor difficulties, but if you've made it this far, you can handle them.
+
+It comes down to two things
+
+1. Make sure that you nest all your code inside a
+```
+if __name__ == '__main__':
+    run_all_setup_code()
+    ml_predictor.train()
+```
+block.
+
+2. XGBoost is difficult to install in a way that runs in parallel across all cores. Here are some guides I found useful:
+http://xgboost.readthedocs.io/en/latest/build.html
+https://github.com/dmlc/xgboost/tree/master/python-package#note
+https://github.com/climbsrocks/auto_ml/issues/56
+
 
 
 What is ensembling?
