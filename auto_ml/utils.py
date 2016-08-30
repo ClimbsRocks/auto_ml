@@ -130,6 +130,10 @@ def get_model_from_name(model_name):
         'XGBClassifier': xgb.XGBClassifier(),
         'GradientBoostingClassifier': GradientBoostingClassifier(),
 
+        'SGDClassifier': SGDClassifier(n_jobs=-1),
+        'Perceptron': Perceptron(n_jobs=-1),
+        'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
+
         # Regressors
         'LinearRegression': LinearRegression(n_jobs=-2),
         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
@@ -146,7 +150,7 @@ def get_model_from_name(model_name):
         'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
         'BayesianRidge': BayesianRidge(),
         'ARDRegression': ARDRegression(),
-        'SGDRegressor': SGDRegressor(shuffle=False),
+        'SGDRegressor': SGDRegressor(shuffle=False, n_jobs=-1),
         'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False),
 
 
@@ -199,6 +203,27 @@ def get_model_from_name(model_name):
             'epsilon': [0.01, 0.05, 0.1, 0.2, 0.5],
             'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive'],
             'C': scipy.stats.expon(0.000001, 100000)
+        },
+
+
+        'SGDClassifier': {
+            'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+            'alpha': scipy.stats.expon(.000000001, .0001),
+            'learning_rate': ['constant', 'optimal', 'invscaling'],
+            'class_weight': ['balanced', None]
+        },
+
+        'Perceptron': {
+            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+            'alpha': scipy.stats.expon(.000000001, .0001),
+            'class_weight': ['balanced', None]
+        },
+
+        'PassiveAggressiveClassifier': {
+            'loss': ['hinge', 'squared_hinge'],
+            'class_weight': ['balanced', None],
+            'C': [0.01, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0]
         }
 
         # Clustering
