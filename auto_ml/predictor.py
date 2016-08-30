@@ -283,8 +283,8 @@ class Predictor(object):
                 self.column_descriptions['weak_estimator_' + str(idx)] = self.type_of_estimator
                 self.subpredictors.append('weak_estimator_' + str(idx))
             self.weak_estimator_store = {
-                'regressor': ['LinearRegression', 'Ridge'],
-                'classifier': ['LogisticRegression', 'RidgeClassifier']
+                'regressor': ['LinearRegression', 'Ridge', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'ARDRegression', 'SGDRegressor', 'PassiveAggressiveRegressor'],
+                'classifier': ['LogisticRegression', 'RidgeClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier']
             }
 
         if verbose:
