@@ -140,6 +140,37 @@ def get_model_from_name(model_name):
         'RANSACRegressor': RANSACRegressor(),
         'GradientBoostingRegressor': GradientBoostingRegressor(presort=False),
 
+        'Lasso': Lasso(),
+        'ElasticNet': ElasticNet(),
+        'LassoLars': LassoLars(),
+        'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
+
+
+        'Lasso': {
+            'selection': ['cyclic', 'random'],
+            'tol': scipy.stats.expon(.0000001, .001),
+            'positive': [True, False]
+        },
+
+        'ElasticNet': {
+            'l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9],
+            'selection': ['cyclic', 'random'],
+            'tol': scipy.stats.expon(.0000001, .001),
+            'positive': [True, False]
+        },
+
+        'LassoLars': {
+            'positive': [True, False],
+            'max_iter': [50, 100, 250, 500, 1000]
+        },
+
+        'OrthogonalMatchingPursuit': {
+
+            'n_nonzero_coefs': [None, 3, 5, 10, 25, 50, 75, 100, 200, 500]
+
+        }
+
+
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
     }
