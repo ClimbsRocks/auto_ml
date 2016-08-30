@@ -10,7 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import LogisticRegression, LinearRegression, RandomizedLasso, RandomizedLogisticRegression, RidgeClassifier, Ridge, Perceptron, RANSACRegressor
+from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor,                 LinearRegression Ridge Lasso ElasticNet LassoLars OrthogonalMatchingPursuit BayesianRidge ARDRegression SGDRegressor PassiveAggressiveRegressor LogisticRegression RidgeClassifier SGDClassifier Perceptron PassiveAggressiveClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 
@@ -153,79 +153,6 @@ def get_model_from_name(model_name):
         'SGDRegressor': SGDRegressor(shuffle=False, n_jobs=-1),
         'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False),
 
-
-        'Lasso': {
-            'selection': ['cyclic', 'random'],
-            'tol': scipy.stats.expon(.0000001, .001),
-            'positive': [True, False]
-        },
-
-        'ElasticNet': {
-            'l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9],
-            'selection': ['cyclic', 'random'],
-            'tol': scipy.stats.expon(.0000001, .001),
-            'positive': [True, False]
-        },
-
-        'LassoLars': {
-            'positive': [True, False],
-            'max_iter': [50, 100, 250, 500, 1000]
-        },
-
-        'OrthogonalMatchingPursuit': {
-            'n_nonzero_coefs': [None, 3, 5, 10, 25, 50, 75, 100, 200, 500]
-        },
-
-        'BayesianRidge': {
-            'tol': scipy.stats.expon(.0000001, .001),
-            'alpha_1': scipy.stats.expon(.000000001, .0001),
-            'lambda_1': scipy.stats.expon(.000000001, .0001),
-            'lambda_2': scipy.stats.expon(.000000001, .0001)
-        },
-
-        'ARDRegression': {
-            'tol': scipy.stats.expon(.0000001, .001),
-            'alpha_1': scipy.stats.expon(.000000001, .0001),
-            'alpha_2': scipy.stats.expon(.000000001, .0001),
-            'lambda_1': scipy.stats.expon(.000000001, .0001),
-            'lambda_2': scipy.stats.expon(.000000001, .0001),
-            'threshold_lambda': scipy.stats.expon(100, 1000000)
-        },
-
-        'SGDRegressor': {
-            'loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
-            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-            'learning_rate': ['constant', 'optimal', 'invscaling']
-            'alpha': scipy.stats.expon(.000000001, .0001),
-        },
-
-        'PassiveAggressiveRegressor': {
-            'epsilon': [0.01, 0.05, 0.1, 0.2, 0.5],
-            'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive'],
-            'C': scipy.stats.expon(0.000001, 100000)
-        },
-
-
-        'SGDClassifier': {
-            'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
-            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-            'alpha': scipy.stats.expon(.000000001, .0001),
-            'learning_rate': ['constant', 'optimal', 'invscaling'],
-            'class_weight': ['balanced', None]
-        },
-
-        'Perceptron': {
-            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-            'alpha': scipy.stats.expon(.000000001, .0001),
-            'class_weight': ['balanced', None]
-        },
-
-        'PassiveAggressiveClassifier': {
-            'loss': ['hinge', 'squared_hinge'],
-            'class_weight': ['balanced', None],
-            'C': [0.01, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0]
-        }
-
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
     }
@@ -365,6 +292,76 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'max_depth': [1, 2, 5, 20, 50, 100],
                 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
                 'subsample': [0.5, 1]
+            },
+            'Lasso': {
+                'selection': ['cyclic', 'random'],
+                'tol': scipy.stats.expon(.0000001, .001),
+                'positive': [True, False]
+            },
+
+            'ElasticNet': {
+                'l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9],
+                'selection': ['cyclic', 'random'],
+                'tol': scipy.stats.expon(.0000001, .001),
+                'positive': [True, False]
+            },
+
+            'LassoLars': {
+                'positive': [True, False],
+                'max_iter': [50, 100, 250, 500, 1000]
+            },
+
+            'OrthogonalMatchingPursuit': {
+                'n_nonzero_coefs': [None, 3, 5, 10, 25, 50, 75, 100, 200, 500]
+            },
+
+            'BayesianRidge': {
+                'tol': scipy.stats.expon(.0000001, .001),
+                'alpha_1': scipy.stats.expon(.000000001, .0001),
+                'lambda_1': scipy.stats.expon(.000000001, .0001),
+                'lambda_2': scipy.stats.expon(.000000001, .0001)
+            },
+
+            'ARDRegression': {
+                'tol': scipy.stats.expon(.0000001, .001),
+                'alpha_1': scipy.stats.expon(.000000001, .0001),
+                'alpha_2': scipy.stats.expon(.000000001, .0001),
+                'lambda_1': scipy.stats.expon(.000000001, .0001),
+                'lambda_2': scipy.stats.expon(.000000001, .0001),
+                'threshold_lambda': scipy.stats.expon(100, 1000000)
+            },
+
+            'SGDRegressor': {
+                'loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+                'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+                'learning_rate': ['constant', 'optimal', 'invscaling']
+                'alpha': scipy.stats.expon(.000000001, .0001),
+            },
+
+            'PassiveAggressiveRegressor': {
+                'epsilon': [0.01, 0.05, 0.1, 0.2, 0.5],
+                'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive'],
+                'C': scipy.stats.expon(0.000001, 100000)
+            },
+
+            'SGDClassifier': {
+                'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+                'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+                'alpha': scipy.stats.expon(.000000001, .0001),
+                'learning_rate': ['constant', 'optimal', 'invscaling'],
+                'class_weight': ['balanced', None]
+            },
+
+            'Perceptron': {
+                'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+                'alpha': scipy.stats.expon(.000000001, .0001),
+                'class_weight': ['balanced', None]
+            },
+
+            'PassiveAggressiveClassifier': {
+                'loss': ['hinge', 'squared_hinge'],
+                'class_weight': ['balanced', None],
+                'C': [0.01, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0]
             }
 
         }
