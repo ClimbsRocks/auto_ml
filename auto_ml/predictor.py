@@ -283,7 +283,14 @@ class Predictor(object):
                 self.column_descriptions['weak_estimator_' + str(idx)] = self.type_of_estimator
                 self.subpredictors.append('weak_estimator_' + str(idx))
             self.weak_estimator_store = {
-                'regressor': ['LinearRegression', 'Ridge', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'ARDRegression', 'SGDRegressor', 'PassiveAggressiveRegressor'],
+                'regressor': ['LinearRegression', 'Ridge', 'Lasso', 'ElasticNet'
+                # , 'LassoLars'
+                # , 'OrthogonalMatchingPursuit'
+                # , 'BayesianRidge'
+                # , 'ARDRegression'
+                , 'SGDRegressor'
+                , 'PassiveAggressiveRegressor'
+                ],
                 'classifier': ['LogisticRegression', 'RidgeClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier']
             }
 
@@ -458,7 +465,7 @@ class Predictor(object):
 
         # Somewhat annoying. XGBoost only returns importances for the features it finds useful.
         # So we have to go in, get the index of the feature from the "feature name" by removing the f before the feature name, and grabbing the rest of that string, which is actually the index of that feature name.
-        fscore_list = [[int(k[1:]), v] for k, v in fscore.viewitems()]
+        fscore_list = [[int(k[1:]), v] for k, v in fscore.items()]
 
 
         feature_infos = []
