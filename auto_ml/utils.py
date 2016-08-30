@@ -144,6 +144,10 @@ def get_model_from_name(model_name):
         'ElasticNet': ElasticNet(),
         'LassoLars': LassoLars(),
         'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
+        'BayesianRidge': BayesianRidge(),
+        'ARDRegression': ARDRegression(),
+        'SGDRegressor': SGDRegressor(shuffle=False),
+        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False),
 
 
         'Lasso': {
@@ -165,11 +169,37 @@ def get_model_from_name(model_name):
         },
 
         'OrthogonalMatchingPursuit': {
-
             'n_nonzero_coefs': [None, 3, 5, 10, 25, 50, 75, 100, 200, 500]
+        },
 
+        'BayesianRidge': {
+            'tol': scipy.stats.expon(.0000001, .001),
+            'alpha_1': scipy.stats.expon(.000000001, .0001),
+            'lambda_1': scipy.stats.expon(.000000001, .0001),
+            'lambda_2': scipy.stats.expon(.000000001, .0001)
+        },
+
+        'ARDRegression': {
+            'tol': scipy.stats.expon(.0000001, .001),
+            'alpha_1': scipy.stats.expon(.000000001, .0001),
+            'alpha_2': scipy.stats.expon(.000000001, .0001),
+            'lambda_1': scipy.stats.expon(.000000001, .0001),
+            'lambda_2': scipy.stats.expon(.000000001, .0001),
+            'threshold_lambda': scipy.stats.expon(100, 1000000)
+        },
+
+        'SGDRegressor': {
+            'loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+            'learning_rate': ['constant', 'optimal', 'invscaling']
+            'alpha': scipy.stats.expon(.000000001, .0001),
+        },
+
+        'PassiveAggressiveRegressor': {
+            'epsilon': [0.01, 0.05, 0.1, 0.2, 0.5],
+            'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive'],
+            'C': scipy.stats.expon(0.000001, 100000)
         }
-
 
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
