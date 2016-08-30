@@ -40,7 +40,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
         self.vals_to_del = set([None, float('nan'), float('Inf')])
-        self.vals_to_ignore = set(['regressor', 'classifer', 'output', 'ignore'])
+        self.vals_to_ignore = set(['regressor', 'classifier', 'output', 'ignore'])
 
 
     def fit(self, X, y=None):
@@ -237,8 +237,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
             },
             'XGBClassifier': {
-                'max_depth': [1, 2, 5, 20, 50, 100]
-                # 'learning_rate': np.random.uniform(0.0, 1.0)
+                'max_depth': [1, 2, 5, 20, 50, 100],
+                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.5, 1]
             },
             'XGBRegressor': {
                 # Add in max_delta_step if classes are extremely imbalanced
