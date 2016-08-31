@@ -593,7 +593,6 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False):
     return - 1 * rmse
 
 
-raw_brier = make_scorer(brier_score_loss, greater_is_better=True)
 def brier_score_loss_wrapper(estimator, X, y):
     predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
