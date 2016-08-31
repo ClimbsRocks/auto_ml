@@ -86,7 +86,7 @@ class Predictor(object):
         if perform_feature_scaling:
             pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
 
-        pipeline_list.append(('dv', DictVectorizer(sparse=True)))
+        pipeline_list.append(('dv', DictVectorizer(sparse=True, sort=False)))
 
         if perform_feature_selection:
             # pipeline_list.append(('pca', TruncatedSVD()))
@@ -232,7 +232,7 @@ class Predictor(object):
         return clean_X_test, clean_y
 
 
-    def _train_subpredictor(self, sub_name, X_subpredictors, sub_idx, sub_model_names=None):
+    def _train_subpredictor(self, sub_name, X_subpredictors, sub_idx, sub_model_names=None, sub_ml_analytics=False, sub_compute_power=5):
 
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
@@ -249,8 +249,8 @@ class Predictor(object):
             , perform_feature_selection=True
             , X_test=sub_X_test
             , y_test=sub_y_test
-            , ml_for_analytics=False
-            , compute_power=5
+            , ml_for_analytics=sub_ml_analytics
+            , compute_power=sub_compute_power
             , take_log_of_y=False
             , add_cluster_prediction=True
             , model_names=sub_model_names
@@ -319,7 +319,9 @@ class Predictor(object):
             for sub_idx, sub_name in enumerate(self.subpredictors):
                 print('Now training a subpredictor for ' + sub_name)
 
-
+                # Print out analytics for the subpredictor if we are printing them for the parent.
+                sub_ml_analytics = self.ml_for_analytics
+                sub_compute_power = self.compute_power
 
                 sub_model_names = None
                 if sub_name[:14] == 'weak_estimator':
@@ -329,11 +331,14 @@ class Predictor(object):
                     weak_estimator_name = weak_estimator_list[name_index]
                     sub_model_names = [weak_estimator_name]
 
+                    # If this is a weak predictor, ignore the analytics.
+                    sub_ml_analytics = False
+                    sub_compute_power = 1
                     # Now we have to give it the data to train on!
                     for row_idx, row in enumerate(X_subpredictors):
                         row[sub_name] = y_subpredictors[row_idx]
 
-                self._train_subpredictor(sub_name, X_subpredictors, sub_idx, sub_model_names=sub_model_names)
+                self._train_subpredictor(sub_name, X_subpredictors, sub_idx, sub_model_names=sub_model_names, sub_ml_analytics=sub_ml_analytics, sub_compute_power=sub_compute_power)
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
@@ -408,7 +413,8 @@ class Predictor(object):
                 # Be verbose (lots of printing).
                 verbose=grid_search_verbose,
                 # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-                error_score=10,
+                # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+                error_score=-1000000000,
                 # TODO(PRESTON): change scoring to be RMSE by default
                 scoring=scoring
                 # ,pre_dispatch='1*n_jobs'
@@ -590,8 +596,13 @@ class Predictor(object):
     def score(self, X_test, y_test):
         if self._scorer is not None:
             try:
-                return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
+                if self.type_of_estimator == 'regressor':
+                    return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
+                elif self.type_of_estimator == 'classifier':
+                    return self._scorer(self.trained_pipeline, X_test, y_test)
+
             except:
+
                 return self._scorer(self.trained_pipeline, X_test, y_test)
         else:
             return self.trained_pipeline.score(X_test, y_test)
