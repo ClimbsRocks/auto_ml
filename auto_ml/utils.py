@@ -400,10 +400,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.perform_grid_search_on_model:
             if self.type_of_estimator == 'classifier':
 
-                scorer = brier_score_loss_wrapper
+                scorer = rscv_brier_score_loss_wrapper
                 # scorer = make_scorer(brier_score_loss, greater_is_better=True)
             else:
-                scorer = rmse_scoring
+                scorer = rscv_rmse_scoring
 
             gs_params = self.get_search_params()
 
@@ -423,9 +423,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
                 n_iter=n_iter,
                 n_jobs=-1,
+                # Have only two folds of cross-validation, rather than 3. This speeds up training time, and reduces the risk of overfitting.
+                cv=2,
                 # verbose=1,
-                # Print warnings, but do not raise errors if a combination of hyperparameters fails to fit.
-                error_score=10,
+                # If a combination of hyperparameters fails to fit, set it's score to a very low number that we will not choose.
+                error_score=-1000000000,
                 scoring=scorer
             )
             self.rscv.fit(X, y)
@@ -448,6 +450,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def predict_proba(self, X):
         try:
             return self.model.predict_proba(X)
+        except ValueError:
+            # XGBoost doesn't always handle sparse matrices well.
+            X_dense = X.todense()
+            return self.model.predict(X_dense)
         except AttributeError:
             print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
@@ -458,13 +464,20 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 else:
                     tupled_predictions.append([1,0])
             return tupled_predictions
+
         except Exception as e:
             raise(e)
 
     def predict(self, X):
         if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
             X = X.todense()
-        return self.model.predict(X)
+
+        # XGBoost doesn't always handle sparse matrices well.
+        try:
+            return self.model.predict(X)
+        except ValueError:
+            X_dense = X.todense()
+            return self.model.predict(X_dense)
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
@@ -595,6 +608,39 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False):
 
 def brier_score_loss_wrapper(estimator, X, y):
     predictions = estimator.predict_proba(X)
+    probas = [row[1] for row in predictions]
+    score = brier_score_loss(y, probas)
+    return -1 * score
+
+
+def rscv_rmse_scoring(estimator, X, y, took_log_of_y=False):
+    if isinstance(estimator, GradientBoostingRegressor):
+        X = X.toarray()
+
+    # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
+    try:
+        predictions = estimator.predict(X)
+    except ValueError:
+        X_dense = X.todense()
+        predictions = estimator.predict(X_dense)
+
+    if took_log_of_y:
+        for idx, val in enumerate(predictions):
+            predictions[idx] = math.exp(val)
+    rmse = mean_squared_error(y, predictions)**0.5
+    return - 1 * rmse
+
+
+def rscv_brier_score_loss_wrapper(estimator, X, y):
+
+    # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
+    try:
+        predictions = estimator.predict_proba(X)
+    except ValueError:
+        X_dense = X.todense()
+        predictions = estimator.predict_proba(X_dense)
+
+    # predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
     score = brier_score_loss(y, probas)
     return -1 * score
