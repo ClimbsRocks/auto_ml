@@ -57,10 +57,20 @@ auto_ml
 
   :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Each row will hold a single value. For 'regressor' estimators, each value will be a number. For 'classifier' estimators, each row will be a sting of the predicted label (category), matching the categories passed in to the training data.
 
+
 .. py:method:: ml_predictor.predict_proba(prediction_rows)
 
   :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Only works for 'classifier' estimators. Each row in the returned list will now itself be a list, of length (number of categories in training data). The items in this row's list will represent the probability of each category.
 
+
 .. py:method:: ml_predictor.score(X_test, y_test)
 
   :rtype: number representing the trained estimator's score on the validation data. Note that you can also pass X_test and y_test into .train() to have scores on validation data reported out for each algorithm we try, and each subpredictor we build.
+
+.. py:method:: ml_predictor.save(file_name='auto_ml_saved_pipeline.pkl', verbose=True)
+
+  :param file_name: [OPTIONAL] The name of the file you would like the trained pipeline to be saved to.
+  :type file_name: string
+  :param verbose: If ``True``, will log information about the file, the system this was trained on, and which features to make sure to feed in at prediction time.
+  :type verbose: Boolean
+  :rtype: the name of the file the trained ml_predictor is saved to.
