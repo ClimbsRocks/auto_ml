@@ -242,11 +242,11 @@ class Predictor(object):
 
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
-            sub_model_names = ['XGBClassifier']
-            # sub_model_names = ['GradientBoostingClassifier']
+            # sub_model_names = ['XGBClassifier']
+            sub_model_names = ['GradientBoostingClassifier']
         elif sub_model_names is None and sub_type_of_estimator == 'regressor':
-            sub_model_names = ['XGBRegressor']
-            # sub_model_names = ['GradientBoostingRegressor']
+            # sub_model_names = ['XGBRegressor']
+            sub_model_names = ['GradientBoostingRegressor']
 
         ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
         # TODO: grab proper y_test values for this particular subpredictor
