@@ -33,13 +33,13 @@ Ok, some minor difficulties, but if you've made it this far, you can handle them
 
 It comes down to two things
 
-1. Make sure that you nest all your code inside a
-```
-if __name__ == '__main__':
-    run_all_setup_code()
-    ml_predictor.train()
-```
-block.
+1. Make sure that you nest all your code inside an if main block.
+
+.. code-block:: python
+
+  if __name__ == '__main__':
+      run_all_setup_code()
+      ml_predictor.train()
 
 2. XGBoost is difficult to install in a way that runs in parallel across all cores. Here are some guides I found useful:
 http://xgboost.readthedocs.io/en/latest/build.html
