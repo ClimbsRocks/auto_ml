@@ -213,6 +213,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
 
+        if self.type_of_estimator == 'classifier':
+            self._scorer = rscv_brier_score_loss_wrapper
+        else:
+            self._scorer = rscv_rmse_scoring
+
 
     # It would be optimal to store large objects like this elsewhere, but storing it all inside FinalModelATC ensures that each instance will always be self-contained, which is helpful when saving and transferring to different environments.
     def get_search_params(self):
@@ -398,12 +403,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         # we can perform RandomizedSearchCV on just our final estimator.
         if self.perform_grid_search_on_model:
-            if self.type_of_estimator == 'classifier':
-
-                scorer = rscv_brier_score_loss_wrapper
-                # scorer = make_scorer(brier_score_loss, greater_is_better=True)
-            else:
-                scorer = rscv_rmse_scoring
 
             gs_params = self.get_search_params()
 
@@ -428,7 +427,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # verbose=1,
                 # If a combination of hyperparameters fails to fit, set it's score to a very low number that we will not choose.
                 error_score=-1000000000,
-                scoring=scorer
+                scoring=self._scorer
             )
             self.rscv.fit(X, y)
             self.model = self.rscv.best_estimator_
@@ -444,16 +443,40 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def score(self, X, y):
-        return self.model.score(X, y)
+        if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+            X = X.todense()
+
+        try:
+            if self._scorer is not None:
+                if self.type_of_estimator == 'regressor':
+                    return self._scorer(self.model, X, y)
+                elif self.type_of_estimator == 'classifier':
+                    return self._scorer(self.model, X, y)
+
+            else:
+                return self.model.score(X, y)
+
+        except ValueError:
+
+            # XGBoost doesn't always handle sparse matrices well.
+            X_dense = X.todense()
+
+            if self._scorer is not None:
+                return self._scorer(X_dense, y)
+            else:
+                return self.model.score(X_dense, y)
 
 
     def predict_proba(self, X):
+        if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+            X = X.todense()
+
         try:
             return self.model.predict_proba(X)
         except ValueError:
             # XGBoost doesn't always handle sparse matrices well.
             X_dense = X.todense()
-            return self.model.predict(X_dense)
+            return self.model.predict_proba(X_dense)
         except AttributeError:
             print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
@@ -607,6 +630,9 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False):
 
 
 def brier_score_loss_wrapper(estimator, X, y):
+    if isinstance(estimator, GradientBoostingClassifier):
+        X = X.toarray()
+
     predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
     score = brier_score_loss(y, probas)
@@ -632,6 +658,8 @@ def rscv_rmse_scoring(estimator, X, y, took_log_of_y=False):
 
 
 def rscv_brier_score_loss_wrapper(estimator, X, y):
+    if isinstance(estimator, GradientBoostingClassifier):
+        X = X.toarray()
 
     # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
     try:
