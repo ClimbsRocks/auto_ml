@@ -23,3 +23,16 @@ The ``column_descriptions`` dictionary passed into ``Predictor()`` is essentiall
 #. ``attribute_name: 'output'`` The ``column_descriptions`` dictionary must specify one of your attributes as the output column. This is what the ``auto_ml`` predictor will try to predict. Importantly, the data you pass into ``.train()`` should have the correct values for this column, so we can teach the algorithms what is right and what is wrong.
 #. ``attribute_name: 'categorical'`` All attribute names that hold a string in any of the rows after the header row will be encoded as categorical data. If, however, you have any numerical columns that you want encoded as categorical data, you can specify that here.
 #. ``attribute_name: 'nlp'`` If any of your data is a text field that you'd like to run some Natural Language Processing on, specify that in the header row. Data stored in this attribute will be encoded using TF-IDF, along with some other feature engineering (count of some aggregations like total capital letters, puncutation characters, smiley faces, etc., as well as a sentiment prediction of that text). SERIOUS WARNING: This isn't built yet. It will be pretty simple to build, so if you want to submit that PR, I'd love to merge it in!
+
+
+Passing in your own feature engineering function
+=================================================
+
+You can pass in your own function to perform feature engineering on the data. This will be called as the first step in the pipeline that ``auto_ml`` builds out.
+
+You will be passed the entire X dataset (not the y dataset), and are expected to return the entire X dataset.
+
+The advantage of including it in the pipeline is that it will then be applied to any data you want predictions on later. You will also eventually be able to run GridSearchCV over any parameters you include here.
+
+Limitations:
+You cannot alter the length or ordering of the X dataset, since you will not have a chance to modify the y dataset. If you want to perform filtering, perform it before you pass in the data to train on.

@@ -42,25 +42,16 @@ Core Functionality Example
   ml_predictor.predict(new_data)
   # Where new_data is also a list of dictionaries
 
+  ml_predictor.save()
+  # Saves the trained predictor to a pickle file in the current working directory.
+  # You can load it using pickle.load in any environment with compatible Python versions. This is what you'll want to use for easily transferring from research into production!
+
 Advice
 ------
 
 Before you go any further, try running the code. Load up some dictionaries in Python, where each dictionary is a row of data. Make a ``column_descriptions`` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into ``auto_ml``, and see what happens!
 
 Everything else in these docs assumes you have done at least the above. Start there and everything else will build on top. But this part gets you the output you're probably interested in, without unnecessary complexity.
-
-
-Passing in your own feature engineering function
-=================================================
-
-You can pass in your own function to perform feature engineering on the data. This will be called as the first step in the pipeline that ``auto_ml`` builds out.
-
-You will be passed the entire X dataset (not the y dataset), and are expected to return the entire X dataset.
-
-The advantage of including it in the pipeline is that it will then be applied to any data you want predictions on later. You will also eventually be able to run GridSearchCV over any parameters you include here.
-
-Limitations:
-You cannot alter the length or ordering of the X dataset, since you will not have a chance to modify the y dataset. If you want to perform filtering, perform it before you pass in the data to train on.
 
 
 
