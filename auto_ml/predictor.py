@@ -624,7 +624,7 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.pkl', verbose=True):
         with open(file_name, 'wb') as open_file_name:
-            pickle.dump(self.trained_pipeline, open_file_name, protocol=pickle.HIGHEST_PROTOCOL, compress=1)
+            pickle.dump(self.trained_pipeline, open_file_name, protocol=pickle.HIGHEST_PROTOCOL)
 
         if verbose:
             print('\n\nWe have saved the trained pipeline to a filed called "auto_ml_saved_pipeline.pkl"')
