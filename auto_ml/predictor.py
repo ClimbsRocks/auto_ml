@@ -1,6 +1,12 @@
 import math
 import os
+import sys
 import warnings
+
+try:
+    import cPickle as pickle
+except:
+    import pickle
 
 from sklearn.cross_validation import train_test_split
 from sklearn.decomposition import TruncatedSVD
@@ -68,7 +74,7 @@ class Predictor(object):
             raise ValueError('In your column_descriptions, please make sure exactly one column has the value "output", which is the value we will be training models to predict.')
 
 
-    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', optimize_final_model=False, perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True, perform_feature_scaling=True):
+    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True, perform_feature_scaling=True):
 
         pipeline_list = []
 
@@ -95,17 +101,17 @@ class Predictor(object):
         if self.add_cluster_prediction or self.compute_power >=7:
             pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=self.optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
 
 
-    def _construct_pipeline_search_params(self, optimize_entire_pipeline=True, optimize_final_model=False, ml_for_analytics=False, perform_feature_selection=True, user_defined_model_names=None):
+    def _construct_pipeline_search_params(self, user_defined_model_names=None):
 
         gs_params = {}
 
-        if optimize_final_model or self.compute_power >= 5:
+        if self.optimize_final_model or self.compute_power >= 5:
             gs_params['final_model__perform_grid_search_on_model'] = [True, False]
 
         if self.compute_power >= 6:
@@ -237,12 +243,18 @@ class Predictor(object):
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
             sub_model_names = ['XGBClassifier']
+            # sub_model_names = ['GradientBoostingClassifier']
         elif sub_model_names is None and sub_type_of_estimator == 'regressor':
             sub_model_names = ['XGBRegressor']
+            # sub_model_names = ['GradientBoostingRegressor']
 
         ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
         # TODO: grab proper y_test values for this particular subpredictor
-        sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
+        if self.X_test is not None and self.y_test is not None:
+            sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
+        else:
+            sub_X_test = None
+            sub_y_test = None
 
         # NOTE that we will be mutating the input X here by stripping off the y values.
         ml_predictor.train(raw_training_data=X_subpredictors
@@ -254,6 +266,8 @@ class Predictor(object):
             , take_log_of_y=False
             , add_cluster_prediction=True
             , model_names=sub_model_names
+            , write_gs_param_results_to_file=False
+            , optimize_final_model=self.optimize_final_model
         )
         self.subpredictors[sub_idx] = ml_predictor
 
@@ -276,6 +290,7 @@ class Predictor(object):
             self.take_log_of_y = take_log_of_y
         self.add_cluster_prediction = add_cluster_prediction
         self.num_weak_estimators = num_weak_estimators
+        self.model_names = model_names
 
         # Put in place the markers that will tell us later on to train up a subpredictor for this problem
         if self.num_weak_estimators > 0:
@@ -347,7 +362,7 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        ppl = self._construct_pipeline(user_input_func, optimize_final_model=optimize_final_model, perform_feature_selection=perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
+        ppl = self._construct_pipeline(user_input_func, perform_feature_selection=perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
 
         if verbose:
             print('Successfully constructed the pipeline')
@@ -391,11 +406,11 @@ class Predictor(object):
 
     def perform_grid_search_by_model_names(self, estimator_names, ppl, scoring, X, y):
 
-        ppl = self._construct_pipeline(self.user_input_func, optimize_final_model=self.optimize_final_model, perform_feature_selection=self.perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
+        ppl = self._construct_pipeline(self.user_input_func, perform_feature_selection=self.perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
 
         for model_name in estimator_names:
 
-            self.grid_search_params = self._construct_pipeline_search_params()
+            self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
             self.grid_search_params['final_model__model_name'] = [model_name]
             if self.verbose:
@@ -606,4 +621,33 @@ class Predictor(object):
                 return self._scorer(self.trained_pipeline, X_test, y_test)
         else:
             return self.trained_pipeline.score(X_test, y_test)
+
+    def save(self, file_name='auto_ml_saved_pipeline.pkl', verbose=True):
+        with open(file_name, 'wb') as open_file_name:
+            pickle.dump(self.trained_pipeline, open_file_name, protocol=pickle.HIGHEST_PROTOCOL, compress=1)
+
+        if verbose:
+            print('\n\nWe have saved the trained pipeline to a filed called "auto_ml_saved_pipeline.pkl"')
+            print('It is saved in the directory: ')
+            print(os.getcwd())
+            print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
+            print('`with open("auto_ml_saved_pipeline.pkl", "rb") as read_file:`')
+            print('`    trained_ml_pipeline = pickle.load(read_file)`')
+            print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
+
+            print('Note that this pickle file can only be loaded in an environment with the same modules installed, and running the same Python version.')
+            print('This version of Python is:')
+            print(sys.version_info)
+
+            print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
+            print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
+            print('\nThese are the most important features that were fed into the model:')
+
+            if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+                self._print_ml_analytics_results_regression()
+            elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
+                self._print_ml_analytics_results_random_forest()
+
+        return os.getcwd() + file_name
+
 
