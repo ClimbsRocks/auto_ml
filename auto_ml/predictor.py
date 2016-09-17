@@ -74,14 +74,14 @@ class Predictor(object):
             raise ValueError('In your column_descriptions, please make sure exactly one column has the value "output", which is the value we will be training models to predict.')
 
 
-    def _construct_pipeline(self, user_input_func=None, model_name='LogisticRegression', perform_feature_selection=True, impute_missing_values=True, ml_for_analytics=True, perform_feature_scaling=True):
+    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, perform_feature_scaling=True):
 
         pipeline_list = []
 
         if len(self.subpredictors) > 0:
             pipeline_list.append(('subpredictors', utils.AddSubpredictorPredictions(trained_subpredictors=self.subpredictors)))
-        if user_input_func is not None:
-            pipeline_list.append(('user_func', FunctionTransformer(func=user_input_func, pass_y=False, validate=False) ))
+        if self.user_input_func is not None:
+            pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False) ))
 
         if len(self.date_cols) > 0:
             pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
@@ -94,7 +94,7 @@ class Predictor(object):
 
         pipeline_list.append(('dv', DictVectorizer(sparse=True, sort=True)))
 
-        if perform_feature_selection:
+        if self.perform_feature_selection:
             # pipeline_list.append(('pca', TruncatedSVD()))
             pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
@@ -103,7 +103,7 @@ class Predictor(object):
 
         final_model = utils.get_model_from_name(model_name)
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -177,7 +177,6 @@ class Predictor(object):
                 y = y_ints
             except:
                 pass
-            pass
         else:
             indices_to_delete = []
             y_floats = []
@@ -203,6 +202,7 @@ class Predictor(object):
 
         return X, y
 
+
     def _make_sub_column_descriptions(self, column_descriptions, sub_name):
         # TODO: make this work for multiple subpredictors. right now it will grab all 'regressor' or 'classifier' values at once, instead of only grabbing on.
         subpredictor_types = set(['classifier', 'regressor'])
@@ -225,6 +225,7 @@ class Predictor(object):
                     dup_descs[key] = val
 
         return dup_descs, sub_type_of_estimator
+
 
     def make_sub_x_and_y_test(self, X_test, sub_name):
         vals_to_ignore = set([None, float('nan'), float('Inf'), 'ignore'])
@@ -270,7 +271,6 @@ class Predictor(object):
             , optimize_final_model=self.optimize_final_model
         )
         self.subpredictors[sub_idx] = ml_predictor
-
 
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False, num_weak_estimators=0):
@@ -362,18 +362,12 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        # ppl = self._construct_pipeline(user_input_func, perform_feature_selection=perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
-
-        # if verbose:
-        #     print('Successfully constructed the pipeline')
-
         if model_names:
             estimator_names = model_names
         else:
             estimator_names = self._get_estimator_names()
 
         if self.type_of_estimator == 'classifier':
-            # scoring = make_scorer(brier_score_loss, greater_is_better=True)
             scoring = utils.brier_score_loss_wrapper
             self._scorer = scoring
         else:
@@ -404,18 +398,15 @@ class Predictor(object):
         del self.X_test
         del self.grid_search_pipelines
 
+
     def perform_grid_search_by_model_names(self, estimator_names, scoring, X, y):
 
-
         for model_name in estimator_names:
-            ppl = self._construct_pipeline(self.user_input_func, model_name=model_name, perform_feature_selection=self.perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
+            ppl = self._construct_pipeline(model_name=model_name)
 
             self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
             self.grid_search_params['final_model__model_name'] = [model_name]
-
-            # This must be set here, rather than in construct_pipeline.
-            # self.grid_search_params['final_model__model'] = utils.get_model_from_name(model_name)
 
             if self.optimize_final_model or self.compute_power >= 5:
                 raw_search_params = utils.get_search_params(model_name)
@@ -518,6 +509,7 @@ class Predictor(object):
         for feature in sorted_feature_infos[-50:]:
             print(feature[0] + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
+
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
@@ -538,6 +530,7 @@ class Predictor(object):
             print('The printed list will only contain at most the top 50 features.')
             for feature in sorted_feature_infos[-50:]:
                 print(feature[0] + ': ' + str(round(feature[1], 4)))
+
 
     def _get_trained_feature_names(self):
         if self.trained_pipeline.named_steps.get('feature_selection', False):
@@ -618,6 +611,7 @@ class Predictor(object):
                 predicted_vals[idx] = math.exp(val)
         return predicted_vals
 
+
     def predict_proba(self, prediction_data):
 
         # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
@@ -637,6 +631,7 @@ class Predictor(object):
                 return self._scorer(self.trained_pipeline, X_test, y_test)
         else:
             return self.trained_pipeline.score(X_test, y_test)
+
 
     def save(self, file_name='auto_ml_saved_pipeline.pkl', verbose=True):
         with open(file_name, 'wb') as open_file_name:
