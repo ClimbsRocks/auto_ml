@@ -113,11 +113,6 @@ class Predictor(object):
 
         gs_params = {}
 
-        # if self.optimize_final_model or self.compute_power >= 5:
-        #     gs_params['final_model__perform_grid_search_on_model'] = [True, False]
-
-        # gs_params['final_model__perform_grid_search_on_model'] = [False]
-
         if self.compute_power >= 6:
             gs_params['scaler__truncate_large_values'] = [True, False]
 

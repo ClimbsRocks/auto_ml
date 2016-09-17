@@ -39,36 +39,38 @@ def get_search_params(model_name):
     grid_search_params = {
 
         'XGBClassifier': {
-            'max_depth': [1, 2, 3, 5, 10, 20],
+            'max_depth': [1, 3, 5, 10, 25],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.7, 0.9, 1.0]
+            'subsample': [0.5, 1.0]
             # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
         },
         'XGBRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 5, 10, 20],
+            'max_depth': [1, 3, 5, 10, 25],
             # 'lossl': ['ls', 'lad', 'huber', 'quantile'],
             # 'booster': ['gbtree', 'gblinear', 'dart'],
             # 'objective': ['reg:linear', 'reg:gamma'],
             # 'learning_rate': [0.01, 0.1],
-            'subsample': [0.7, 0.9, 1.0]
+            'subsample': [0.5, 1.0]
             # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76],
 
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 5, 10, 20],
+            'max_depth': [1, 3, 5, 10, 25],
+            'max_features': ['sqrt', 'log2', None],
             # 'loss': ['ls', 'lad', 'huber', 'quantile']
             # 'booster': ['gbtree', 'gblinear', 'dart'],
             'loss': ['ls', 'lad', 'huber'],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.7, 0.9, 1.0]
+            'subsample': [0.5, 1.0]
         },
         'GradientBoostingClassifier': {
             'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 2, 3, 5, 10, 20],
+            'max_depth': [1, 3, 5, 10, 25],
+            'max_features': ['sqrt', 'log2', None],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.7, 0.9, 1.0]
+            'subsample': [0.5, 1.0]
             # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
 
         },
@@ -366,13 +368,12 @@ def get_model_from_name(model_name):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, ml_for_analytics=False, type_of_estimator='classifier'):
+    def __init__(self, model, model_name, X_train=None, y_train=None, ml_for_analytics=False, type_of_estimator='classifier'):
 
         self.model = model
         self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train
-        self.perform_grid_search_on_model = perform_grid_search_on_model
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
 
@@ -576,47 +577,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     del col_vals
 
 
-        # we can perform RandomizedSearchCV on just our final estimator.
-        if self.perform_grid_search_on_model:
+        self.model = get_model_from_name(self.model_name)
 
-            gs_params = self.get_search_params()
-
-            n_iter = 15
-            # if self.model_name == 'XGBRegressor':
-            #     n_iter = 20
-            if self.model_name == 'LinearRegression':
-                # There's just not much to optimize on a linear regression
-                n_iter = 4
-
-            self.rscv = RandomizedSearchCV(
-                model_to_fit,
-                gs_params,
-                # Pick n_iter combinations of hyperparameters to fit on and score.
-                # Larger numbers risk more overfitting, but also could be more accurate, at more computational expense.
-                n_iter=n_iter,
-                n_jobs=-1,
-                # Have only two folds of cross-validation, rather than 3. This speeds up training time, and reduces the risk of overfitting.
-                cv=2,
-                verbose=0,
-                # If a combination of hyperparameters fails to fit, set it's score to a very low number that we will not choose.
-                error_score=-1000000000,
-                scoring=self._scorer
-            )
-            self.rscv.fit(X_fit, y)
-            self.model = self.rscv.best_estimator_
-
-            print('The best hyperparameters for this model are:')
-            print(self.rscv.best_params_)
-            print('all score params for this model are')
-            sorted_scores = sorted(self.rscv.grid_scores_, key= lambda x: x[1], reverse=True)
-            for score in sorted_scores:
-                print(score)
-        # or, we can just use the default estimator
-        else:
-            # self.model = self.model_map[self.model_name]
-            self.model = get_model_from_name(self.model_name)
-
-            self.model.fit(X_fit, y)
+        self.model.fit(X_fit, y)
 
         return self
 
