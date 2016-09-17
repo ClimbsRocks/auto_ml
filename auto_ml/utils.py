@@ -37,6 +37,42 @@ def split_output(X, output_column_name, verbose=False):
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):
     grid_search_params = {
+
+        'XGBClassifier': {
+            'max_depth': [1, 2, 3, 5, 10, 20],
+            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'subsample': [0.7, 0.9, 1.0]
+            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+        },
+        'XGBRegressor': {
+            # Add in max_delta_step if classes are extremely imbalanced
+            'max_depth': [1, 2, 3, 5, 10, 20],
+            # 'lossl': ['ls', 'lad', 'huber', 'quantile'],
+            # 'booster': ['gbtree', 'gblinear', 'dart'],
+            # 'objective': ['reg:linear', 'reg:gamma'],
+            # 'learning_rate': [0.01, 0.1],
+            'subsample': [0.7, 0.9, 1.0]
+            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76],
+
+        },
+        'GradientBoostingRegressor': {
+            # Add in max_delta_step if classes are extremely imbalanced
+            'max_depth': [1, 2, 3, 5, 10, 20],
+            # 'loss': ['ls', 'lad', 'huber', 'quantile']
+            # 'booster': ['gbtree', 'gblinear', 'dart'],
+            'loss': ['ls', 'lad', 'huber'],
+            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'subsample': [0.7, 0.9, 1.0]
+        },
+        'GradientBoostingClassifier': {
+            'loss': ['deviance', 'exponential'],
+            'max_depth': [1, 2, 3, 5, 10, 20],
+            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'subsample': [0.7, 0.9, 1.0]
+            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+
+        },
+
         'LogisticRegression': {
             'C': [.0001, .001, .01, .1, 1, 10, 100, 1000],
             'class_weight': [None, 'balanced'],
@@ -69,23 +105,6 @@ def get_search_params(model_name):
             'alpha': [.0001, .001, .01, .1, 1, 10, 100, 1000],
             'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
         },
-        'XGBClassifier': {
-            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.7, 0.9, 1.0]
-            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
-        },
-        'XGBRegressor': {
-            # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-            # 'lossl': ['ls', 'lad', 'huber', 'quantile'],
-            # 'booster': ['gbtree', 'gblinear', 'dart'],
-            # 'objective': ['reg:linear', 'reg:gamma'],
-            # 'learning_rate': [0.01, 0.1],
-            'subsample': [0.7, 0.9, 1.0]
-            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76],
-
-        },
         'ExtraTreesRegressor': {
             'max_features': ['auto', 'sqrt', 'log2', None],
             'min_samples_split': [1, 2, 5, 20, 50, 100],
@@ -99,23 +118,6 @@ def get_search_params(model_name):
         'RANSACRegressor': {
             'min_samples': [None, .1, 100, 1000, 10000],
             'stop_probability': [0.99, 0.98, 0.95, 0.90]
-        },
-        'GradientBoostingRegressor': {
-            # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-            # 'loss': ['ls', 'lad', 'huber', 'quantile']
-            # 'booster': ['gbtree', 'gblinear', 'dart'],
-            'loss': ['ls', 'lad', 'huber'],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.7, 0.9, 1.0]
-        },
-        'GradientBoostingClassifier': {
-            'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.7, 0.9, 1.0]
-            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
-
         },
         'Lasso': {
             'selection': ['cyclic', 'random'],
