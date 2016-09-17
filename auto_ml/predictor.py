@@ -102,10 +102,8 @@ class Predictor(object):
             pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
 
         final_model = utils.get_model_from_name(model_name)
-        print('final_model in _construct_pipeline')
-        print(final_model)
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, perform_grid_search_on_model=self.optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
+        pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -118,7 +116,7 @@ class Predictor(object):
         # if self.optimize_final_model or self.compute_power >= 5:
         #     gs_params['final_model__perform_grid_search_on_model'] = [True, False]
 
-        gs_params['final_model__perform_grid_search_on_model'] = [False]
+        # gs_params['final_model__perform_grid_search_on_model'] = [False]
 
         if self.compute_power >= 6:
             gs_params['scaler__truncate_large_values'] = [True, False]
@@ -127,6 +125,7 @@ class Predictor(object):
             model_names = user_defined_model_names
         else:
             model_names = self._get_estimator_names()
+
         gs_params['final_model__model_name'] = model_names
 
         # Only optimize our feature selection methods this deeply if the user really, really wants to.
@@ -428,13 +427,6 @@ class Predictor(object):
                 for param_name, param_list in raw_search_params.items():
                     self.grid_search_params['final_model__model__' + param_name] = param_list
 
-            print(self.grid_search_params)
-
-            print('ppl final_model')
-            print(ppl.named_steps['final_model'])
-
-            print()
-
             if self.verbose:
                 grid_search_verbose = 5
             else:
@@ -607,6 +599,13 @@ class Predictor(object):
         print(gs.best_score_)
         print('The best params were')
         print(gs.best_params_)
+
+        if self.verbose:
+            print('Here are all the hyperparameters that were tried:')
+            raw_scores = gs.grid_scores_
+            sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
+            for score in sorted_scores:
+                print(score)
         # Print some nice summary output of all the training we did.
         # maybe allow the user to pass in a flag to write info to a file
 
