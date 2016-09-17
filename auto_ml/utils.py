@@ -39,14 +39,14 @@ def get_search_params(model_name):
     grid_search_params = {
 
         'XGBClassifier': {
-            'max_depth': [1, 3, 5, 10, 25],
+            'max_depth': [1, 3, 8, 25],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
             'subsample': [0.5, 1.0]
             # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
         },
         'XGBRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 3, 5, 10, 25],
+            'max_depth': [1, 3, 8, 25],
             # 'lossl': ['ls', 'lad', 'huber', 'quantile'],
             # 'booster': ['gbtree', 'gblinear', 'dart'],
             # 'objective': ['reg:linear', 'reg:gamma'],
@@ -57,7 +57,7 @@ def get_search_params(model_name):
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 3, 5, 10, 25],
+            'max_depth': [1, 3, 8, 25],
             'max_features': ['sqrt', 'log2', None],
             # 'loss': ['ls', 'lad', 'huber', 'quantile']
             # 'booster': ['gbtree', 'gblinear', 'dart'],
@@ -67,7 +67,7 @@ def get_search_params(model_name):
         },
         'GradientBoostingClassifier': {
             'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 3, 5, 10, 25],
+            'max_depth': [1, 3, 8, 25],
             'max_features': ['sqrt', 'log2', None],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
             'subsample': [0.5, 1.0]
@@ -321,42 +321,6 @@ def get_model_from_name(model_name):
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
     }
     return model_map[model_name]
-    # model_map = {
-    #     # Classifiers
-    #     'LogisticRegression': LogisticRegression,
-    #     'RandomForestClassifier': RandomForestClassifier,
-    #     'RidgeClassifier': RidgeClassifier,
-    #     'XGBClassifier': xgb.XGBClassifier,
-    #     'GradientBoostingClassifier': GradientBoostingClassifier,
-
-    #     # Regressors
-    #     'LinearRegression': LinearRegression,
-    #     'RandomForestRegressor': RandomForestRegressor,
-    #     'Ridge': Ridge,
-    #     'XGBRegressor': xgb.XGBRegressor,
-    #     'ExtraTreesRegressor': ExtraTreesRegressor,
-    #     'AdaBoostRegressor': AdaBoostRegressor,
-    #     'RANSACRegressor': RANSACRegressor,
-    #     'GradientBoostingRegressor': GradientBoostingRegressor
-    # }
-
-    # new_instance = model_map[model_name]
-    # new_instance = new_instance()
-    # # Super crude, but we'll just try to set all the available params on this new instance
-    # try:
-    #     new_instance.set_params(n_jobs=-1)
-    # except:
-    #     pass
-    # try:
-    #     new_instance.set_params(presort=False)
-    # except:
-    #     pass
-    # # TODO: eventually, don't create new instances except for what the user requests
-    # # Then have a params_to_set hash, where we've got all the params we're interested in setting
-
-    # return new_instance
-
-
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -378,168 +342,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.type_of_estimator = type_of_estimator
 
         if self.type_of_estimator == 'classifier':
-            self._scorer = rscv_brier_score_loss_wrapper
+            self._scorer = brier_score_loss_wrapper
         else:
-            self._scorer = rscv_rmse_scoring
-
-
-    # It would be optimal to store large objects like this elsewhere, but storing it all inside FinalModelATC ensures that each instance will always be self-contained, which is helpful when saving and transferring to different environments.
-    def get_search_params(self):
-        randomized_search_params = {
-            'LogisticRegression': {
-                'C': scipy.stats.expon(.0001, 1000),
-                'class_weight': [None, 'balanced'],
-                'solver': ['newton-cg', 'lbfgs', 'sag']
-            },
-            'LinearRegression': {
-                'fit_intercept': [True, False],
-                'normalize': [True, False]
-            },
-            'RandomForestClassifier': {
-                'criterion': ['entropy', 'gini'],
-                'class_weight': [None, 'balanced'],
-                'max_features': ['sqrt', 'log2', None],
-                'min_samples_split': [1, 2, 5, 20, 50, 100],
-                'min_samples_leaf': [1, 2, 5, 20, 50, 100],
-                'bootstrap': [True, False]
-            },
-            'RandomForestRegressor': {
-                'max_features': ['auto', 'sqrt', 'log2', None],
-                'min_samples_split': [1, 2, 5, 20, 50, 100],
-                'min_samples_leaf': [1, 2, 5, 20, 50, 100],
-                'bootstrap': [True, False]
-            },
-            'RidgeClassifier': {
-                'alpha': scipy.stats.expon(.0001, 1000),
-                'class_weight': [None, 'balanced'],
-                'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
-            },
-            'Ridge': {
-                'alpha': scipy.stats.expon(.0001, 1000),
-                'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
-            },
-            'XGBClassifier': {
-                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-                # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.7, 0.9, 1.0]
-                # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
-            },
-            'XGBRegressor': {
-                # Add in max_delta_step if classes are extremely imbalanced
-                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-                # 'lossl': ['ls', 'lad', 'huber', 'quantile']
-                # 'booster': ['gbtree', 'gblinear', 'dart'],
-                # 'objective': ['reg:linear', 'reg:gamma'],
-                # 'learning_rate': [0.01, 0.1],
-                'subsample': [0.7, 0.9, 1.0]
-                # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76],
-
-            },
-            'ExtraTreesRegressor': {
-                'max_features': ['auto', 'sqrt', 'log2', None],
-                'min_samples_split': [1, 2, 5, 20, 50, 100],
-                'min_samples_leaf': [1, 2, 5, 20, 50, 100],
-                'bootstrap': [True, False]
-            },
-            'AdaBoostRegressor': {
-                'base_estimator': [None, LinearRegression(n_jobs=-1)],
-                'loss': ['linear','square','exponential']
-            },
-            'RANSACRegressor': {
-                'min_samples': [None, .1, 100, 1000, 10000],
-                'stop_probability': [0.99, 0.98, 0.95, 0.90]
-            },
-            'GradientBoostingRegressor': {
-                # Add in max_delta_step if classes are extremely imbalanced
-                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-                # 'loss': ['ls', 'lad', 'huber', 'quantile']
-                # 'booster': ['gbtree', 'gblinear', 'dart'],
-                'loss': ['ls', 'lad', 'huber'],
-                # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.7, 0.9, 1.0]
-            },
-            'GradientBoostingClassifier': {
-                'loss': ['deviance', 'exponential'],
-                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
-                # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.7, 0.9, 1.0]
-                # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
-
-            },
-            'Lasso': {
-                'selection': ['cyclic', 'random'],
-                'tol': scipy.stats.expon(.0000001, .001),
-                'positive': [True, False]
-            },
-
-            'ElasticNet': {
-                'l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9],
-                'selection': ['cyclic', 'random'],
-                'tol': scipy.stats.expon(.0000001, .001),
-                'positive': [True, False]
-            },
-
-            'LassoLars': {
-                'positive': [True, False],
-                'max_iter': [50, 100, 250, 500, 1000]
-            },
-
-            'OrthogonalMatchingPursuit': {
-                'n_nonzero_coefs': [None, 3, 5, 10, 25, 50, 75, 100, 200, 500]
-            },
-
-            'BayesianRidge': {
-                'tol': scipy.stats.expon(.0000001, .001),
-                'alpha_1': scipy.stats.expon(.000000001, .0001),
-                'lambda_1': scipy.stats.expon(.000000001, .0001),
-                'lambda_2': scipy.stats.expon(.000000001, .0001)
-            },
-
-            'ARDRegression': {
-                'tol': scipy.stats.expon(.0000001, .001),
-                'alpha_1': scipy.stats.expon(.000000001, .0001),
-                'alpha_2': scipy.stats.expon(.000000001, .0001),
-                'lambda_1': scipy.stats.expon(.000000001, .0001),
-                'lambda_2': scipy.stats.expon(.000000001, .0001),
-                'threshold_lambda': scipy.stats.expon(100, 1000000)
-            },
-
-            'SGDRegressor': {
-                'loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
-                'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-                'learning_rate': ['constant', 'optimal', 'invscaling'],
-                'alpha': scipy.stats.expon(.000000001, .0001),
-            },
-
-            'PassiveAggressiveRegressor': {
-                'epsilon': [0.01, 0.05, 0.1, 0.2, 0.5],
-                'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive'],
-                'C': scipy.stats.expon(0.000001, 100000)
-            },
-
-            'SGDClassifier': {
-                'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
-                'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-                'alpha': scipy.stats.expon(.000000001, .0001),
-                'learning_rate': ['constant', 'optimal', 'invscaling'],
-                'class_weight': ['balanced', None]
-            },
-
-            'Perceptron': {
-                'penalty': ['none', 'l2', 'l1', 'elasticnet'],
-                'alpha': scipy.stats.expon(.000000001, .0001),
-                'class_weight': ['balanced', None]
-            },
-
-            'PassiveAggressiveClassifier': {
-                'loss': ['hinge', 'squared_hinge'],
-                'class_weight': ['balanced', None],
-                'C': [0.01, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0]
-            }
-
-        }
-
-        return randomized_search_params[self.model_name]
+            self._scorer = rmse_scoring
 
 
     def fit(self, X, y):
@@ -585,16 +390,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def score(self, X, y):
+
+        # At the time of writing this, GradientBoosting does not support sparse matrices for predictions
         if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
             X = X.todense()
 
-        # try:
-        #     if self._scorer is not None:
-        #         if self.type_of_estimator == 'regressor':
-        #             return self._scorer(self.model, X, y)
-        #         elif self.type_of_estimator == 'classifier':
-        #             return self._scorer(self.model, X, y)
-        # try:
         if self._scorer is not None:
             if self.type_of_estimator == 'regressor':
                 return self._scorer(self, X, y)
@@ -603,22 +403,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         else:
             return self.model.score(X, y)
-
-        # except ValueError:
-
-        #     # XGBoost doesn't always handle sparse matrices well.
-        #     # X_dense = X.todense()
-
-        #     # if self._scorer is not None:
-        #     #     return self._scorer(X_dense, y)
-        #     # else:
-        #     #     return self.model.score(X_dense, y)
-        #     X_csc = X.tocsc()
-
-        #     if self._scorer is not None:
-        #         return self._scorer(X_csc, y)
-        #     else:
-        #         return self.model.score(X_csc, y)
 
 
     def predict_proba(self, X):
@@ -633,12 +417,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         try:
             return self.model.predict_proba(X)
-        # except ValueError:
-        #     # XGBoost doesn't always handle sparse matrices well.
-        #     # X_dense = X.todense()
-        #     # return self.model.predict_proba(X_dense)
-        #     X_csc = X.tocsc()
-        #     return self.model.predict_proba(X_csc)
         except AttributeError:
             print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
@@ -650,8 +428,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     tupled_predictions.append([1,0])
             return tupled_predictions
 
-        except Exception as e:
-            raise(e)
 
     def predict(self, X):
 
@@ -666,15 +442,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             X_predict = X
 
-        # XGBoost doesn't always handle sparse matrices well.
-        # try:
         return self.model.predict(X_predict)
-        # except ValueError as e:
-        #     print(e)
-        #     # X_dense = X.todense()
-        #     # return self.model.predict(X_dense)
-        #     X_csc = X_predict.tocsc()
-        #     return self.model.predict(X_csc)
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
@@ -735,6 +503,7 @@ def write_most_recent_gs_result_to_file(trained_gs, most_recent_filename, timest
         for row in rows_to_write:
             writer.writerow(row)
 
+
 def get_feature_selection_model_from_name(type_of_estimator, model_name):
     # TODO(PRESTON): eventually let threshold be user-configurable (or grid_searchable)
     # TODO(PRESTON): optimize the params used here
@@ -756,6 +525,7 @@ def get_feature_selection_model_from_name(type_of_estimator, model_name):
     }
 
     return model_map[type_of_estimator][model_name]
+
 
 class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
@@ -808,49 +578,6 @@ def brier_score_loss_wrapper(estimator, X, y):
         X = X.toarray()
 
     predictions = estimator.predict_proba(X)
-    probas = [row[1] for row in predictions]
-    score = brier_score_loss(y, probas)
-    return -1 * score
-
-
-def rscv_rmse_scoring(estimator, X, y, took_log_of_y=False):
-    if isinstance(estimator, GradientBoostingRegressor):
-        X = X.toarray()
-
-    # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
-    # try:
-    predictions = estimator.predict(X)
-    # except ValueError as e:
-    #     X_dense = X.todense()
-    #     try:
-    #         predictions = estimator.predict(X_dense)
-    #         # X_csc = X.tocsc()
-    #         # predictions = estimator.predict(X_csc)
-    #     except:
-    #         return -1000000000
-
-    if took_log_of_y:
-        for idx, val in enumerate(predictions):
-            predictions[idx] = math.exp(val)
-    rmse = mean_squared_error(y, predictions)**0.5
-    return - 1 * rmse
-
-
-def rscv_brier_score_loss_wrapper(estimator, X, y):
-    if isinstance(estimator, GradientBoostingClassifier):
-        X = X.toarray()
-
-    # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
-    # try:
-    predictions = estimator.predict_proba(X)
-    # except ValueError:
-    #     X_csc = X.tocsc()
-    #     try:
-    #         predictions = estimator.predict_proba(X_csc)
-    #     except:
-    #         return -1000000000
-
-    # predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
     score = brier_score_loss(y, probas)
     return -1 * score
@@ -945,27 +672,6 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 class AddPredictedFeature(BaseEstimator, TransformerMixin):
 
-    # def set_model_map(self):
-    #     self.model_map = {
-    #         # Classifiers
-    #         'LogisticRegression': LogisticRegression(n_jobs=-2),
-    #         'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
-    #         'RidgeClassifier': RidgeClassifier(),
-    #         'XGBClassifier': xgb.XGBClassifier(),
-
-    #         # Regressors
-    #         'LinearRegression': LinearRegression(n_jobs=-2),
-    #         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
-    #         'Ridge': Ridge(),
-    #         'XGBRegressor': xgb.XGBRegressor(),
-    #         'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-    #         'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
-    #         'RANSACRegressor': RANSACRegressor(),
-
-    #         # Clustering
-    #         'MiniBatchKMeans': MiniBatchKMeans(self.n_clusters)
-    #     }
-
 
     def __init__(self, type_of_estimator=None, model_name='MiniBatchKMeans', include_original_X=False, y_train=None):
         # 'regressor' or 'classifier'
@@ -977,11 +683,9 @@ class AddPredictedFeature(BaseEstimator, TransformerMixin):
         # If this is for an esembled subpredictor, these are the y values we will train the predictor on while running .fit()
         self.y_train = y_train
         self.n_clusters = 8
-        # self.set_model_map()
 
 
     def fit(self, X, y=None):
-        # self.model = self.model_map[self.model_name]
         self.model = get_model_from_name(self.model_name)
 
         if self.y_train is not None:
@@ -1036,22 +740,26 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         predictions = []
         for predictor in self.trained_subpredictors:
+
             if predictor.type_of_estimator == 'regressor':
                 predictions.append(predictor.predict(X))
+
             else:
-                # TODO: Future- if it's a classifier, get both the predicted class, as well as the predict_proba
                 predictions.append(predictor.predict(X))
+
         if self.include_original_X:
             X_copy = []
             for row_idx, row in enumerate(X):
+
                 row_copy = row.copy()
                 for pred_idx, name in enumerate(self.sub_names):
+
                     row_copy[name + '_sub_prediction'] = predictions[pred_idx][row_idx]
+
                 X_copy.append(row_copy)
 
             return X_copy
 
         else:
-            # TODO: this will break if we ever try to refactor into FeatureUnions again.
             return predictions
 
