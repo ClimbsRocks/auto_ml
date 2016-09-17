@@ -34,6 +34,166 @@ def split_output(X, output_column_name, verbose=False):
     return X, y
 
 
+# Hyperparameter search spaces for each model
+def get_search_params(model_name):
+    grid_search_params = {
+        'LogisticRegression': {
+            'C': [.0001, .001, .01, .1, 1, 10, 100, 1000],
+            'class_weight': [None, 'balanced'],
+            'solver': ['newton-cg', 'lbfgs', 'sag']
+        },
+        'LinearRegression': {
+            'fit_intercept': [True, False],
+            'normalize': [True, False]
+        },
+        'RandomForestClassifier': {
+            'criterion': ['entropy', 'gini'],
+            'class_weight': [None, 'balanced'],
+            'max_features': ['sqrt', 'log2', None],
+            'min_samples_split': [1, 2, 5, 20, 50, 100],
+            'min_samples_leaf': [1, 2, 5, 20, 50, 100],
+            'bootstrap': [True, False]
+        },
+        'RandomForestRegressor': {
+            'max_features': ['auto', 'sqrt', 'log2', None],
+            'min_samples_split': [1, 2, 5, 20, 50, 100],
+            'min_samples_leaf': [1, 2, 5, 20, 50, 100],
+            'bootstrap': [True, False]
+        },
+        'RidgeClassifier': {
+            'alpha': [.0001, .001, .01, .1, 1, 10, 100, 1000],
+            'class_weight': [None, 'balanced'],
+            'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
+        },
+        'Ridge': {
+            'alpha': [.0001, .001, .01, .1, 1, 10, 100, 1000],
+            'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
+        },
+        'XGBClassifier': {
+            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
+            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'subsample': [0.7, 0.9, 1.0]
+            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+        },
+        'XGBRegressor': {
+            # Add in max_delta_step if classes are extremely imbalanced
+            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
+            # 'lossl': ['ls', 'lad', 'huber', 'quantile'],
+            # 'booster': ['gbtree', 'gblinear', 'dart'],
+            # 'objective': ['reg:linear', 'reg:gamma'],
+            # 'learning_rate': [0.01, 0.1],
+            'subsample': [0.7, 0.9, 1.0]
+            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76],
+
+        },
+        'ExtraTreesRegressor': {
+            'max_features': ['auto', 'sqrt', 'log2', None],
+            'min_samples_split': [1, 2, 5, 20, 50, 100],
+            'min_samples_leaf': [1, 2, 5, 20, 50, 100],
+            'bootstrap': [True, False]
+        },
+        'AdaBoostRegressor': {
+            'base_estimator': [None, LinearRegression(n_jobs=-1)],
+            'loss': ['linear','square','exponential']
+        },
+        'RANSACRegressor': {
+            'min_samples': [None, .1, 100, 1000, 10000],
+            'stop_probability': [0.99, 0.98, 0.95, 0.90]
+        },
+        'GradientBoostingRegressor': {
+            # Add in max_delta_step if classes are extremely imbalanced
+            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
+            # 'loss': ['ls', 'lad', 'huber', 'quantile']
+            # 'booster': ['gbtree', 'gblinear', 'dart'],
+            'loss': ['ls', 'lad', 'huber'],
+            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'subsample': [0.7, 0.9, 1.0]
+        },
+        'GradientBoostingClassifier': {
+            'loss': ['deviance', 'exponential'],
+            'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
+            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'subsample': [0.7, 0.9, 1.0]
+            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+
+        },
+        'Lasso': {
+            'selection': ['cyclic', 'random'],
+            'tol': [.0000001, .000001, .00001, .0001, .001],
+            'positive': [True, False]
+        },
+
+        'ElasticNet': {
+            'l1_ratio': [0.1, 0.3, 0.5, 0.7, 0.9],
+            'selection': ['cyclic', 'random'],
+            'tol': [.0000001, .000001, .00001, .0001, .001],
+            'positive': [True, False]
+        },
+
+        'LassoLars': {
+            'positive': [True, False],
+            'max_iter': [50, 100, 250, 500, 1000]
+        },
+
+        'OrthogonalMatchingPursuit': {
+            'n_nonzero_coefs': [None, 3, 5, 10, 25, 50, 75, 100, 200, 500]
+        },
+
+        'BayesianRidge': {
+            'tol': [.0000001, .000001, .00001, .0001, .001],
+            'alpha_1': [.0000001, .000001, .00001, .0001, .001],
+            'lambda_1': [.0000001, .000001, .00001, .0001, .001],
+            'lambda_2': [.0000001, .000001, .00001, .0001, .001]
+        },
+
+        'ARDRegression': {
+            'tol': [.0000001, .000001, .00001, .0001, .001],
+            'alpha_1': [.0000001, .000001, .00001, .0001, .001],
+            'alpha_2': [.0000001, .000001, .00001, .0001, .001],
+            'lambda_1': [.0000001, .000001, .00001, .0001, .001],
+            'lambda_2': [.0000001, .000001, .00001, .0001, .001],
+            'threshold_lambda': [100, 1000, 10000, 100000, 1000000]
+        },
+
+        'SGDRegressor': {
+            'loss': ['squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+            'learning_rate': ['constant', 'optimal', 'invscaling'],
+            'alpha': [.0000001, .000001, .00001, .0001, .001]
+        },
+
+        'PassiveAggressiveRegressor': {
+            'epsilon': [0.01, 0.05, 0.1, 0.2, 0.5],
+            'loss': ['epsilon_insensitive', 'squared_epsilon_insensitive'],
+            'C': [.0001, .001, .01, .1, 1, 10, 100, 1000],
+        },
+
+        'SGDClassifier': {
+            'loss': ['hinge', 'log', 'modified_huber', 'squared_hinge', 'perceptron', 'squared_loss', 'huber', 'epsilon_insensitive', 'squared_epsilon_insensitive'],
+            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+            'alpha': [.0000001, .000001, .00001, .0001, .001],
+            'learning_rate': ['constant', 'optimal', 'invscaling'],
+            'class_weight': ['balanced', None]
+        },
+
+        'Perceptron': {
+            'penalty': ['none', 'l2', 'l1', 'elasticnet'],
+            'alpha': [.0000001, .000001, .00001, .0001, .001],
+            'class_weight': ['balanced', None]
+        },
+
+        'PassiveAggressiveClassifier': {
+            'loss': ['hinge', 'squared_hinge'],
+            'class_weight': ['balanced', None],
+            'C': [0.01, 0.3, 0.5, 0.7, 0.8, 0.9, 0.95, 0.99, 1.0]
+        }
+
+    }
+
+    return grid_search_params[model_name]
+
+
+
 class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
 
@@ -204,8 +364,9 @@ def get_model_from_name(model_name):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, ml_for_analytics=False, type_of_estimator='classifier'):
+    def __init__(self, model, model_name, X_train=None, y_train=None, perform_grid_search_on_model=False, ml_for_analytics=False, type_of_estimator='classifier'):
 
+        self.model = model
         self.model_name = model_name
         self.X_train = X_train
         self.y_train = y_train

@@ -101,7 +101,11 @@ class Predictor(object):
         if self.add_cluster_prediction or self.compute_power >=7:
             pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model_name=model_name, perform_grid_search_on_model=self.optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
+        final_model = utils.get_model_from_name(model_name)
+        print('final_model in _construct_pipeline')
+        print(final_model)
+
+        pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, perform_grid_search_on_model=self.optimize_final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -111,8 +115,10 @@ class Predictor(object):
 
         gs_params = {}
 
-        if self.optimize_final_model or self.compute_power >= 5:
-            gs_params['final_model__perform_grid_search_on_model'] = [True, False]
+        # if self.optimize_final_model or self.compute_power >= 5:
+        #     gs_params['final_model__perform_grid_search_on_model'] = [True, False]
+
+        gs_params['final_model__perform_grid_search_on_model'] = [False]
 
         if self.compute_power >= 6:
             gs_params['scaler__truncate_large_values'] = [True, False]
@@ -362,10 +368,10 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        ppl = self._construct_pipeline(user_input_func, perform_feature_selection=perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
+        # ppl = self._construct_pipeline(user_input_func, perform_feature_selection=perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
 
-        if verbose:
-            print('Successfully constructed the pipeline')
+        # if verbose:
+        #     print('Successfully constructed the pipeline')
 
         if model_names:
             estimator_names = model_names
@@ -384,7 +390,7 @@ class Predictor(object):
             print('Created estimator_names and scoring')
 
 
-        self.perform_grid_search_by_model_names(estimator_names, ppl, scoring, X, y)
+        self.perform_grid_search_by_model_names(estimator_names, scoring, X, y)
 
         # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
         # 1. Holdout data
@@ -404,15 +410,31 @@ class Predictor(object):
         del self.X_test
         del self.grid_search_pipelines
 
-    def perform_grid_search_by_model_names(self, estimator_names, ppl, scoring, X, y):
+    def perform_grid_search_by_model_names(self, estimator_names, scoring, X, y):
 
-        ppl = self._construct_pipeline(self.user_input_func, perform_feature_selection=self.perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
 
         for model_name in estimator_names:
+            ppl = self._construct_pipeline(self.user_input_func, model_name=model_name, perform_feature_selection=self.perform_feature_selection, ml_for_analytics=self.ml_for_analytics)
 
             self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
             self.grid_search_params['final_model__model_name'] = [model_name]
+
+            # This must be set here, rather than in construct_pipeline.
+            # self.grid_search_params['final_model__model'] = utils.get_model_from_name(model_name)
+
+            if self.optimize_final_model or self.compute_power >= 5:
+                raw_search_params = utils.get_search_params(model_name)
+                for param_name, param_list in raw_search_params.items():
+                    self.grid_search_params['final_model__model__' + param_name] = param_list
+
+            print(self.grid_search_params)
+
+            print('ppl final_model')
+            print(ppl.named_steps['final_model'])
+
+            print()
+
             if self.verbose:
                 grid_search_verbose = 5
             else:
