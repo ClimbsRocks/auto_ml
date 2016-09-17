@@ -92,7 +92,7 @@ class Predictor(object):
         if perform_feature_scaling:
             pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
 
-        pipeline_list.append(('dv', DictVectorizer(sparse=True, sort=False)))
+        pipeline_list.append(('dv', DictVectorizer(sparse=True, sort=True)))
 
         if perform_feature_selection:
             # pipeline_list.append(('pca', TruncatedSVD()))

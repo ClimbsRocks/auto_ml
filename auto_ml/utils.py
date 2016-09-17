@@ -255,18 +255,20 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 'solver': ['auto', 'svd', 'cholesky', 'lsqr', 'sparse_cg', 'sag']
             },
             'XGBClassifier': {
-                'max_depth': [1, 2, 5, 20, 50, 100],
-                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.5, 1]
+                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
+                # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.7, 0.9, 1.0]
+                # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
             },
             'XGBRegressor': {
                 # Add in max_delta_step if classes are extremely imbalanced
-                'max_depth': [1, 2, 5, 20, 50, 100],
+                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
                 # 'lossl': ['ls', 'lad', 'huber', 'quantile']
                 # 'booster': ['gbtree', 'gblinear', 'dart'],
-                'objective': ['reg:linear', 'reg:gamma', 'rank:pairwise'],
-                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.5, 1],
+                # 'objective': ['reg:linear', 'reg:gamma'],
+                # 'learning_rate': [0.01, 0.1],
+                'subsample': [0.7, 0.9, 1.0]
+                # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76],
 
             },
             'ExtraTreesRegressor': {
@@ -285,18 +287,20 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             },
             'GradientBoostingRegressor': {
                 # Add in max_delta_step if classes are extremely imbalanced
-                'max_depth': [1, 2, 5, 20, 50, 100],
+                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
                 # 'loss': ['ls', 'lad', 'huber', 'quantile']
                 # 'booster': ['gbtree', 'gblinear', 'dart'],
-                'loss': ['ls', 'lad', 'huber', 'quantile'],
-                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.5, 1]
+                'loss': ['ls', 'lad', 'huber'],
+                # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.7, 0.9, 1.0]
             },
             'GradientBoostingClassifier': {
                 'loss': ['deviance', 'exponential'],
-                'max_depth': [1, 2, 5, 20, 50, 100],
-                'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-                'subsample': [0.5, 1]
+                'max_depth': [1, 2, 3, 4, 5, 20, 50, 100],
+                # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+                'subsample': [0.7, 0.9, 1.0]
+                # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+
             },
             'Lasso': {
                 'selection': ['cyclic', 'random'],
@@ -376,15 +380,23 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y):
 
+        if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
+            ones = [[1] for x in range(X.shape[0])]
+            # Trying to force XGBoost to play nice with sparse matrices
+            X_fit = scipy.sparse.hstack((X, ones))
+
+        else:
+            X_fit = X
+
         model_to_fit = get_model_from_name(self.model_name)
 
         if self.ml_for_analytics:
             self.feature_ranges = []
 
             # Grab the ranges for each feature
-            if scipy.sparse.issparse(X):
-                for col_idx in range(X.shape[1]):
-                    col_vals = X.getcol(col_idx).toarray()
+            if scipy.sparse.issparse(X_fit):
+                for col_idx in range(X_fit.shape[1]):
+                    col_vals = X_fit.getcol(col_idx).toarray()
                     col_vals = sorted(col_vals)
 
                     # if the entire range is 0 - 1, just append the entire range.
@@ -406,15 +418,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             gs_params = self.get_search_params()
 
-            n_iter = 8
+            n_iter = 15
             # if self.model_name == 'XGBRegressor':
             #     n_iter = 20
             if self.model_name == 'LinearRegression':
                 # There's just not much to optimize on a linear regression
                 n_iter = 4
 
-            # # print the settable parameter names
-            # print(self.model_map[self.model_name].get_params().keys())
             self.rscv = RandomizedSearchCV(
                 model_to_fit,
                 gs_params,
@@ -424,20 +434,26 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 n_jobs=-1,
                 # Have only two folds of cross-validation, rather than 3. This speeds up training time, and reduces the risk of overfitting.
                 cv=2,
-                # verbose=1,
+                verbose=0,
                 # If a combination of hyperparameters fails to fit, set it's score to a very low number that we will not choose.
                 error_score=-1000000000,
                 scoring=self._scorer
             )
-            self.rscv.fit(X, y)
+            self.rscv.fit(X_fit, y)
             self.model = self.rscv.best_estimator_
 
+            print('The best hyperparameters for this model are:')
+            print(self.rscv.best_params_)
+            print('all score params for this model are')
+            sorted_scores = sorted(self.rscv.grid_scores_, key= lambda x: x[1], reverse=True)
+            for score in sorted_scores:
+                print(score)
         # or, we can just use the default estimator
         else:
             # self.model = self.model_map[self.model_name]
             self.model = get_model_from_name(self.model_name)
 
-            self.model.fit(X, y)
+            self.model.fit(X_fit, y)
 
         return self
 
@@ -446,37 +462,57 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
             X = X.todense()
 
-        try:
-            if self._scorer is not None:
-                if self.type_of_estimator == 'regressor':
-                    return self._scorer(self.model, X, y)
-                elif self.type_of_estimator == 'classifier':
-                    return self._scorer(self.model, X, y)
+        # try:
+        #     if self._scorer is not None:
+        #         if self.type_of_estimator == 'regressor':
+        #             return self._scorer(self.model, X, y)
+        #         elif self.type_of_estimator == 'classifier':
+        #             return self._scorer(self.model, X, y)
+        # try:
+        if self._scorer is not None:
+            if self.type_of_estimator == 'regressor':
+                return self._scorer(self, X, y)
+            elif self.type_of_estimator == 'classifier':
+                return self._scorer(self, X, y)
 
-            else:
-                return self.model.score(X, y)
+        else:
+            return self.model.score(X, y)
 
-        except ValueError:
+        # except ValueError:
 
-            # XGBoost doesn't always handle sparse matrices well.
-            X_dense = X.todense()
+        #     # XGBoost doesn't always handle sparse matrices well.
+        #     # X_dense = X.todense()
 
-            if self._scorer is not None:
-                return self._scorer(X_dense, y)
-            else:
-                return self.model.score(X_dense, y)
+        #     # if self._scorer is not None:
+        #     #     return self._scorer(X_dense, y)
+        #     # else:
+        #     #     return self.model.score(X_dense, y)
+        #     X_csc = X.tocsc()
+
+        #     if self._scorer is not None:
+        #         return self._scorer(X_csc, y)
+        #     else:
+        #         return self.model.score(X_csc, y)
 
 
     def predict_proba(self, X):
+
+        if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
+            ones = [[1] for x in range(X.shape[0])]
+            # Trying to force XGBoost to play nice with sparse matrices
+            X = scipy.sparse.hstack((X, ones))
+
         if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
             X = X.todense()
 
         try:
             return self.model.predict_proba(X)
-        except ValueError:
-            # XGBoost doesn't always handle sparse matrices well.
-            X_dense = X.todense()
-            return self.model.predict_proba(X_dense)
+        # except ValueError:
+        #     # XGBoost doesn't always handle sparse matrices well.
+        #     # X_dense = X.todense()
+        #     # return self.model.predict_proba(X_dense)
+        #     X_csc = X.tocsc()
+        #     return self.model.predict_proba(X_csc)
         except AttributeError:
             print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
@@ -492,15 +528,27 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             raise(e)
 
     def predict(self, X):
-        if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
-            X = X.todense()
+
+        if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
+            ones = [[1] for x in range(X.shape[0])]
+            # Trying to force XGBoost to play nice with sparse matrices
+            X_predict = scipy.sparse.hstack((X, ones))
+
+        elif self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+            X_predict = X.todense()
+
+        else:
+            X_predict = X
 
         # XGBoost doesn't always handle sparse matrices well.
-        try:
-            return self.model.predict(X)
-        except ValueError:
-            X_dense = X.todense()
-            return self.model.predict(X_dense)
+        # try:
+        return self.model.predict(X_predict)
+        # except ValueError as e:
+        #     print(e)
+        #     # X_dense = X.todense()
+        #     # return self.model.predict(X_dense)
+        #     X_csc = X_predict.tocsc()
+        #     return self.model.predict(X_csc)
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
@@ -644,11 +692,16 @@ def rscv_rmse_scoring(estimator, X, y, took_log_of_y=False):
         X = X.toarray()
 
     # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
-    try:
-        predictions = estimator.predict(X)
-    except ValueError:
-        X_dense = X.todense()
-        predictions = estimator.predict(X_dense)
+    # try:
+    predictions = estimator.predict(X)
+    # except ValueError as e:
+    #     X_dense = X.todense()
+    #     try:
+    #         predictions = estimator.predict(X_dense)
+    #         # X_csc = X.tocsc()
+    #         # predictions = estimator.predict(X_csc)
+    #     except:
+    #         return -1000000000
 
     if took_log_of_y:
         for idx, val in enumerate(predictions):
@@ -662,11 +715,14 @@ def rscv_brier_score_loss_wrapper(estimator, X, y):
         X = X.toarray()
 
     # XGBoost does not always handle sparse matrices well. This should work around that annoyance.
-    try:
-        predictions = estimator.predict_proba(X)
-    except ValueError:
-        X_dense = X.todense()
-        predictions = estimator.predict_proba(X_dense)
+    # try:
+    predictions = estimator.predict_proba(X)
+    # except ValueError:
+    #     X_csc = X.tocsc()
+    #     try:
+    #         predictions = estimator.predict_proba(X_csc)
+    #     except:
+    #         return -1000000000
 
     # predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
