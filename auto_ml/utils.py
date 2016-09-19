@@ -80,10 +80,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         ##Todo: transformation taken in a dict of dicts and transforms row by row, must use a dataframe based idea instead
 
         for row in X:
+            clean_row = {}
             for key, val in row.items():
-                clean_row = {}
                 col_desc = self.column_descriptions.get(key)
-
                 if col_desc == 'categorical':
                     clean_row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
