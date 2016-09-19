@@ -13,7 +13,7 @@ from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor,                 LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
-from sklearn.feature_extraction.text import TfidfVectorizer
+
 import scipy
 
 import xgboost as xgb
@@ -41,49 +41,22 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         self.column_descriptions = column_descriptions
         self.vals_to_del = set([None, float('nan'), float('Inf')])
         self.vals_to_ignore = set(['regressor', 'classifier', 'output', 'ignore'])
-        self.tfidfvec=TfidfVectorizer()
+
 
     def fit(self, X, y=None):
+        return self
 
-
-        inputflag=False
-
-        #Condition check if there is text or nlp field only then do tfidf
-        #follow loop will be excuted only one time , must see if there is any other logic.
-        #currently this is needed becuase this is the only way to get to know if there is any senetence as inputs in columns
-        #TODO alternatively any option from config file would be helpful which will remove this following loop
-        for row in X:
-            for key, val in row.items():
-                column_desciption=self.column_descriptions.get(key)
-                if column_desciption=="text" or column_desciption=="nlp":
-                    inputflag=True
-                    break
-        # must look at an alternate way of doing this
-        if inputflag:
-            input = [] #check if this leads to memory leak??
-            for row in X:
-                for key, val in row.items():
-                    col_desc = self.column_descriptions.get(key)
-                    if col_desc=="text" or col_desc=="nlp":
-                            input.append(val)
-            self.tfidfvec.fit(input)
-            return self
-        else:
-            return self
 
     def transform(self, X, y=None):
         clean_X = []
         deleted_values_sample = []
         deleted_info = {}
 
-
-        ##Todo: transformation taken in a dict of dicts and transforms row by row, must use a dataframe based idea instead
-
         for row in X:
-            for key, val in row.items():
-                clean_row = {}
-                col_desc = self.column_descriptions.get(key)
+            clean_row = {}
 
+            for key, val in row.items():
+                col_desc = self.column_descriptions.get(key)
                 if col_desc == 'categorical':
                     clean_row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
@@ -91,13 +64,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                         clean_row[key] = float(val)
                 elif col_desc == 'date':
                     clean_row = add_date_features(val, clean_row, key)
-                # if input column contains text, then in such a case calculated tfidf which if already fitted before transform
-                elif col_desc == 'text' or col_desc=="nlp":
-                    #add keys as features and tfvector values as values into cleanrow dictionary object
-                    keys=self.tfidfvec.get_feature_names()
-                    tfvec=self.tfidfvec.transform([val]).toarray()
-                    for i in range(len(tfvec)):
-                        clean_row[keys[i]]=tfvec[0][i]
                 elif col_desc in self.vals_to_ignore:
                     pass
                 else:
@@ -117,10 +83,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             print('And some example values from these columns:')
             print(deleted_values_sample)
 
-
         return clean_X
 
-def add_date_features(date_val, row, date_col):
+def add_date_features(date_val, target_row, date_col):
 
     row[date_col + '_day_of_week'] = str(date_val.weekday())
     row[date_col + '_hour'] = date_val.hour
