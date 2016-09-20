@@ -52,7 +52,7 @@ class Predictor(object):
         found_output_column = False
         self.subpredictors = []
         subpredictor_vals = set(['regressor', 'classifier'])
-        expected_vals = set(['categorical', 'ignore'])
+        expected_vals = set(['categorical', 'ignore','text','nlp'])
 
         for key, value in column_descriptions.items():
             value = value.lower()
