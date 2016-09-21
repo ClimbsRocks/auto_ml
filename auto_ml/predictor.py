@@ -1,3 +1,4 @@
+import datetime
 import math
 import os
 import sys
@@ -89,7 +90,7 @@ class Predictor(object):
         # These parts will be included no matter what.
         pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
-        if perform_feature_scaling:
+        if perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
             pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
 
         pipeline_list.append(('dv', DictVectorizer(sparse=True, sort=True)))
@@ -98,7 +99,7 @@ class Predictor(object):
             # pipeline_list.append(('pca', TruncatedSVD()))
             pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
-        if self.add_cluster_prediction or self.compute_power >=7:
+        if self.add_cluster_prediction or (self.compute_power >=10 and self.add_cluster_prediction is not False):
             pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
 
         final_model = utils.get_model_from_name(model_name)
@@ -123,8 +124,12 @@ class Predictor(object):
 
         gs_params['final_model__model_name'] = model_names
 
+        if self.compute_power >= 7:
+            gs_params['scaler__perform_feature_scaling'] = [True, False]
+
+
         # Only optimize our feature selection methods this deeply if the user really, really wants to.
-        if self.compute_power >= 10:
+        if self.compute_power >= 9:
             # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
             gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll', 'RFECV'] # , 'RandomizedSparse'
 
@@ -243,11 +248,11 @@ class Predictor(object):
 
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
-            # sub_model_names = ['XGBClassifier']
-            sub_model_names = ['GradientBoostingClassifier']
+            sub_model_names = ['XGBClassifier']
+            # sub_model_names = ['GradientBoostingClassifier']
         elif sub_model_names is None and sub_type_of_estimator == 'regressor':
-            # sub_model_names = ['XGBRegressor']
-            sub_model_names = ['GradientBoostingRegressor']
+            sub_model_names = ['XGBRegressor']
+            # sub_model_names = ['GradientBoostingRegressor']
 
         ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
         # TODO: grab proper y_test values for this particular subpredictor
@@ -273,7 +278,7 @@ class Predictor(object):
         self.subpredictors[sub_idx] = ml_predictor
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=False, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=True, model_names=None, add_cluster_prediction=False, num_weak_estimators=0):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, add_cluster_prediction=None, num_weak_estimators=0):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -380,20 +385,23 @@ class Predictor(object):
 
         self.perform_grid_search_by_model_names(estimator_names, scoring, X, y)
 
-        # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
-        # 1. Holdout data
-        # 2. CV data
+        # If we ran GridSearchCV, we will have to pick the best model
+        # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
+        if self.fit_grid_search:
+            # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
+            # 1. Holdout data
+            # 2. CV data
 
-        # First, sort all of the tuples that hold our scores in their first position(s), and our actual trained pipeline in their final position
-        # Since a more positive score is better, we want to make sure that the first item in our sorted list is the highest score, thus, reverse=True
-        sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0], reverse=True)
+            # First, sort all of the tuples that hold our scores in their first position(s), and our actual trained pipeline in their final position
+            # Since a more positive score is better, we want to make sure that the first item in our sorted list is the highest score, thus, reverse=True
+            sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0], reverse=True)
 
-        # Next, grab the thing at position 0 in our sorted list, which is itself a list of the scores(s), and the pipeline itself
-        best_result_list = sorted_gs_pipeline_results[0]
-        # Our best grid search result is the thing at the end of that list.
-        best_trained_gs = best_result_list[-1]
-        # And the pipeline is the best estimator within that grid search object.
-        self.trained_pipeline = best_trained_gs.best_estimator_
+            # Next, grab the thing at position 0 in our sorted list, which is itself a list of the scores(s), and the pipeline itself
+            best_result_list = sorted_gs_pipeline_results[0]
+            # Our best grid search result is the thing at the end of that list.
+            best_trained_gs = best_result_list[-1]
+            # And the pipeline is the best estimator within that grid search object.
+            self.trained_pipeline = best_trained_gs.best_estimator_
 
         del self.X_test
         del self.grid_search_pipelines
@@ -408,7 +416,7 @@ class Predictor(object):
 
             self.grid_search_params['final_model__model_name'] = [model_name]
 
-            if self.optimize_final_model or self.compute_power >= 5:
+            if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
                 raw_search_params = utils.get_search_params(model_name)
                 for param_name, param_list in raw_search_params.items():
                     self.grid_search_params['final_model__model__' + param_name] = param_list
@@ -418,55 +426,90 @@ class Predictor(object):
             else:
                 grid_search_verbose = 0
 
-            gs = GridSearchCV(
-                # Fit on the pipeline.
-                ppl,
-                cv=2,
-                param_grid=self.grid_search_params,
-                # Train across all cores.
-                n_jobs=-1,
-                # Be verbose (lots of printing).
-                verbose=grid_search_verbose,
-                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-                # Set the score on this partition to some very negative number, so that we do not choose this estimator.
-                error_score=-1000000000,
-                # TODO(PRESTON): change scoring to be RMSE by default
-                scoring=scoring
-                # ,pre_dispatch='1*n_jobs'
-            )
+            # Only fit GridSearchCV if we actually have hyperparameters to optimize.
+            # Oftentimes, we'll just want to train a pipeline using all the default values, or using the user-provided values.
+            # In those cases, fitting GSCV is unnecessarily computationally expensive.
+            self.fit_grid_search = False
+            for key, val in self.grid_search_params.items():
 
-            if self.verbose:
-                print('\n\n********************************************************************************************')
-                print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+                # if it is a list, and has a length > 1, we will want to fit grid search
+                if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1:
+                    self.fit_grid_search = True
 
-            gs.fit(X, y)
-            self.trained_pipeline = gs.best_estimator_
+            if self.fit_grid_search:
+
+                gs = GridSearchCV(
+                    # Fit on the pipeline.
+                    ppl,
+                    cv=2,
+                    param_grid=self.grid_search_params,
+                    # Train across all cores.
+                    n_jobs=-1,
+                    # Be verbose (lots of printing).
+                    verbose=grid_search_verbose,
+                    # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                    # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+                    error_score=-1000000000,
+                    # TODO(PRESTON): change scoring to be RMSE by default
+                    scoring=scoring
+                    # ,pre_dispatch='1*n_jobs'
+                )
+
+                if self.verbose:
+                    print('\n\n********************************************************************************************')
+                    print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+
+                gs.fit(X, y)
+                self.trained_pipeline = gs.best_estimator_
+
+                # write the results for each param combo to file for user analytics.
+                if self.write_gs_param_results_to_file:
+                    utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
+
+                if self.print_training_summary_to_viewer:
+                    self.print_training_summary(gs)
+
+                # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
+                pipeline_results = []
+                pipeline_results.append(gs.best_score_)
+                pipeline_results.append(gs)
+                self.grid_search_pipelines.append(pipeline_results)
+
+            # The case where we just want to run the training straight through, not fitting GridSearchCV
+            else:
+                if self.verbose:
+                    print('\n\n********************************************************************************************')
+                    print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+                    print('Started at:')
+                    start_time = datetime.datetime.now().replace(microsecond=0)
+                    print(start_time)
+
+                ppl.fit(X, y)
+                self.trained_pipeline = ppl
+
+                if self.verbose:
+                    print('Finished training the pipeline!')
+                    print('Total training time:')
+                    print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()
             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
                 self._print_ml_analytics_results_random_forest()
 
-            # write the results for each param combo to file for user analytics.
-            if self.write_gs_param_results_to_file:
-                utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
 
-            # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
-            pipeline_results = []
 
             if self.X_test and self.y_test:
                 print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
                 holdout_data_score = self.score(self.X_test, self.y_test)
                 print(holdout_data_score)
 
-                pipeline_results.append(holdout_data_score)
+                try:
+                    pipeline_results.append(holdout_data_score)
+                except:
+                    # If we don't have pipeline_results (if we did not fit GSCV), then pass
+                    pass
 
-            if self.print_training_summary_to_viewer:
-                self.print_training_summary(gs)
-
-            pipeline_results.append(gs.best_score_)
-            pipeline_results.append(gs)
-            self.grid_search_pipelines.append(pipeline_results)
 
 
     def _get_xgb_feat_importances(self, clf):
