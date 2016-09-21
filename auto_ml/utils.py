@@ -247,6 +247,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             clean_row = {}
             for key, val in row.items():
                 col_desc = self.column_descriptions.get(key)
+
                 if col_desc == 'categorical':
                     clean_row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
@@ -634,72 +635,76 @@ def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
 class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, column_descriptions, truncate_large_values=False):
+    def __init__(self, column_descriptions, truncate_large_values=False, perform_feature_scaling=True):
         self.column_descriptions = column_descriptions
         self.cols_to_avoid = set([k for k, v in column_descriptions.items()])
         self.truncate_large_values = truncate_large_values
+        self.perform_feature_scaling = perform_feature_scaling
 
 
     def fit(self, X, y=None):
-        attribute_list = get_all_attribute_names(X, self.column_descriptions)
+        if self.perform_feature_scaling:
+            attribute_list = get_all_attribute_names(X, self.column_descriptions)
 
-        attributes_per_round = [[], [], []]
+            attributes_per_round = [[], [], []]
 
-        attributes_summary = {}
+            attributes_summary = {}
 
-        # Randomly assign each attribute to one of three buckets
-        # We will summarize the data in three separate iterations, to avoid duplicating too much data in memory at any one point.
-        for attribute in attribute_list:
-            bucket_idx = int(random.random() * 3)
-            attributes_per_round[bucket_idx].append(attribute)
-            attributes_summary[attribute] = []
+            # Randomly assign each attribute to one of three buckets
+            # We will summarize the data in three separate iterations, to avoid duplicating too much data in memory at any one point.
+            for attribute in attribute_list:
+                bucket_idx = int(random.random() * 3)
+                attributes_per_round[bucket_idx].append(attribute)
+                attributes_summary[attribute] = []
 
-        for bucket in attributes_per_round:
+            for bucket in attributes_per_round:
 
-            attributes_to_summarize = set(bucket)
+                attributes_to_summarize = set(bucket)
 
-            for row in X:
-                for k, v in row.items():
-                    if k in attributes_to_summarize:
-                        attributes_summary[k].append(v)
+                for row in X:
+                    for k, v in row.items():
+                        if k in attributes_to_summarize:
+                            attributes_summary[k].append(v)
 
-            for attribute in bucket:
+                for attribute in bucket:
 
-                # Sort our collected data for that column
-                attributes_summary[attribute].sort()
-                col_vals = attributes_summary[attribute]
-                tenth_percentile = col_vals[int(0.05 * len(col_vals))]
-                ninetieth_percentile = col_vals[int(0.95 * len(col_vals))]
+                    # Sort our collected data for that column
+                    attributes_summary[attribute].sort()
+                    col_vals = attributes_summary[attribute]
+                    tenth_percentile = col_vals[int(0.05 * len(col_vals))]
+                    ninetieth_percentile = col_vals[int(0.95 * len(col_vals))]
 
-                # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
-                col_range = ninetieth_percentile - tenth_percentile
-                if col_range > 0:
-                    attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]
-                else:
-                    del attributes_summary[attribute]
-                    self.cols_to_avoid.add(attribute)
+                    # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
+                    col_range = ninetieth_percentile - tenth_percentile
+                    if col_range > 0:
+                        attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]
+                    else:
+                        del attributes_summary[attribute]
+                        self.cols_to_avoid.add(attribute)
 
-                del col_vals
+                    del col_vals
 
-        self.attributes_summary = attributes_summary
+            self.attributes_summary = attributes_summary
+
         return self
 
 
     # Perform basic min/max scaling, with the minor caveat that our min and max values are the 10th and 90th percentile values, to avoid outliers.
     def transform(self, X, y=None):
-        for row in X:
-            for k, v in row.items():
-                if k not in self.cols_to_avoid and self.attributes_summary.get(k, False):
-                    min_val = self.attributes_summary[k][0]
-                    max_val = self.attributes_summary[k][1]
-                    attribute_range = self.attributes_summary[k][2]
-                    scaled_value = (v - min_val) / attribute_range
-                    if self.truncate_large_values:
-                        if scaled_value < 0:
-                            scaled_value = 0
-                        elif scaled_value > 1:
-                            scaled_value = 1
-                    row[k] = scaled_value
+        if self.perform_feature_scaling:
+            for row in X:
+                for k, v in row.items():
+                    if k not in self.cols_to_avoid and self.attributes_summary.get(k, False):
+                        min_val = self.attributes_summary[k][0]
+                        max_val = self.attributes_summary[k][1]
+                        attribute_range = self.attributes_summary[k][2]
+                        scaled_value = (v - min_val) / attribute_range
+                        if self.truncate_large_values:
+                            if scaled_value < 0:
+                                scaled_value = 0
+                            elif scaled_value > 1:
+                                scaled_value = 1
+                        row[k] = scaled_value
 
         return X
 
