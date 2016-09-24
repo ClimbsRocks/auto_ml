@@ -469,8 +469,13 @@ class Predictor(object):
             # And the pipeline is the best estimator within that grid search object.
             self.trained_pipeline = best_trained_gs.best_estimator_
 
+        # Delete values that we no longer need that are just taking up space.
+        # If this is a subpredictor, this makes GridSearchCV easier, since there's less data to clone to each new thread.
+        # And of course, when we go to save this model and upload it to production servers, there will be less data to move around.
         del self.X_test
+        del self.y_test
         del self.grid_search_pipelines
+        del self.subpredictors
 
 
     def perform_grid_search_by_model_names(self, estimator_names, scoring, X, y):
