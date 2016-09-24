@@ -226,13 +226,13 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
         # must look at an alternate way of doing this
         if inputflag:
-            input = []
+            corpus = []
             for row in X:
                 for key, val in row.items():
                     col_desc = self.column_descriptions.get(key)
                     if col_desc in text_col_indicators:
-                            input.append(val)
-            self.tfidfvec.fit(input)
+                            corpus.append(val)
+            self.tfidfvec.fit(corpus)
             return self
         else:
             return self
