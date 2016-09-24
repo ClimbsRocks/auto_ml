@@ -40,7 +40,7 @@ class Predictor(object):
         self.trained_pipeline = None
         self._scorer = None
         self.date_cols = []
-        # Later on, if this is a regression problem, we will probably take the natural log of our y values for training, but we will still want to return the predictions in their normal scale (not the natural log values)
+        # Later on, if this is a regression problem, we will possibly take the natural log of our y values for training, but we will still want to return the predictions in their normal scale (not the natural log values)
         self.took_log_of_y = False
         self.take_log_of_y = False
 
@@ -119,7 +119,7 @@ class Predictor(object):
 
         if self.perform_feature_selection:
             if trained_pipeline is not None:
-                # This is the step we are trying to remove, since it has already been combined with dv using dv.restrict
+                # This is the step we are trying to remove from the trained_pipeline, since it has already been combined with dv using dv.restrict
                 pass
             else:
                 # pipeline_list.append(('pca', TruncatedSVD()))
@@ -160,7 +160,7 @@ class Predictor(object):
             gs_params['scaler__perform_feature_scaling'] = [True, False]
 
 
-        # Only optimize our feature selection methods this deeply if the user really, really wants to.
+        # Only optimize our feature selection methods this deeply if the user really, really wants to. This is super computationally expensive.
         if self.compute_power >= 9:
             # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
             gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll', 'RFECV'] # , 'RandomizedSparse'
@@ -241,10 +241,9 @@ class Predictor(object):
 
 
     def _make_sub_column_descriptions(self, column_descriptions, sub_name):
-        # TODO: make this work for multiple subpredictors. right now it will grab all 'regressor' or 'classifier' values at once, instead of only grabbing on.
+
         subpredictor_types = set(['classifier', 'regressor'])
         dup_descs = {}
-        # subpredictor_type_of_estimator = 'regressor'
 
         for key, val in column_descriptions.items():
 
@@ -287,7 +286,7 @@ class Predictor(object):
             # sub_model_names = ['GradientBoostingRegressor']
 
         ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
-        # TODO: grab proper y_test values for this particular subpredictor
+
         if self.X_test is not None and self.y_test is not None:
             sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
         else:
@@ -314,7 +313,7 @@ class Predictor(object):
 
     def _consolidate_feature_selection_steps(self, trained_pipeline):
         # First, restrict our DictVectorizer
-        # This goes through and has it only output the items that have passed our support mask
+        # This goes through and has DV only output the items that have passed our support mask
         # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
         # It also significantly reduces the size of dv.vocabulary_ which can get quite large
 
@@ -344,7 +343,7 @@ class Predictor(object):
 
         abbreviated_pipeline = Pipeline(abbreviated_pipeline)
 
-        # Our abbreviated pipeline will now expect to get dictionaries that have already gone through all the preliminary preparation steps
+        # Our abbreviated pipeline will now expect to get dictionaries that have already gone through all the preliminary preparation steps (BasicDataCleaning, date_feature_engineering, scaling, etc.)
         return abbreviated_pipeline
 
 
@@ -390,10 +389,6 @@ class Predictor(object):
 
         X, y = self._prepare_for_training(raw_training_data)
 
-        # print('To compare to our current predictions, we are only training our master ensemble on two thirds of the data')
-        # X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X, y, test_size=0.33)
-        # X = X_ensemble
-        # y = y_ensemble
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
         if len(self.subpredictors) > 0:
             print('We are going to be training up several subpredictors before training up our final ensembled predictor')
@@ -651,21 +646,7 @@ class Predictor(object):
 
     def _get_trained_feature_names(self):
 
-        # if self.trained_pipeline.named_steps.get('feature_selection', False):
-
-        #     selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
-        #     feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
-        #     trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
-
-        # else:
-        #     trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
         trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-
-        # Every transformer that adds a feature after DictVectorizer must start with "add", and must have a .added_feature_names_ attribute.
-        # Get all the feature names that were added by ensembled predictors of any type
-        for step in self.trained_pipeline.named_steps:
-            if step[:3] == 'add':
-                trained_feature_names = trained_feature_names + self.trained_pipeline.named_steps[step].added_feature_names_
 
         return trained_feature_names
 
@@ -719,11 +700,8 @@ class Predictor(object):
 
     def predict(self, prediction_data):
 
-        # if self.model_name[:13] == 'GradientBoosting' and scipy.issparse(prediction_data):
-        #     prediction_data
-
-
-        # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
+        # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
+        # For some reason, turning it into a list here does not work.
         predicted_vals = self.trained_pipeline.predict(prediction_data)
         if self.took_log_of_y:
             for idx, val in predicted_vals:
@@ -733,7 +711,6 @@ class Predictor(object):
 
     def predict_proba(self, prediction_data):
 
-        # TODO(PRESTON): investigate if we need to handle input of a single dictionary differently than a list of dictionaries.
         return self.trained_pipeline.predict_proba(prediction_data)
 
 

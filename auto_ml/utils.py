@@ -205,12 +205,13 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         self.column_descriptions = column_descriptions
         self.vals_to_del = set([None, float('nan'), float('Inf')])
         self.vals_to_ignore = set(['regressor', 'classifier', 'output', 'ignore'])
-        self.tfidfvec=TfidfVectorizer()
+        self.tfidfvec = TfidfVectorizer()
 
     def fit(self, X, y=None):
 
 
         inputflag=False
+        text_col_indicators = set(['text', 'nlp'])
 
         #Condition check if there is text or nlp field only then do tfidf
         #follow loop will be excuted only one time , must see if there is any other logic.
@@ -218,17 +219,18 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         #TODO alternatively any option from config file would be helpful which will remove this following loop
         for row in X:
             for key, val in row.items():
-                column_desciption=self.column_descriptions.get(key)
-                if column_desciption=="text" or column_desciption=="nlp":
-                    inputflag=True
+                column_desciption = self.column_descriptions.get(key)
+                if column_desciption in text_col_indicators:
+                    inputflag = True
                     break
+
         # must look at an alternate way of doing this
         if inputflag:
-            input = [] #check if this leads to memory leak??
+            input = []
             for row in X:
                 for key, val in row.items():
                     col_desc = self.column_descriptions.get(key)
-                    if col_desc=="text" or col_desc=="nlp":
+                    if col_desc in text_col_indicators:
                             input.append(val)
             self.tfidfvec.fit(input)
             return self
@@ -239,9 +241,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         clean_X = []
         deleted_values_sample = []
         deleted_info = {}
+        text_col_indicators = set(['text', 'nlp'])
 
-
-        ##Todo: transformation taken in a dict of dicts and transforms row by row, must use a dataframe based idea instead
 
         for row in X:
             clean_row = {}
@@ -256,12 +257,12 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 elif col_desc == 'date':
                     clean_row = add_date_features(val, clean_row, key)
                 # if input column contains text, then in such a case calculated tfidf which if already fitted before transform
-                elif col_desc == 'text' or col_desc=="nlp":
+                elif col_desc in text_col_indicators:
                     #add keys as features and tfvector values as values into cleanrow dictionary object
-                    keys=self.tfidfvec.get_feature_names()
-                    tfvec=self.tfidfvec.transform([val]).toarray()
+                    keys = self.tfidfvec.get_feature_names()
+                    tfvec = self.tfidfvec.transform([val]).toarray()
                     for i in range(len(tfvec)):
-                        clean_row[keys[i]]=tfvec[0][i]
+                        clean_row[keys[i]] = tfvec[0][i]
                 elif col_desc in self.vals_to_ignore:
                     pass
                 else:
@@ -319,8 +320,6 @@ def add_date_features(date_val, row, date_col):
 
 
 def get_model_from_name(model_name):
-    import xgboost as xgb
-    from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
     model_map = {
         # Classifiers
         'LogisticRegression': LogisticRegression(n_jobs=-2),
@@ -361,9 +360,7 @@ def get_model_from_name(model_name):
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
-# This class provides two key methods for optimization:
-# 1. Model selection (try a bunch of different mdoels, see which one is best)
-# 2. Model hyperparameter optimization (or not). This class will allow you to use the base estimator, or optimize the estimator's hyperparameters.
+# It also gives us more granular control over things like turning the input for GradientBoosting into dense matrices, or appending a set of dummy 1's to the end of sparse matrices getting predictions from XGBoost.
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
@@ -577,7 +574,6 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
 
-        # self.selector = self._model_map[self.type_of_estimator][self.feature_selection_model]
         self.selector = get_feature_selection_model_from_name(self.type_of_estimator, self.feature_selection_model)
 
         if self.selector == 'KeepAll':
@@ -594,7 +590,6 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
-        # return X
         if self.selector == 'KeepAll':
             return X
         else:
@@ -621,7 +616,7 @@ def brier_score_loss_wrapper(estimator, X, y):
     score = brier_score_loss(y, probas)
     return -1 * score
 
-
+# Used for CustomSparseScaler
 def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
     attribute_hash = {}
     for dictionary in list_of_dictionaries:
