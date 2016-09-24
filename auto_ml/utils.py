@@ -777,6 +777,8 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
+        if isinstance(X, dict):
+            X = [X]
         predictions = []
         for predictor in self.trained_subpredictors:
 
@@ -790,7 +792,10 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             X_copy = []
             for row_idx, row in enumerate(X):
 
-                row_copy = row.copy()
+                row_copy = {}
+                for k, v in row.items():
+                    row_copy[k] = v
+
                 for pred_idx, name in enumerate(self.sub_names):
 
                     row_copy[name + '_sub_prediction'] = predictions[pred_idx][row_idx]

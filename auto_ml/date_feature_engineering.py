@@ -49,12 +49,21 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
+        if isinstance(X, dict):
+            X = [X]
+
+        X_copy = []
         for idx, row in enumerate(X):
 
             for date_col in self.date_cols:
-                date_val = row.pop(date_col, False)
 
-                # make sure this property exists for this row
+                row_copy = {}
+                for k, v in row.items():
+                    row_copy[k] = v
+
+                date_val = row_copy.pop(date_col, False)
+
+                # make sure this property exists for this row_copy
                 if date_val:
 
                     # make sure that value is actually a datetime object
@@ -66,8 +75,8 @@ class FeatureEngineer(BaseEstimator, TransformerMixin):
                         except:
                             pass
 
-                    row = self.extract_features(row, date_val, date_col)
-                    X[idx] = row
+                    row_copy = self.extract_features(row_copy, date_val, date_col)
+                    X_copy.append(row_copy)
 
-        return X
+        return X_copy
 
