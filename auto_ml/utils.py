@@ -367,7 +367,7 @@ def get_model_from_name(model_name):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name, X_train=None, y_train=None, ml_for_analytics=False, type_of_estimator='classifier'):
+    def __init__(self, model, model_name, X_train=None, y_train=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None):
 
         self.model = model
         self.model_name = model_name
@@ -375,6 +375,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.y_train = y_train
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
+        # This is purely a placeholder so we can set it if we have to if this is a subpredictor
+        # In that case, we will set it after the whole pipeline has trained and we are abbreviating the subpredictor pipeline
+        self.output_column = output_column
 
         if self.type_of_estimator == 'classifier':
             self._scorer = brier_score_loss_wrapper
@@ -591,6 +594,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
+        # return X
         if self.selector == 'KeepAll':
             return X
         else:
@@ -769,7 +773,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
     def __init__(self, trained_subpredictors, include_original_X=True):
         self.trained_subpredictors = trained_subpredictors
         self.include_original_X = include_original_X
-        self.sub_names = [pred.output_column for pred in self.trained_subpredictors]
+        self.sub_names = [pred.named_steps['final_model'].output_column for pred in self.trained_subpredictors]
 
 
     def fit(self, X, y=None):
@@ -782,7 +786,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
         predictions = []
         for predictor in self.trained_subpredictors:
 
-            if predictor.type_of_estimator == 'regressor':
+            if predictor.named_steps['final_model'].type_of_estimator == 'regressor':
                 predictions.append(predictor.predict(X))
 
             else:
