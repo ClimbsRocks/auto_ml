@@ -75,36 +75,68 @@ class Predictor(object):
             raise ValueError('In your column_descriptions, please make sure exactly one column has the value "output", which is the value we will be training models to predict.')
 
 
-    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, perform_feature_scaling=True):
+    # We use _construct_pipeline at both the start and end of our training.
+    # At the start, it constructs the pipeline from scratch
+    # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer
+    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, perform_feature_scaling=True, trained_pipeline=None):
 
         pipeline_list = []
 
-        if len(self.subpredictors) > 0:
-            pipeline_list.append(('subpredictors', utils.AddSubpredictorPredictions(trained_subpredictors=self.subpredictors)))
         if self.user_input_func is not None:
-            pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False) ))
+            if trained_pipeline is not None:
+                pipeline_list.append(('user_func', trained_pipeline.named_steps['user_func']))
+            else:
+                pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False) ))
 
         if len(self.date_cols) > 0:
-            pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
+            if trained_pipeline is not None:
+                pipeline_list.append(('date_feature_engineering', trained_pipeline.named_steps['date_feature_engineering']))
+            else:
+                pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
 
         # These parts will be included no matter what.
-        pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
+        if trained_pipeline is not None:
+            pipeline_list.append(('basic_transform', trained_pipeline.named_steps['basic_transform']))
+        else:
+            pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
         if perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
-            pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
+            if trained_pipeline is not None:
+                pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
+            else:
+                pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
 
-        pipeline_list.append(('dv', DictVectorizer(sparse=True, sort=True)))
+        if len(self.subpredictors) > 0:
+            if trained_pipeline is not None:
+                pipeline_list.append(('subpredictors', trained_pipeline.named_steps['subpredictors']))
+            else:
+                pipeline_list.append(('subpredictors', utils.AddSubpredictorPredictions(trained_subpredictors=self.subpredictors)))
+
+        if trained_pipeline is not None:
+            pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
+        else:
+            pipeline_list.append(('dv', DictVectorizer(sparse=False, sort=True)))
 
         if self.perform_feature_selection:
-            # pipeline_list.append(('pca', TruncatedSVD()))
-            pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
+            if trained_pipeline is not None:
+                # This is the step we are trying to remove, since it has already been combined with dv using dv.restrict
+                pass
+            else:
+                # pipeline_list.append(('pca', TruncatedSVD()))
+                pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
 
-        if self.add_cluster_prediction or (self.compute_power >=10 and self.add_cluster_prediction is not False):
-            pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
+        if self.add_cluster_prediction is True or (self.compute_power >=10 and self.add_cluster_prediction is not False):
+            if trained_pipeline is not None:
+                pipeline_list.append(('add_cluster_prediction', trained_pipeline['add_cluster_prediction']))
+            else:
+                pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
 
-        final_model = utils.get_model_from_name(model_name)
+        if trained_pipeline is not None:
+            pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
+        else:
+            final_model = utils.get_model_from_name(model_name)
+            pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics)))
 
-        pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -270,12 +302,51 @@ class Predictor(object):
             , ml_for_analytics=sub_ml_analytics
             , compute_power=sub_compute_power
             , take_log_of_y=False
-            , add_cluster_prediction=True
+            , add_cluster_prediction=False
             , model_names=sub_model_names
             , write_gs_param_results_to_file=False
             , optimize_final_model=self.optimize_final_model
         )
-        self.subpredictors[sub_idx] = ml_predictor
+
+        abbreviated_pipeline = self._abbreviate_pipeline(ml_predictor)
+
+        self.subpredictors[sub_idx] = abbreviated_pipeline
+
+    def _consolidate_feature_selection_steps(self, trained_pipeline):
+        # First, restrict our DictVectorizer
+        # This goes through and has it only output the items that have passed our support mask
+        # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
+        # It also significantly reduces the size of dv.vocabulary_ which can get quite large
+
+        dv = trained_pipeline.named_steps['dv']
+        feature_selection = trained_pipeline.named_steps['feature_selection']
+        feature_selection_mask = feature_selection.support_mask
+        dv.restrict(feature_selection_mask)
+
+        # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
+        # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
+        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=trained_pipeline)
+
+        return trained_pipeline_without_feature_selection
+
+
+    def _abbreviate_pipeline(self, trained_ml_predictor):
+
+        trained_pipeline = trained_ml_predictor.trained_pipeline
+
+        dv = trained_pipeline.named_steps['dv']
+        final_model = trained_pipeline.named_steps['final_model']
+        final_model.output_column = trained_ml_predictor.output_column
+
+        abbreviated_pipeline = []
+        abbreviated_pipeline.append(('dv', dv))
+        abbreviated_pipeline.append(('final_model', final_model))
+
+        abbreviated_pipeline = Pipeline(abbreviated_pipeline)
+
+        # Our abbreviated pipeline will now expect to get dictionaries that have already gone through all the preliminary preparation steps
+        return abbreviated_pipeline
+
 
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, add_cluster_prediction=None, num_weak_estimators=0):
@@ -492,6 +563,9 @@ class Predictor(object):
                     print('Total training time:')
                     print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
+            # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
+            self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()
             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
@@ -576,14 +650,16 @@ class Predictor(object):
 
 
     def _get_trained_feature_names(self):
-        if self.trained_pipeline.named_steps.get('feature_selection', False):
 
-            selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
-            feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
-            trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
+        # if self.trained_pipeline.named_steps.get('feature_selection', False):
 
-        else:
-            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        #     selected_indices = self.trained_pipeline.named_steps['feature_selection'].support_mask
+        #     feature_names_before_selection = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        #     trained_feature_names = [name for idx, name in enumerate(feature_names_before_selection) if selected_indices[idx]]
+
+        # else:
+        #     trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
 
         # Every transformer that adds a feature after DictVectorizer must start with "add", and must have a .added_feature_names_ attribute.
         # Get all the feature names that were added by ensembled predictors of any type
