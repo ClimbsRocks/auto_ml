@@ -253,7 +253,23 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     clean_row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
                     if val not in self.vals_to_del:
-                        clean_row[key] = float(val)
+                        try:
+                            try:
+                                clean_row[key] = float(val)
+                            except:
+                                val = val.replace(',', '')
+                                clean_row[key] = float(val)                                
+                        except Exception as e:
+                            print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+                            print('We were not able to automatically process this column. Here is some information to help you debug:')
+                            print('column name:')
+                            print(key)
+                            print('value:')
+                            print(val)
+                            print('Type of this column as passed into column_descriptions:')
+                            print(col_desc)
+                            print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
+                            raise
                 elif col_desc == 'date':
                     clean_row = add_date_features(val, clean_row, key)
                 # if input column contains text, then in such a case calculated tfidf which if already fitted before transform
