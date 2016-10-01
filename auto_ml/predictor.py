@@ -671,18 +671,20 @@ class Predictor(object):
         # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []
         for col_idx, feature_name in enumerate(trained_feature_names):
-
-            potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
-            summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
+            # Ignoring potential_impact for now, since we're performing feature scaling by default
+            # potential_impact = feature_ranges[col_idx] * trained_coefficients[col_idx]
+            # summary_tuple = (feature_name, trained_coefficients[col_idx], potential_impact)
+            summary_tuple = (feature_name, trained_coefficients[col_idx])
             feature_summary.append(summary_tuple)
 
-        sorted_feature_summary = sorted(feature_summary, key=lambda x: abs(x[2]))
+        sorted_feature_summary = sorted(feature_summary, key=lambda x: abs(x[1]))
 
-        print('The following is a list of feature names and their coefficients. This is followed by calculating a reasonable range for each feature, and multiplying by that feature\'s coefficient, to get an idea of the scale of the possible impact from this feature.')
+        print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
         print('This printed list will contain at most the top 50 features.')
         for summary in sorted_feature_summary[-50:]:
             print(summary[0] + ': ' + str(round(summary[1], 4)))
-            print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
+            # Again, we're ignoring feature_ranges for now since we apply feature scaling by default
+            # print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
 
 
     def print_training_summary(self, gs):
