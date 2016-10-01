@@ -17,8 +17,15 @@ from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
-from auto_ml import utils
-from auto_ml import date_feature_engineering
+# This is ugly, but allows auto_ml to work whether it's installed using pip, or the whole project is installed using git clone https://github.com/ClimbsRocks/auto_ml
+try:
+    from auto_ml import utils
+except:
+    from .. auto_ml import utils
+try:
+    from auto_ml import date_feature_engineering
+except:
+    from .. auto_ml import date_feature_engineering
 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
