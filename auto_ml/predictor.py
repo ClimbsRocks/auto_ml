@@ -203,7 +203,7 @@ class Predictor(object):
                 pass
 
         # split out out output column so we have a proper X, y dataset
-        X, y = utils.split_output(raw_training_data, self.output_column)
+        X, y = utils.split_output_dataframe(raw_training_data, self.output_column)
 
         # TODO: modularize into clean_y_vals function
         if self.type_of_estimator == 'classifier':

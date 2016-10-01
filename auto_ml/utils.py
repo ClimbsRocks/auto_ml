@@ -17,6 +17,19 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import scipy
 
 import xgboost as xgb
+import pandas as pd
+def split_output_dataframe(dataframe, output_column_name, verbose=False):
+
+    #currently get all the column headers and using pandas loc to index by name or number
+    y=dataframe.loc[:, ['target']] # this will give a 2-D array of class labels
+    columnnames=dataframe.columns.values.tolist()
+
+    columnnames.remove(output_column_name)
+
+    X=dataframe.loc[:,columnnames]
+
+
+    return X, y
 
 def split_output(X, output_column_name, verbose=False):
     y = []
@@ -212,69 +225,66 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
         inputflag=False
         text_col_indicators = set(['text', 'nlp'])
+        text_col_indicators_list=['text','nlp']
 
         #Condition check if there is text or nlp field only then do tfidf
         #follow loop will be excuted only one time , must see if there is any other logic.
         #currently this is needed becuase this is the only way to get to know if there is any senetence as inputs in columns
         #TODO alternatively any option from config file would be helpful which will remove this following loop
-        for row in X:
-            for key, val in row.items():
-                column_desciption = self.column_descriptions.get(key)
-                if column_desciption in text_col_indicators:
-                    inputflag = True
-                    break
-
-        # must look at an alternate way of doing this
-        if inputflag:
-            corpus = []
-            for row in X:
-                for key, val in row.items():
+        columns_in_dataframe=X.columns.values.tolist()
+        corpus=[]
+        for key in columns_in_dataframe:#check for each name if coulmn description is text is so fit a tfidf vectorizer
                     col_desc = self.column_descriptions.get(key)
-                    if col_desc in text_col_indicators:
-                            corpus.append(val)
-            self.tfidfvec.fit(corpus)
-            return self
-        else:
-            return self
+                    if col_desc in text_col_indicators_list:
+                            self.tfidfvec.fit(X.loc[:,key].values)
+                            return self
+
+        return self
 
     def transform(self, X, y=None):
         clean_X = []
         deleted_values_sample = []
         deleted_info = {}
         text_col_indicators = set(['text', 'nlp'])
+        text_col_indicators_list = ['text', 'nlp']
 
 
-        for row in X:
-            clean_row = {}
-            for key, val in row.items():
+        columns_in_X=X.columns.values.tolist()
+
+        #previously duirng doctionary objects we used to work row wise,but due to dataframe facility we can do transformation for each column
+        for key in columns_in_X:
                 col_desc = self.column_descriptions.get(key)
-
                 if col_desc == 'categorical':
-                    clean_row[key] = str(val)
+                    X[key].apply(lambda x : str(x))
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    if val not in self.vals_to_del:
-                        clean_row[key] = float(val)
+                    X[key].apply(lambda x: float(x))
                 elif col_desc == 'date':
-                    clean_row = add_date_features(val, clean_row, key)
-                # if input column contains text, then in such a case calculated tfidf which if already fitted before transform
-                elif col_desc in text_col_indicators:
+                    newX = add_date_features_dataframe(X, key)
+                    X=X.join(newX)
+                elif col_desc in text_col_indicators_list:
                     #add keys as features and tfvector values as values into cleanrow dictionary object
+                    clean_row={}
                     keys = self.tfidfvec.get_feature_names()
-                    tfvec = self.tfidfvec.transform([val]).toarray()
-                    for i in range(len(tfvec)):
-                        clean_row[keys[i]] = tfvec[0][i]
+
+                    tfvec = self.tfidfvec.transform(X.loc[:,key].values).toarray()
+                    textframe=pd.DataFrame(tfvec)
+                    X=X.join(textframe)
+                    X=X.drop(key,1)
+                    #print X
                 elif col_desc in self.vals_to_ignore:
                     pass
                 else:
                     # If we have gotten here, the value is not any that we recognize
                     # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
                     # In either case, it's useful to log it.
-                    if len(deleted_values_sample) < 10:
-                        deleted_values_sample.append(row[key])
-                    deleted_info[key] = col_desc
+                    #TODO this needs a change, but usually this is to be done at preprocessing
+                    print "Please check  the column with"+" "+ key+" "+"for errors like typo etc.."
+                    # if len(deleted_values_sample) < 10:
+                    #     deleted_values_sample.append(row[key])
+                    # deleted_info[key] = col_desc
 
 
-            clean_X.append(clean_row)
+
 
         if len(deleted_values_sample) > 0:
             print('When transforming the data, we have encountered some values in column_descriptions that are not currently supported. The values stored at these keys have been deleted to allow the rest of the pipeline to run. Here\'s some info about these columns:' )
@@ -282,8 +292,42 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             print('And some example values from these columns:')
             print(deleted_values_sample)
 
+        #print X
+        return X
+def add_date_features_dataframe(dataframe,date_col):
+    datecolumn=dataframe[date_col].values
+    row={}
+    for date_val in datecolumn:
+        row[date_col + '_day_of_week'] = str(date_val.weekday())
+        row[date_col + '_hour'] = date_val.hour
 
-        return clean_X
+        minutes_into_day = date_val.hour * 60 + date_val.minute
+
+        if row[date_col + '_day_of_week'] in (5,6):
+            row[date_col + '_is_weekend'] = True
+        elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
+            row[date_col + '_is_weekend'] = True
+        else:
+            row[date_col + '_is_weekend'] = False
+
+            # Grab rush hour times for the weekdays.
+            # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
+            if minutes_into_day < 120:
+                row[date_col + '_is_late_night'] = True
+            elif minutes_into_day < 11.5 * 60:
+                row[date_col + '_is_off_peak'] = True
+            elif minutes_into_day < 13.5 * 60:
+                row[date_col + '_is_lunch_rush_hour'] = True
+            elif minutes_into_day < 17.5 * 60:
+                row[date_col + '_is_off_peak'] = True
+            elif minutes_into_day < 20 * 60:
+                row[date_col + '_is_dinner_rush_hour'] = True
+            elif minutes_into_day < 22.5 * 60:
+                row[date_col + '_is_off_peak'] = True
+            else:
+                row[date_col + '_is_late_night'] = True
+
+        return pd.Dataframe(row)
 
 def add_date_features(date_val, row, date_col):
 
@@ -618,14 +662,16 @@ def brier_score_loss_wrapper(estimator, X, y):
 
 # Used for CustomSparseScaler
 def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
+
     attribute_hash = {}
     for dictionary in list_of_dictionaries:
         for k, v in dictionary.items():
             attribute_hash[k] = True
 
     # All of the columns in column_descriptions should be avoided. They're probably either categorical or NLP data, both of which cannot be scaled.
-
+    columns_in_dataframe=dataframe.columns.values.tolist()
     attribute_list = [k for k, v in attribute_hash.items() if k not in cols_to_avoid]
+
     return attribute_list
 
 
@@ -643,6 +689,7 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
         if self.perform_feature_scaling:
+
             attribute_list = get_all_attribute_names(X, self.column_descriptions)
 
             attributes_per_round = [[], [], []]
