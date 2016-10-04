@@ -661,15 +661,16 @@ def brier_score_loss_wrapper(estimator, X, y):
     return -1 * score
 
 # Used for CustomSparseScaler
-def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
-
+def get_all_attribute_names(transformed_dataframe, cols_to_avoid):
+    list_of_dictionaries=transformed_dataframe.to_dict('records')
     attribute_hash = {}
     for dictionary in list_of_dictionaries:
         for k, v in dictionary.items():
             attribute_hash[k] = True
 
     # All of the columns in column_descriptions should be avoided. They're probably either categorical or NLP data, both of which cannot be scaled.
-    columns_in_dataframe=dataframe.columns.values.tolist()
+    #columns_in_dataframe=dataframe.columns.values.tolist()
+
     attribute_list = [k for k, v in attribute_hash.items() if k not in cols_to_avoid]
 
     return attribute_list
@@ -688,10 +689,11 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
+
         if self.perform_feature_scaling:
 
             attribute_list = get_all_attribute_names(X, self.column_descriptions)
-
+            X = X.to_dict('records')
             attributes_per_round = [[], [], []]
 
             attributes_summary = {}
@@ -717,10 +719,12 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                     # Sort our collected data for that column
                     attributes_summary[attribute].sort()
                     col_vals = attributes_summary[attribute]
-                    tenth_percentile = col_vals[int(0.05 * len(col_vals))]
-                    ninetieth_percentile = col_vals[int(0.95 * len(col_vals))]
+
+                    tenth_percentile = np.float(col_vals[int(0.05 * len(col_vals))])
+                    ninetieth_percentile = np.float(col_vals[int(0.95 * len(col_vals))])
 
                     # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
+                    print (ninetieth_percentile),tenth_percentile
                     col_range = ninetieth_percentile - tenth_percentile
                     if col_range > 0:
                         attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]
@@ -737,14 +741,16 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
     # Perform basic min/max scaling, with the minor caveat that our min and max values are the 10th and 90th percentile values, to avoid outliers.
     def transform(self, X, y=None):
+        X=X.to_dict('records')
         if self.perform_feature_scaling:
             for row in X:
                 for k, v in row.items():
                     if k not in self.cols_to_avoid and self.attributes_summary.get(k, False):
-                        min_val = self.attributes_summary[k][0]
-                        max_val = self.attributes_summary[k][1]
-                        attribute_range = self.attributes_summary[k][2]
-                        scaled_value = (v - min_val) / attribute_range
+                        min_val = np.float(self.attributes_summary[k][0])
+                        max_val = np.float(self.attributes_summary[k][1])
+                        attribute_range = np.float(self.attributes_summary[k][2])
+
+                        scaled_value = (np.float(v) - min_val) / attribute_range
                         if self.truncate_large_values:
                             if scaled_value < 0:
                                 scaled_value = 0

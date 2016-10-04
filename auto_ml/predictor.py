@@ -572,7 +572,7 @@ class Predictor(object):
                 self._print_ml_analytics_results_random_forest()
 
 
-
+            print self.X_test
             if self.X_test and self.y_test:
                 print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
                 holdout_data_score = self.score(self.X_test, self.y_test)
@@ -682,7 +682,8 @@ class Predictor(object):
         print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
         print('This printed list will contain at most the top 50 features.')
         for summary in sorted_feature_summary[-50:]:
-            print(summary[0] + ': ' + str(round(summary[1], 4)))
+
+            print(str(summary[0]) + ': ' + str(round(summary[1], 4)))
             # Again, we're ignoring feature_ranges for now since we apply feature scaling by default
             # print('The potential impact of this feature is: ' + str(round(summary[2], 4)))
 
