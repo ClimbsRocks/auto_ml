@@ -571,18 +571,17 @@ class Predictor(object):
             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
                 self._print_ml_analytics_results_random_forest()
 
+            if (self.X_test) is not None and (self.X_test) is not None:
+                if not self.X_test.empty and not self.y_test.empty:
+                    print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
+                    holdout_data_score = self.score(self.X_test, self.y_test)
+                    print(holdout_data_score)
 
-            print self.X_test
-            if self.X_test and self.y_test:
-                print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
-                holdout_data_score = self.score(self.X_test, self.y_test)
-                print(holdout_data_score)
-
-                try:
-                    pipeline_results.append(holdout_data_score)
-                except:
-                    # If we don't have pipeline_results (if we did not fit GSCV), then pass
-                    pass
+                    try:
+                        pipeline_results.append(holdout_data_score)
+                    except:
+                        # If we don't have pipeline_results (if we did not fit GSCV), then pass
+                        pass
 
 
 

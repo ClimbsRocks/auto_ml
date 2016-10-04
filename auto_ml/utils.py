@@ -4,7 +4,7 @@ import math
 import numpy as np
 import os
 import random
-
+import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
@@ -17,10 +17,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import scipy
 
 import xgboost as xgb
-import pandas as pd
-def split_output_dataframe(dataframe, output_column_name, verbose=False):
+def split_output_dataframe(datafram, output_column_name, verbose=False):
 
     #currently get all the column headers and using pandas loc to index by name or number
+    if type(datafram)==list:
+        dataframe=pd.DataFrame(datafram)
+    else:
+        dataframe=datafram
     y=dataframe.loc[:, ['target']] # this will give a 2-D array of class labels
     columnnames=dataframe.columns.values.tolist()
 
@@ -724,7 +727,7 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                     ninetieth_percentile = np.float(col_vals[int(0.95 * len(col_vals))])
 
                     # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
-                    print (ninetieth_percentile),tenth_percentile
+
                     col_range = ninetieth_percentile - tenth_percentile
                     if col_range > 0:
                         attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]

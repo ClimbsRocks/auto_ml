@@ -42,6 +42,7 @@ else:
             else:
                 training_data.append(row)
 
+# print type(pd)
 training_data=pd.DataFrame.from_dict(training_data)
 
 testing_data=pd.DataFrame.from_dict(testing_data)
@@ -50,12 +51,14 @@ ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'s
 #print (training_data.loc[:,['target']].values)
 #print training_data
 # split out out output column so we have a proper X, y dataset
+
 X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
+
 #print X_test
 #print type(X_test),type(y_test)
 
 # ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
-ml_predictor.train(training_data, X_test=X_test, y_test=y_test)
+ml_predictor.train(training_data)
 
 
 # ml_predictor.predict_proba(X_test)
