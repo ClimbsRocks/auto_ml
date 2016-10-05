@@ -34,20 +34,20 @@ def split_output_dataframe(datafram, output_column_name, verbose=False):
 
     return X, y
 
-def split_output(X, output_column_name, verbose=False):
-    y = []
-    for row in X:
-        y.append(
-            row.pop(output_column_name, None)
-        )
-
-    if verbose:
-        print('Just to make sure that your y-values make sense, here are the first 100 sorted values:')
-        print(sorted(y)[:100])
-        print('And here are the final 100 sorted values:')
-        print(sorted(y)[-100:])
-
-    return X, y
+# def split_output(X, output_column_name, verbose=False):
+#     y = []
+#     for row in X:
+#         y.append(
+#             row.pop(output_column_name, None)
+#         )
+#
+#     if verbose:
+#         print('Just to make sure that your y-values make sense, here are the first 100 sorted values:')
+#         print(sorted(y)[:100])
+#         print('And here are the final 100 sorted values:')
+#         print(sorted(y)[-100:])
+#
+#     return X, y
 
 
 # Hyperparameter search spaces for each model
