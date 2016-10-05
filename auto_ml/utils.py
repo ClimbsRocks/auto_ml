@@ -270,9 +270,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     keys = self.tfidfvec.get_feature_names()
 
                     tfvec = self.tfidfvec.transform(X.loc[:,key].values).toarray()
-                    textframe=pd.DataFrame(tfvec)
+                    textframe=pd.DataFrame(tfvec)#create sepearte dataframe and append next to each other along columns
                     X=X.join(textframe)
-                    X=X.drop(key,1)
+                    X=X.drop(key,1) #once the transformed datafrane is added , remove original text
                     #print X
                 elif col_desc in self.vals_to_ignore:
                     pass
@@ -281,13 +281,11 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
                     # In either case, it's useful to log it.
                     #TODO this needs a change, but usually this is to be done at preprocessing
+                    #TODO check with preston about this , whether its ok or needs a change
                     print "Please check  the column with"+" "+ key+" "+"for errors like typo etc.."
                     # if len(deleted_values_sample) < 10:
                     #     deleted_values_sample.append(row[key])
                     # deleted_info[key] = col_desc
-
-
-
 
         if len(deleted_values_sample) > 0:
             print('When transforming the data, we have encountered some values in column_descriptions that are not currently supported. The values stored at these keys have been deleted to allow the rest of the pipeline to run. Here\'s some info about these columns:' )
@@ -297,9 +295,12 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
         #print X
         return X
-def add_date_features_dataframe(dataframe,date_col):
+
+def add_date_features_dataframe(dataframe,date_col):#TODO check with preston regarding naming
     datecolumn=dataframe[date_col].values
     row={}
+    #here having dict is better as we can create and merge it with exisiting dataframe, dataframe operations are expensive because of need of multiple merges
+    #TODO check with preston if this is ok or needs a change
     for date_val in datecolumn:
         row[date_col + '_day_of_week'] = str(date_val.weekday())
         row[date_col + '_hour'] = date_val.hour
@@ -332,38 +333,38 @@ def add_date_features_dataframe(dataframe,date_col):
 
         return pd.Dataframe(row)
 
-def add_date_features(date_val, row, date_col):
-
-    row[date_col + '_day_of_week'] = str(date_val.weekday())
-    row[date_col + '_hour'] = date_val.hour
-
-    minutes_into_day = date_val.hour * 60 + date_val.minute
-
-    if row[date_col + '_day_of_week'] in (5,6):
-        row[date_col + '_is_weekend'] = True
-    elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
-        row[date_col + '_is_weekend'] = True
-    else:
-        row[date_col + '_is_weekend'] = False
-
-        # Grab rush hour times for the weekdays.
-        # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
-        if minutes_into_day < 120:
-            row[date_col + '_is_late_night'] = True
-        elif minutes_into_day < 11.5 * 60:
-            row[date_col + '_is_off_peak'] = True
-        elif minutes_into_day < 13.5 * 60:
-            row[date_col + '_is_lunch_rush_hour'] = True
-        elif minutes_into_day < 17.5 * 60:
-            row[date_col + '_is_off_peak'] = True
-        elif minutes_into_day < 20 * 60:
-            row[date_col + '_is_dinner_rush_hour'] = True
-        elif minutes_into_day < 22.5 * 60:
-            row[date_col + '_is_off_peak'] = True
-        else:
-            row[date_col + '_is_late_night'] = True
-
-    return row
+# def add_date_features(date_val, row, date_col):
+#
+#     row[date_col + '_day_of_week'] = str(date_val.weekday())
+#     row[date_col + '_hour'] = date_val.hour
+#
+#     minutes_into_day = date_val.hour * 60 + date_val.minute
+#
+#     if row[date_col + '_day_of_week'] in (5,6):
+#         row[date_col + '_is_weekend'] = True
+#     elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
+#         row[date_col + '_is_weekend'] = True
+#     else:
+#         row[date_col + '_is_weekend'] = False
+#
+#         # Grab rush hour times for the weekdays.
+#         # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
+#         if minutes_into_day < 120:
+#             row[date_col + '_is_late_night'] = True
+#         elif minutes_into_day < 11.5 * 60:
+#             row[date_col + '_is_off_peak'] = True
+#         elif minutes_into_day < 13.5 * 60:
+#             row[date_col + '_is_lunch_rush_hour'] = True
+#         elif minutes_into_day < 17.5 * 60:
+#             row[date_col + '_is_off_peak'] = True
+#         elif minutes_into_day < 20 * 60:
+#             row[date_col + '_is_dinner_rush_hour'] = True
+#         elif minutes_into_day < 22.5 * 60:
+#             row[date_col + '_is_off_peak'] = True
+#         else:
+#             row[date_col + '_is_late_night'] = True
+#
+#     return row
 
 
 def get_model_from_name(model_name):
@@ -664,6 +665,7 @@ def brier_score_loss_wrapper(estimator, X, y):
     return -1 * score
 
 # Used for CustomSparseScaler
+#TODO check with preston :this function is not needed as there is already tfidf vectorizer , hence this will return all columns
 def get_all_attribute_names(transformed_dataframe, cols_to_avoid):
     list_of_dictionaries=transformed_dataframe.to_dict('records')
     attribute_hash = {}
@@ -697,6 +699,7 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
             attribute_list = get_all_attribute_names(X, self.column_descriptions)
             X = X.to_dict('records')
+            #TODO check with preston is this is ok? :Currently df->dict transformation is made because converting to dataframe will also have same complexity as i have to iterate over dataframe
             attributes_per_round = [[], [], []]
 
             attributes_summary = {}
@@ -744,11 +747,13 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
     # Perform basic min/max scaling, with the minor caveat that our min and max values are the 10th and 90th percentile values, to avoid outliers.
     def transform(self, X, y=None):
+        #TODO check with preston is this is ok? :Currently df->dict transformation is made because converting to dataframe will also have same complexity as i have to iterate over dataframe
         X=X.to_dict('records')
         if self.perform_feature_scaling:
             for row in X:
                 for k, v in row.items():
                     if k not in self.cols_to_avoid and self.attributes_summary.get(k, False):
+                        #added a safety check, because when user converts dict to df numbers are represented as strings and left with out tranformation at the start
                         min_val = np.float(self.attributes_summary[k][0])
                         max_val = np.float(self.attributes_summary[k][1])
                         attribute_range = np.float(self.attributes_summary[k][2])
