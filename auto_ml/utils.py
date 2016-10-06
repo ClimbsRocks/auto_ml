@@ -277,7 +277,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     #add keys as features and tfvector values as values into cleanrow dictionary object
                     keys = self.tfidfvec.get_feature_names()
                     tfvec = self.tfidfvec.transform([val]).toarray()
-                    for i in range(len(tfvec)):
+                    for i in range(len(tfvec[0])):
                         clean_row[keys[i]] = tfvec[0][i]
                 elif col_desc in self.vals_to_ignore:
                     pass
