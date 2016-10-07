@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import csv
 import datetime
 import math
@@ -15,6 +16,8 @@ from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 import scipy
+
+import pandas as pd
 
 import xgboost as xgb
 
@@ -203,7 +206,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
-        self.vals_to_del = set([None, float('nan'), float('Inf')])
+        self.vals_to_del = set([None, float('Inf'), 'ignore', 'nan', 'NaN', 'Inf', 'inf', 'None', ''])
         self.vals_to_ignore = set(['regressor', 'classifier', 'output', 'ignore'])
         self.tfidfvec = TfidfVectorizer()
 
@@ -252,13 +255,16 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 if col_desc == 'categorical':
                     clean_row[key] = str(val)
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    if val not in self.vals_to_del:
+                    if val not in self.vals_to_del and pd.notnull(val):
                         try:
                             try:
-                                clean_row[key] = float(val)
+                                # Try to float the value
+                                floated_val = float(val)
                             except:
-                                val = val.replace(',', '')
-                                clean_row[key] = float(val)                                
+                                # If we can't float it directly, try to remove any commas that might be in the string form of a number
+                                # For example, 12,845 cannot be floated direclty, but 12845 can be.
+                                floated_val = float(val.replace(',', ''))
+                            clean_row[key] = floated_val
                         except Exception as e:
                             print('^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^')
                             print('We were not able to automatically process this column. Here is some information to help you debug:')
@@ -441,7 +447,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def score(self, X, y):
-
         # At the time of writing this, GradientBoosting does not support sparse matrices for predictions
         if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
             X = X.todense()
@@ -451,6 +456,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 return self._scorer(self, X, y)
             elif self.type_of_estimator == 'classifier':
                 return self._scorer(self, X, y)
+
 
         else:
             return self.model.score(X, y)
@@ -494,6 +500,30 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_predict = X
 
         return self.model.predict(X_predict)
+
+
+def advanced_scoring_classifiers(probas, actuals):
+    print('Here is how our trained estimator does at each level of predicted probabilities')
+    # create summary dict
+    summary_dict = OrderedDict()
+    for num in range(0, 100, 10):
+        summary_dict[num] = []
+
+    for idx, proba in enumerate(probas):
+        proba = math.floor(int(proba * 100) / 10) * 10
+        summary_dict[proba].append(actuals[idx])
+
+    for k, v in summary_dict.items():
+        if len(v) > 0:
+            print('Predicted probability: ' + str(k) + '%')
+            actual = sum(v) * 1.0 / len(v)
+
+            # Format into a prettier number
+            actual = round(actual * 100, 0)
+            print('Actual: ' + str(actual) + '%')
+            print('# preds: ' + str(len(v)) + '\n')
+            
+    print('\n\n')
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
@@ -623,14 +653,17 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False):
     return - 1 * rmse
 
 
-def brier_score_loss_wrapper(estimator, X, y):
+def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
     if isinstance(estimator, GradientBoostingClassifier):
         X = X.toarray()
 
     predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
     score = brier_score_loss(y, probas)
-    return -1 * score
+    if advanced_scoring:
+        return (-1 * score, probas)
+    else:
+        return -1 * score
 
 # Used for CustomSparseScaler
 def get_all_attribute_names(list_of_dictionaries, cols_to_avoid):
