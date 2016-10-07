@@ -9,6 +9,8 @@ try:
 except:
     import pickle
 
+import pandas as pd
+
 from sklearn.cross_validation import train_test_split
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
@@ -16,6 +18,7 @@ from sklearn.grid_search import GridSearchCV
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
+
 
 # This is ugly, but allows auto_ml to work whether it's installed using pip, or the whole project is installed using git clone https://github.com/ClimbsRocks/auto_ml
 try:
@@ -228,7 +231,11 @@ class Predictor(object):
             for idx, val in enumerate(y):
                 try:
                     float_val = float(val)
-                    y_floats.append(float_val)
+                    if pd.notnull(float_val):
+                        y_floats.append(float_val)
+                    else:
+                        indices_to_delete.append(idx)
+                        bad_vals.append(val)
                 except:
                     indices_to_delete.append(idx)
                     bad_vals.append(val)
@@ -269,14 +276,13 @@ class Predictor(object):
 
         return dup_descs, sub_type_of_estimator
 
-
     def make_sub_x_and_y_test(self, X_test, sub_name):
-        vals_to_ignore = set([None, float('nan'), float('Inf'), 'ignore'])
+        vals_to_ignore = set([None, float('Inf'), 'ignore', 'nan', 'NaN', 'Inf', 'None', ''])
         clean_X_test = []
         clean_y = []
         for row in X_test:
             y_val = row.pop(sub_name, None)
-            if y_val not in vals_to_ignore:
+            if y_val not in vals_to_ignore and pd.notnull(y_val):
                 clean_X_test.append(row)
                 clean_y.append(y_val)
         return clean_X_test, clean_y
@@ -728,17 +734,22 @@ class Predictor(object):
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
-    def score(self, X_test, y_test):
+    def score(self, X_test, y_test, advanced_scoring=False):
         if self._scorer is not None:
-            try:
-                if self.type_of_estimator == 'regressor':
-                    return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y)
-                elif self.type_of_estimator == 'classifier':
-                    return self._scorer(self.trained_pipeline, X_test, y_test)
+            # try:
+            if self.type_of_estimator == 'regressor':
+                return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring)
+            elif self.type_of_estimator == 'classifier':
+                if advanced_scoring:
+                    score, probas = self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
+                    utils.advanced_scoring_classifiers(probas, y_test)
+                    return score
+                else:
+                    return self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
 
-            except:
+            # except:
 
-                return self._scorer(self.trained_pipeline, X_test, y_test)
+            #     return self._scorer(self.trained_pipeline, X_test, y_test)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 
