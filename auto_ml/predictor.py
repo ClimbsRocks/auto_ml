@@ -430,10 +430,8 @@ class Predictor(object):
             X_df = raw_training_data
 
         X_df, y = self._prepare_for_training(X_df)
-        # print(X_df)
-        # print(y)
 
-
+        # TODO TODO: This is not yet refactored to handle DataFrames
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
         if len(self.subpredictors) > 0:
             print('We are going to be training up several subpredictors before training up our final ensembled predictor')
@@ -478,7 +476,7 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        if model_names:
+        if model_names != None:
             estimator_names = model_names
         else:
             estimator_names = self._get_estimator_names()
@@ -494,7 +492,7 @@ class Predictor(object):
             print('Created estimator_names and scoring')
 
 
-        self.perform_grid_search_by_model_names(estimator_names, scoring, X, y)
+        self.perform_grid_search_by_model_names(estimator_names, scoring, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
         # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
@@ -523,7 +521,7 @@ class Predictor(object):
         del self.subpredictors
 
 
-    def perform_grid_search_by_model_names(self, estimator_names, scoring, X, y):
+    def perform_grid_search_by_model_names(self, estimator_names, scoring, X_df, y):
 
         for model_name in estimator_names:
             ppl = self._construct_pipeline(model_name=model_name)
@@ -566,7 +564,6 @@ class Predictor(object):
                     # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                     # Set the score on this partition to some very negative number, so that we do not choose this estimator.
                     error_score=-1000000000,
-                    # TODO(PRESTON): change scoring to be RMSE by default
                     scoring=scoring
                     # ,pre_dispatch='1*n_jobs'
                 )
