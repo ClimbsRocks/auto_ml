@@ -30,6 +30,9 @@ try:
 except:
     from .. auto_ml import date_feature_engineering
 
+# Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings. 
+# The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things. 
+# Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary. 
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -204,7 +207,9 @@ class Predictor(object):
         else:
             raise('TypeError: type_of_estimator must be either "classifier" or "regressor".')
 
-    def _prepare_for_training(self, raw_training_data):
+    def _prepare_for_training(self, X_df):
+
+        # If we're writing training results to file, create the new empty file name here
         if self.write_gs_param_results_to_file:
             self.gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'
             try:
@@ -212,11 +217,28 @@ class Predictor(object):
             except:
                 pass
 
-        # split out out output column so we have a proper X, y dataset
-        X, y = utils.split_output_dataframe(raw_training_data, self.output_column)
+        # Drop all rows that have an empty value for our output column
+        # User logging so they can adjust if they pass in a bunch of bad values:
+        bad_rows = X_df[pd.isnull(X_df[self.output_column])]
+        if bad_rows.shape[0] > 0:
+            print('We encountered a number of missing values for this output column')
+            print('Specifically, here is the output column:')
+            print(self.output_column)
+            print('And here is the number of missing (nan, None, etc.) values for this column:')
+            print(bad_rows.shape[0])
+            print('We will remove these values, and continue with training on the cleaned dataset')
+        X_df = X_df.dropna(subset=[self.output_column])
 
-        # TODO: modularize into clean_y_vals function
+
+        # Remove the output column from the dataset, and store it into the y varaible
+        y = list(X_df.pop(self.output_column))
+
+        print('removed the output column')
+
+        # If this is a classifier, try to turn all the y values into proper ints
+        # Some classifiers play more nicely if you give them category labels as ints rather than strings, so we'll make our jobs easier here if we can. 
         if self.type_of_estimator == 'classifier':
+            # The entire column must be turned into floats. If any value fails, don't convert anything in the column to floats
             try:
                 y_ints = []
                 for val in y:
@@ -225,33 +247,32 @@ class Predictor(object):
             except:
                 pass
         else:
+            # If this is a regressor, turn all the values into floats if possible, and remove this row if they cannot be turned into floats
             indices_to_delete = []
             y_floats = []
             bad_vals = []
             for idx, val in enumerate(y):
                 try:
-                    float_val = float(val)
-                    if pd.notnull(float_val):
-                        y_floats.append(float_val)
-                    else:
-                        indices_to_delete.append(idx)
-                        bad_vals.append(val)
-                except:
+                    float_val = utils.clean_val(val)
+                    y_floats.append(float_val)
+                except ValueError as err:
                     indices_to_delete.append(idx)
                     bad_vals.append(val)
 
             y = y_floats
 
+            # Even more verbose logging here since these values are not just missing, they're strings for a regression problem
             if len(indices_to_delete) > 0:
                 print('The y values given included some bad values that the machine learning algorithms will not be able to train on.')
                 print('The rows at these indices have been deleted because their y value could not be turned into a float:')
                 print(indices_to_delete)
                 print('These were the bad values')
                 print(bad_vals)
-                indices_to_delete = set(indices_to_delete)
-                X = [row for idx, row in enumerate(X) if idx not in indices_to_delete]
+                # indices_to_delete = set(indices_to_delete)
+                X_df = X_df.drop(X_df.index(indices_to_delete))
+                # X_df = [row for idx, row in enumerate(X_df) if idx not in indices_to_delete]
 
-        return X, y
+        return X_df, y
 
 
     def _make_sub_column_descriptions(self, column_descriptions, sub_name):
@@ -400,7 +421,18 @@ class Predictor(object):
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
-        X, y = self._prepare_for_training(raw_training_data)
+
+        # We accept input as either a DataFrame, or as a list of dictionaries. Internally, we use DataFrames. So if the user gave us a list, convert it to a DataFrame here. 
+        if isinstance(raw_training_data, list):
+            X_df = pd.DataFrame(raw_training_data)
+            del raw_training_data
+        else:
+            X_df = raw_training_data
+
+        X_df, y = self._prepare_for_training(X_df)
+        # print(X_df)
+        # print(y)
+
 
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
         if len(self.subpredictors) > 0:
