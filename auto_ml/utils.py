@@ -252,9 +252,25 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         self.column_descriptions = column_descriptions
         self.vals_to_del = set([None, float('Inf'), 'ignore', 'nan', 'NaN', 'Inf', 'inf', 'None', ''])
         self.vals_to_ignore = set(['regressor', 'classifier', 'output', 'ignore'])
-        self.tfidfvec = TfidfVectorizer()
+        self.tfidfvec = TfidfVectorizer(
+            # If we have any documents that cannot be decoded properly, just ignore them and keep going as planned with everything else
+            decode_error='ignore'
+            # Try to strip accents from characters. Using unicode is slightly slower but more comprehensive than 'ascii'
+            , strip_accents='unicode'
+            # Can also choose 'character', which will likely increase accuracy, at the cost of much more space, generally
+            , analyzer='word'
+            # Remove commonly found english words ('it', 'a', 'the') which do not typically contain much signal
+            , stop_words='english'
+            # Convert all characters to lowercase
+            , lowercase=True
+            # Only consider words that appear in fewer than max_df percent of all documents
+            # In this case, ignore all words that appear in 90% of all documents
+            , max_df=0.9
+            # Consider only the most frequently occurring 3000 words, after taking into account all the other filtering going on
+            , max_features=3000
+        )
 
-    def fit(self, X, y=None):
+    def fit(self, X_df, y=None):
 
 
         inputflag=False
@@ -265,13 +281,12 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         #follow loop will be excuted only one time , must see if there is any other logic.
         #currently this is needed becuase this is the only way to get to know if there is any senetence as inputs in columns
         #TODO alternatively any option from config file would be helpful which will remove this following loop
-        columns_in_dataframe=X.columns.values.tolist()
-        corpus=[]
+        columns_in_dataframe = X_df.columns
+
         for key in columns_in_dataframe:#check for each name if coulmn description is text is so fit a tfidf vectorizer
-                    col_desc = self.column_descriptions.get(key)
-                    if col_desc in text_col_indicators_list:
-                            self.tfidfvec.fit(X.loc[:,key].values)
-                            return self
+            col_desc = self.column_descriptions.get(key)
+            if col_desc in text_col_indicators_list:
+                    self.tfidfvec.fit(X_df[key])
 
         return self
 
