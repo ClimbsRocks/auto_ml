@@ -20,19 +20,47 @@ import scipy
 import pandas as pd
 
 import xgboost as xgb
-def split_output_dataframe(datafram, output_column_name, verbose=False):
 
-    #currently get all the column headers and using pandas loc to index by name or number
-    if type(datafram)==list:
-        dataframe=pd.DataFrame(datafram)
+
+# The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+
+# There are several places in our module where it's useful to clean values
+# clean_val will try to turn this value into a float.
+# If it fails, it will attempt to strip commas and then attempt to turn it into a float again
+# Additionally, it will check to make sure the value is not in a set of bad vals (nan, None, inf, etc.)
+# This function will either return a clean value, or raise an error if we cannot turn the value into a float or the value is a bad val
+def clean_val(val):
+    print('inside clean_val')
+    if str(val) in bad_vals_as_strings:
+        raise(ValueError('clean_val failed'))
     else:
-        dataframe=datafram
-    y=dataframe.loc[:, ['target']] # this will give a 2-D array of class labels
-    columnnames=dataframe.columns.values.tolist()
+        try:
+            float_val = float(val)
+        except:
+            # This will throw a ValueError if it fails
+            # remove any commas in the string, and try to turn into a float again
+            cleaned_string = val.replace(',', '')
+            float_val = float(cleaned_string)
+        print(float_val)
+        return float_val
 
-    columnnames.remove(output_column_name)
 
-    X=dataframe.loc[:,columnnames]
+
+
+def split_output_dataframe(X_df, output_column_name, verbose=False):
+
+    # #currently get all the column headers and using pandas loc to index by name or number
+    # if type(datafram)==list:
+    #     dataframe=pd.DataFrame(datafram)
+    # else:
+    #     dataframe=datafram
+    # y=dataframe.loc[:, ['target']] # this will give a 2-D array of class labels
+    # columnnames=dataframe.columns.values.tolist()
+
+    # columnnames.remove(output_column_name)
+
+    # X=dataframe.loc[:,columnnames]
 
 
     return X, y
@@ -285,7 +313,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # In either case, it's useful to log it.
                     #TODO this needs a change, but usually this is to be done at preprocessing
                     #TODO check with preston about this , whether its ok or needs a change
-                    print "Please check  the column with"+" "+ key+" "+"for errors like typo etc.."
+                    print("Please check  the column with " + key + " for errors like typo etc..")
                     # if len(deleted_values_sample) < 10:
                     #     deleted_values_sample.append(row[key])
                     # deleted_info[key] = col_desc
