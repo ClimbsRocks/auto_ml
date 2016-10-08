@@ -11,7 +11,7 @@ from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor,                 LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
+from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
@@ -31,7 +31,6 @@ bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf
 # Additionally, it will check to make sure the value is not in a set of bad vals (nan, None, inf, etc.)
 # This function will either return a clean value, or raise an error if we cannot turn the value into a float or the value is a bad val
 def clean_val(val):
-    print('inside clean_val')
     if str(val) in bad_vals_as_strings:
         raise(ValueError('clean_val failed'))
     else:
@@ -42,7 +41,24 @@ def clean_val(val):
             # remove any commas in the string, and try to turn into a float again
             cleaned_string = val.replace(',', '')
             float_val = float(cleaned_string)
-        print(float_val)
+        return float_val
+
+# Same as above, except this version returns float('nan') when it fails
+# This plays more nicely with df.apply, and assumes we will be handling nans appropriately when doing DataFrameVectorizer later.
+def clean_val_nan_version(val):
+    if str(val) in bad_vals_as_strings:
+        return float('nan')
+    else:
+        try:
+            float_val = float(val)
+        except:
+            # This will throw a ValueError if it fails
+            # remove any commas in the string, and try to turn into a float again
+            cleaned_string = val.replace(',', '')
+            try:
+                float_val = float(cleaned_string)
+            except:
+                return float('nan')
         return float_val
 
 
@@ -250,8 +266,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
-        self.vals_to_del = set([None, float('Inf'), 'ignore', 'nan', 'NaN', 'Inf', 'inf', 'None', ''])
-        self.vals_to_ignore = set(['regressor', 'classifier', 'output', 'ignore'])
+        self.text_col_indicators = set(['text', 'nlp'])
         self.tfidfvec = TfidfVectorizer(
             # If we have any documents that cannot be decoded properly, just ignore them and keep going as planned with everything else
             decode_error='ignore'
@@ -272,145 +287,133 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def fit(self, X_df, y=None):
 
+        # FUTURE: add some input validation here
+            # If this is a column we would try to convert to numeric, and all the values returned from clean_val_nan_version are nan, tell the user that this column is full of nothing but nan, and that they might want to consider either checking their data extraction process, or telling us this is a different type of field
 
-        inputflag=False
-        text_col_indicators = set(['text', 'nlp'])
-        text_col_indicators_list=['text','nlp']
 
-        #Condition check if there is text or nlp field only then do tfidf
-        #follow loop will be excuted only one time , must see if there is any other logic.
-        #currently this is needed becuase this is the only way to get to know if there is any senetence as inputs in columns
-        #TODO alternatively any option from config file would be helpful which will remove this following loop
-        columns_in_dataframe = X_df.columns
-
-        for key in columns_in_dataframe:#check for each name if coulmn description is text is so fit a tfidf vectorizer
+        for key in X_df.columns:#check for each name if coulmn description is text is so fit a tfidf vectorizer
             col_desc = self.column_descriptions.get(key)
-            if col_desc in text_col_indicators_list:
+            if col_desc in self.text_col_indicators:
                     self.tfidfvec.fit(X_df[key])
 
         return self
 
     def transform(self, X, y=None):
-        clean_X = []
-        deleted_values_sample = []
-        deleted_info = {}
-        text_col_indicators = set(['text', 'nlp'])
-        text_col_indicators_list = ['text', 'nlp']
 
+        #previously duirng doctionary objects we used to work row wise, but due to dataframe facility we can do transformation for each column
+        for key in X.columns:
+            col_desc = self.column_descriptions.get(key)
+            if col_desc == 'categorical':
+                # We will do get_dummies on these columns later, inside DataFrameVectorizer
+                pass
 
-        columns_in_X=X.columns.values.tolist()
+            elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
+                # For all of our numerical columns, try to turn all of these values into floats
+                # This function handles commas inside strings that represent numbers, and returns nan if we cannot turn this value into a float. nans are ignored in DataFrameVectorizer
+                X[key] = X[key].apply(clean_val_nan_version)
 
-        #previously duirng doctionary objects we used to work row wise,but due to dataframe facility we can do transformation for each column
-        for key in columns_in_X:
-                col_desc = self.column_descriptions.get(key)
-                if col_desc == 'categorical':
-                    X[key].apply(lambda x : str(x))
-                elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    X[key].apply(lambda x: float(x))
-                elif col_desc == 'date':
-                    newX = add_date_features_dataframe(X, key)
-                    X=X.join(newX)
-                elif col_desc in text_col_indicators_list:
-                    #add keys as features and tfvector values as values into cleanrow dictionary object
-                    clean_row={}
-                    keys = self.tfidfvec.get_feature_names()
+            elif col_desc == 'date':
+                X = add_date_features_df(X, key)
 
-                    tfvec = self.tfidfvec.transform(X.loc[:,key].values).toarray()
-                    textframe=pd.DataFrame(tfvec)#create sepearte dataframe and append next to each other along columns
-                    X=X.join(textframe)
-                    X=X.drop(key,1) #once the transformed datafrane is added , remove original text
-                    #print X
-                elif col_desc in self.vals_to_ignore:
-                    pass
-                else:
-                    # If we have gotten here, the value is not any that we recognize
-                    # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
-                    # In either case, it's useful to log it.
-                    #TODO this needs a change, but usually this is to be done at preprocessing
-                    #TODO check with preston about this , whether its ok or needs a change
-                    print("Please check  the column with " + key + " for errors like typo etc..")
-                    # if len(deleted_values_sample) < 10:
-                    #     deleted_values_sample.append(row[key])
-                    # deleted_info[key] = col_desc
+            elif col_desc in self.text_col_indicators:
+                #add keys as features and tfvector values as values into cleanrow dictionary object
+                clean_row = {}
+                keys = self.tfidfvec.get_feature_names()
 
-        if len(deleted_values_sample) > 0:
-            print('When transforming the data, we have encountered some values in column_descriptions that are not currently supported. The values stored at these keys have been deleted to allow the rest of the pipeline to run. Here\'s some info about these columns:' )
-            print(deleted_info)
-            print('And some example values from these columns:')
-            print(deleted_values_sample)
+                tfvec = self.tfidfvec.transform(X.loc[:,key].values).toarray()
+                textframe = pd.DataFrame(tfvec)#create sepearte dataframe and append next to each other along columns
+                X = X.join(textframe)
+                X = X.drop(key, axis=1) #once the transformed datafrane is added , remove original text
 
-        #print X
+            elif col_desc == 'ignore':
+                X = X.drop(key, axis=1)
+                pass
+
+            else:
+                # If we have gotten here, the value is not any that we recognize
+                # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
+                # In either case, it's useful to log it.
+                print('When transforming the data, we have encountered a value in column_descriptions that is not currently supported. The has been dropped to allow the rest of the pipeline to run. Here\'s the name of the column:' )
+                print(key)
+                print('And here is the value for this column passed into column_descriptions:')
+                print(col_desc)
+
         return X
 
-def add_date_features_dataframe(dataframe,date_col):#TODO check with preston regarding naming
-    datecolumn=dataframe[date_col].values
-    row={}
-    #here having dict is better as we can create and merge it with exisiting dataframe, dataframe operations are expensive because of need of multiple merges
-    #TODO check with preston if this is ok or needs a change
-    for date_val in datecolumn:
-        row[date_col + '_day_of_week'] = str(date_val.weekday())
-        row[date_col + '_hour'] = date_val.hour
+# def add_date_features_dataframe(dataframe,date_col):#TODO check with preston regarding naming
+#     datecolumn=dataframe[date_col].values
+#     row={}
+#     #here having dict is better as we can create and merge it with exisiting dataframe, dataframe operations are expensive because of need of multiple merges
+#     #TODO check with preston if this is ok or needs a change
+#     for date_val in datecolumn:
+#         row[date_col + '_day_of_week'] = str(date_val.weekday())
+#         row[date_col + '_hour'] = date_val.hour
 
-        minutes_into_day = date_val.hour * 60 + date_val.minute
+#         minutes_into_day = date_val.hour * 60 + date_val.minute
 
-        if row[date_col + '_day_of_week'] in (5,6):
-            row[date_col + '_is_weekend'] = True
-        elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
-            row[date_col + '_is_weekend'] = True
-        else:
-            row[date_col + '_is_weekend'] = False
-
-            # Grab rush hour times for the weekdays.
-            # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
-            if minutes_into_day < 120:
-                row[date_col + '_is_late_night'] = True
-            elif minutes_into_day < 11.5 * 60:
-                row[date_col + '_is_off_peak'] = True
-            elif minutes_into_day < 13.5 * 60:
-                row[date_col + '_is_lunch_rush_hour'] = True
-            elif minutes_into_day < 17.5 * 60:
-                row[date_col + '_is_off_peak'] = True
-            elif minutes_into_day < 20 * 60:
-                row[date_col + '_is_dinner_rush_hour'] = True
-            elif minutes_into_day < 22.5 * 60:
-                row[date_col + '_is_off_peak'] = True
-            else:
-                row[date_col + '_is_late_night'] = True
-
-        return pd.Dataframe(row)
-
-# def add_date_features(date_val, row, date_col):
-#
-#     row[date_col + '_day_of_week'] = str(date_val.weekday())
-#     row[date_col + '_hour'] = date_val.hour
-#
-#     minutes_into_day = date_val.hour * 60 + date_val.minute
-#
-#     if row[date_col + '_day_of_week'] in (5,6):
-#         row[date_col + '_is_weekend'] = True
-#     elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
-#         row[date_col + '_is_weekend'] = True
-#     else:
-#         row[date_col + '_is_weekend'] = False
-#
-#         # Grab rush hour times for the weekdays.
-#         # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
-#         if minutes_into_day < 120:
-#             row[date_col + '_is_late_night'] = True
-#         elif minutes_into_day < 11.5 * 60:
-#             row[date_col + '_is_off_peak'] = True
-#         elif minutes_into_day < 13.5 * 60:
-#             row[date_col + '_is_lunch_rush_hour'] = True
-#         elif minutes_into_day < 17.5 * 60:
-#             row[date_col + '_is_off_peak'] = True
-#         elif minutes_into_day < 20 * 60:
-#             row[date_col + '_is_dinner_rush_hour'] = True
-#         elif minutes_into_day < 22.5 * 60:
-#             row[date_col + '_is_off_peak'] = True
+#         if row[date_col + '_day_of_week'] in (5,6):
+#             row[date_col + '_is_weekend'] = True
+#         elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
+#             row[date_col + '_is_weekend'] = True
 #         else:
-#             row[date_col + '_is_late_night'] = True
-#
-#     return row
+#             row[date_col + '_is_weekend'] = False
+
+#             # Grab rush hour times for the weekdays.
+#             # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
+#             if minutes_into_day < 120:
+#                 row[date_col + '_is_late_night'] = True
+#             elif minutes_into_day < 11.5 * 60:
+#                 row[date_col + '_is_off_peak'] = True
+#             elif minutes_into_day < 13.5 * 60:
+#                 row[date_col + '_is_lunch_rush_hour'] = True
+#             elif minutes_into_day < 17.5 * 60:
+#                 row[date_col + '_is_off_peak'] = True
+#             elif minutes_into_day < 20 * 60:
+#                 row[date_col + '_is_dinner_rush_hour'] = True
+#             elif minutes_into_day < 22.5 * 60:
+#                 row[date_col + '_is_off_peak'] = True
+#             else:
+#                 row[date_col + '_is_late_night'] = True
+
+#         return pd.Dataframe(row)
+
+
+def minutes_into_day_parts(minutes_into_day):
+    if minutes_into_day < 6 * 60:
+        return 'late_night'
+    elif minutes_into_day < 10 * 60:
+        return 'morning'
+    elif minutes_into_day < 11.5 * 60:
+        return 'mid_morning'
+    elif minutes_into_day < 14 * 60:
+        return 'lunchtime'
+    elif minutes_into_day < 18 * 60:
+        return 'afternoon'
+    elif minutes_into_day < 20.5 * 60:
+        return 'dinnertime'
+    elif minutes_into_day < 23.5 * 60:
+        return 'early_night'
+    else:
+        return 'late_night'
+
+
+
+
+# For v1, we will keep all the calculated date values as ints, rather than categorical strings
+# TODO TODO: take in column_descriptions, and modify as necessary for stuff like day_part
+def add_date_features_df(df, date_col):
+
+    df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int)
+    df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int)
+
+    df[date_col + '_minutes_into_day'] = df[date_col].apply(lambda x: x.hour * 60 + x.minute)
+
+    df[date_col + '_is_weekend'] = df[date_col].apply(lambda x: x.weekday() in (5,6))
+    df[date_col + '_day_part'] = df[date_col + '_minutes_into_day'].apply(minutes_into_day_parts)
+
+    df.drop([date_col], axis=1)
+
+    return df
 
 
 def get_model_from_name(model_name):

@@ -57,20 +57,20 @@ class Predictor(object):
         self.took_log_of_y = False
         self.take_log_of_y = False
 
-        self._validate_input_col_descriptions(column_descriptions)
+        self._validate_input_col_descriptions()
 
         self.grid_search_pipelines = []
 
 
-    def _validate_input_col_descriptions(self, column_descriptions):
+    def _validate_input_col_descriptions(self):
         found_output_column = False
         self.subpredictors = []
         subpredictor_vals = set(['regressor', 'classifier'])
         expected_vals = set(['categorical', 'ignore','text','nlp'])
 
-        for key, value in column_descriptions.items():
+        for key, value in self.column_descriptions.items():
             value = value.lower()
-            column_descriptions[key] = value
+            self.column_descriptions[key] = value
             if value == 'output':
                 self.output_column = key
                 found_output_column = True
@@ -87,6 +87,11 @@ class Predictor(object):
             print(column_descriptions)
             raise ValueError('In your column_descriptions, please make sure exactly one column has the value "output", which is the value we will be training models to predict.')
 
+        # We will be adding one new categorical variable for each date col
+        # Be sure to add it here so the rest of the pipeline knows to handle it as a categorical column
+        for date_col in self.date_cols:
+            self.column_descriptions[date_col + '_date_part'] = 'categorical'
+
 
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
@@ -101,11 +106,11 @@ class Predictor(object):
             else:
                 pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False) ))
 
-        if len(self.date_cols) > 0:
-            if trained_pipeline is not None:
-                pipeline_list.append(('date_feature_engineering', trained_pipeline.named_steps['date_feature_engineering']))
-            else:
-                pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
+        # if len(self.date_cols) > 0:
+        #     if trained_pipeline is not None:
+        #         pipeline_list.append(('date_feature_engineering', trained_pipeline.named_steps['date_feature_engineering']))
+        #     else:
+        #         pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
 
         # These parts will be included no matter what.
         if trained_pipeline is not None:
@@ -597,7 +602,7 @@ class Predictor(object):
                     start_time = datetime.datetime.now().replace(microsecond=0)
                     print(start_time)
 
-                ppl.fit(X, y)
+                ppl.fit(X_df, y)
                 self.trained_pipeline = ppl
 
                 if self.verbose:
