@@ -1,9 +1,10 @@
 import csv
 import random
 import sys
-
+import pandas as pd
 from auto_ml import Predictor
 from auto_ml import utils
+random.seed(10)
 
 if len(sys.argv) > 1 and sys.argv[1] in set(['full', 'long', 'full_dataset', 'all_data', 'all']):
 
@@ -30,7 +31,7 @@ if len(sys.argv) > 1 and sys.argv[1] in set(['full', 'long', 'full_dataset', 'al
 
 else:
     # load short dataset
-    with open('numerai_datasets_early_aug/numerai_short.csv', 'rU') as input_file:
+    with open('numerai_training_data.csv', 'rU') as input_file:
         training_rows = csv.DictReader(input_file)
 
         training_data = []
@@ -42,17 +43,32 @@ else:
             else:
                 training_data.append(row)
 
+# print type(pd)
 
-ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'target': 'output'})
+print "Testing with dict objects"
 
-# split out out output column so we have a proper X, y dataset
-X_test, y_test = utils.split_output(testing_data, 'target')
-for idx, pred in enumerate(y_test):
-    y_test[idx] = int(pred)
+ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'sentence':'text','target': 'output'})
+
+X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
 
 # ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
-ml_predictor.train(training_data, X_test=X_test, y_test=y_test)
-
+ml_predictor.train(training_data)
 
 # ml_predictor.predict_proba(X_test)
 print(ml_predictor.score(X_test, y_test))
+
+
+print "Testing with dataframes"
+training_data=pd.DataFrame.from_dict(training_data)
+testing_data=pd.DataFrame.from_dict(testing_data)
+
+ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'sentence':'text','target': 'output'})
+
+X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
+
+# ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
+ml_predictor.train(training_data)
+
+# ml_predictor.predict_proba(X_test)
+print(ml_predictor.score(X_test, y_test))
+
