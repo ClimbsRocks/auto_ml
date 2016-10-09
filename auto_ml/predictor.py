@@ -30,6 +30,11 @@ try:
 except:
     from .. auto_ml import date_feature_engineering
 
+try:
+    from auto_ml import DataFrameVectorizer
+except:
+    from .. auto_ml import DataFrameVectorizer
+
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings. 
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things. 
 # Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary. 
@@ -136,7 +141,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
-            pipeline_list.append(('dv', DictVectorizer(sparse=False, sort=True)))
+            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True)))
 
         if self.perform_feature_selection:
             if trained_pipeline is not None:
@@ -777,6 +782,7 @@ class Predictor(object):
 
 
     def score(self, X_test, y_test, advanced_scoring=False):
+        y_test = list(y_test)
         if self._scorer is not None:
             # try:
             if self.type_of_estimator == 'regressor':

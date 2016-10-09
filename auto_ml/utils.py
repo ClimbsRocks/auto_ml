@@ -325,15 +325,14 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 X = X.join(textframe)
                 X = X.drop(key, axis=1) #once the transformed datafrane is added , remove original text
 
-            elif col_desc == 'ignore':
+            elif col_desc == 'ignore' or col_desc == 'output':
                 X = X.drop(key, axis=1)
-                pass
 
             else:
                 # If we have gotten here, the value is not any that we recognize
                 # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
                 # In either case, it's useful to log it.
-                print('When transforming the data, we have encountered a value in column_descriptions that is not currently supported. The has been dropped to allow the rest of the pipeline to run. Here\'s the name of the column:' )
+                print('When transforming the data, we have encountered a value in column_descriptions that is not currently supported. The column has been dropped to allow the rest of the pipeline to run. Here\'s the name of the column:' )
                 print(key)
                 print('And here is the value for this column passed into column_descriptions:')
                 print(col_desc)
@@ -411,7 +410,7 @@ def add_date_features_df(df, date_col):
     df[date_col + '_is_weekend'] = df[date_col].apply(lambda x: x.weekday() in (5,6))
     df[date_col + '_day_part'] = df[date_col + '_minutes_into_day'].apply(minutes_into_day_parts)
 
-    df.drop([date_col], axis=1)
+    df = df.drop([date_col], axis=1)
 
     return df
 
@@ -757,8 +756,8 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
     if str(inner_range) == 'nan':
         # If we've already tried to get the range with the maximum possible set of values, and it's still nan, that means this entire column is filled with nothing but nan, and should be ignored
         if max_percentile - min_percentile == 1:
-            print('This column appears to have only nan values, and will be ignored:')
-            print(col)
+            # print('This column appears to have only nan values, and will be ignored:')
+            # print(col)
             return 'ignore'
         else:
             # f the inner range is nan, maybe this column is just highly sparse, and we actually need to go even further to the max and min values to find non-nan values in this column
