@@ -15,6 +15,8 @@ from sklearn.externals.six.moves import xrange
 from sklearn.utils import check_array, tosequence
 from sklearn.utils.fixes import frombuffer_empty
 
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+
 
 def _tosequence(X):
     """Turn X into a sequence or ndarray, avoiding a copy if possible."""
@@ -160,7 +162,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                     val = 1
 
                 # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
-                if f in vocab:
+                if f in vocab and str(val) not in bad_vals_as_strings:
                     # Get the index position from vocab, then append that index position to indices
                     indices.append(vocab[f])
                     # Convert the val to the correct dtype, then append to our values list
@@ -195,7 +197,8 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         # if fitting:
         #     self.feature_names_ = feature_names
         #     self.vocabulary_ = vocab
-
+        print('X.shape at the end of DataFrameVectorizer')
+        print(X.shape)
         return result_matrix
 
     # def fit_transform(self, X, y=None):
