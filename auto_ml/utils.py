@@ -740,22 +740,39 @@ def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
     else:
         return -1 * score
 
-# Used for CustomSparseScaler
-#TODO check with preston :this function is not needed as there is already tfidf vectorizer , hence this will return all columns
-def get_all_attribute_names(transformed_dataframe, cols_to_avoid):
-    list_of_dictionaries=transformed_dataframe.to_dict('records')
-    attribute_hash = {}
-    for dictionary in list_of_dictionaries:
-        for k, v in dictionary.items():
-            attribute_hash[k] = True
 
-    # All of the columns in column_descriptions should be avoided. They're probably either categorical or NLP data, both of which cannot be scaled.
-    #columns_in_dataframe=dataframe.columns.values.tolist()
+# Used in CustomSparseScaler
+# Note that df.quantile ignores nan values, exactly the behavior we want from a column that could hold sparse (lots of nan) data
+# TODO: in the future, we can move the checking for columns of all nan or all 0 variance earlier (before we train the pipeline) to reduce memory size
+def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
+    upper_percentile = X[col].quantile(max_percentile)
+    lower_percentile = X[col].quantile(min_percentile)
+    inner_range = upper_percentile - lower_percentile
+    col_summary = {
+        'max_val': upper_percentile
+        , 'min_val': lower_percentile
+        , 'inner_range': inner_range
+    }
 
-    attribute_list = [k for k, v in attribute_hash.items() if k not in cols_to_avoid]
+    if str(inner_range) == 'nan':
+        # If we've already tried to get the range with the maximum possible set of values, and it's still nan, that means this entire column is filled with nothing but nan, and should be ignored
+        if max_percentile - min_percentile == 1:
+            print('This column appears to have only nan values, and will be ignored:')
+            print(col)
+            return 'ignore'
+        else:
+            # f the inner range is nan, maybe this column is just highly sparse, and we actually need to go even further to the max and min values to find non-nan values in this column
+            return calculate_scaling_ranges(X, col, min_percentile=0, max_percentile=1)
 
-    return attribute_list
+    if inner_range == 0:
+        if max_percentile - min_percentile == 1:
+            print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
+            print(col)
+            return 'ignore'
+        else:
+            return calculate_scaling_ranges(X, col, min_percentile=0, max_percentile=1)
 
+    return col_summary
 
 # Scale sparse data to the 90th and 10th percentile
 # Only do so for values that actuall exist (do absolutely nothing with rows that do not have this data point)
@@ -764,85 +781,57 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
     def __init__(self, column_descriptions, truncate_large_values=False, perform_feature_scaling=True):
         self.column_descriptions = column_descriptions
-        self.cols_to_avoid = set([k for k, v in column_descriptions.items()])
+
+        self.numeric_col_descs = set([None, 'continuous', 'numerical', 'numeric', 'float', 'int'])
+        # Everything in column_descriptions (except numeric_col_descs) is a non-numeric column, and thus, cannot be scaled
+        self.cols_to_avoid = set([k for k, v in column_descriptions.items() if v not in self.numeric_col_descs])
+
+        # Setting these here so that they can be grid searchable
+        # Truncating large values is an interesting strategy. It forces all values to fit inside the 5th - 95th percentiles. 
+        # Essentially, it turns any really large (or small) values into reasonably large (or small) values. 
         self.truncate_large_values = truncate_large_values
         self.perform_feature_scaling = perform_feature_scaling
 
 
     def fit(self, X, y=None):
+        self.column_ranges = {}
+        self.cols_to_ignore = []
 
         if self.perform_feature_scaling:
 
-            attribute_list = get_all_attribute_names(X, self.column_descriptions)
-            X = X.to_dict('records')
-            #TODO check with preston is this is ok? :Currently df->dict transformation is made because converting to dataframe will also have same complexity as i have to iterate over dataframe
-            attributes_per_round = [[], [], []]
-
-            attributes_summary = {}
-
-            # Randomly assign each attribute to one of three buckets
-            # We will summarize the data in three separate iterations, to avoid duplicating too much data in memory at any one point.
-            for attribute in attribute_list:
-                bucket_idx = int(random.random() * 3)
-                attributes_per_round[bucket_idx].append(attribute)
-                attributes_summary[attribute] = []
-
-            for bucket in attributes_per_round:
-
-                attributes_to_summarize = set(bucket)
-
-                for row in X:
-                    for k, v in row.items():
-                        if k in attributes_to_summarize:
-                            attributes_summary[k].append(v)
-
-                for attribute in bucket:
-
-                    # Sort our collected data for that column
-                    attributes_summary[attribute].sort()
-                    col_vals = attributes_summary[attribute]
-
-                    tenth_percentile = np.float(col_vals[int(0.05 * len(col_vals))])
-                    ninetieth_percentile = np.float(col_vals[int(0.95 * len(col_vals))])
-
-                    # It's probably not a great idea to pass in as continuous data a column that has 0 variation from it's 10th to it's 90th percentiles, but we'll protect against it here regardless
-
-                    col_range = ninetieth_percentile - tenth_percentile
-                    if col_range > 0:
-                        attributes_summary[attribute] = [tenth_percentile, ninetieth_percentile, ninetieth_percentile - tenth_percentile]
+            for col in X.columns:
+                if col not in self.cols_to_avoid:
+                    col_summary = calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95)
+                    if col_summary == 'ignore':
+                        self.cols_to_ignore.append(col)
                     else:
-                        del attributes_summary[attribute]
-                        self.cols_to_avoid.add(attribute)
-
-                    del col_vals
-
-            self.attributes_summary = attributes_summary
+                        self.column_ranges[col] = col_summary
 
         return self
 
 
     # Perform basic min/max scaling, with the minor caveat that our min and max values are the 10th and 90th percentile values, to avoid outliers.
     def transform(self, X, y=None):
-        #TODO check with preston is this is ok? :Currently df->dict transformation is made because converting to dataframe will also have same complexity as i have to iterate over dataframe
-        X=X.to_dict('records')
-        if self.perform_feature_scaling:
-            for row in X:
-                for k, v in row.items():
-                    if k not in self.cols_to_avoid and self.attributes_summary.get(k, False):
-                        #added a safety check, because when user converts dict to df numbers are represented as strings and left with out tranformation at the start
-                        min_val = np.float(self.attributes_summary[k][0])
-                        max_val = np.float(self.attributes_summary[k][1])
-                        attribute_range = np.float(self.attributes_summary[k][2])
+        if len(self.cols_to_ignore) > 0:
+            X = X.drop(self.cols_to_ignore, axis=1)
 
-                        scaled_value = (np.float(v) - min_val) / attribute_range
-                        if self.truncate_large_values:
-                            if scaled_value < 0:
-                                scaled_value = 0
-                            elif scaled_value > 1:
-                                scaled_value = 1
-                        row[k] = scaled_value
+        for col, col_dict in self.column_ranges.items():
+            min_val = col_dict['min_val']
+            inner_range = col_dict['inner_range']
+            X[col] = X[col].apply(lambda x: scale_val(x, min_val, inner_range, self.perform_feature_scaling))
 
         return X
+
+
+def scale_val(val, min_val, total_range, truncate_large_values=False):
+    scaled_value = (val - min_val) / total_range
+    if truncate_large_values:
+        if scaled_value < 0:
+            scaled_value = 0
+        elif scaled_value > 1:
+            scaled_value = 1
+
+    return scaled_value
 
 
 class AddPredictedFeature(BaseEstimator, TransformerMixin):
@@ -943,3 +932,11 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
         else:
             return predictions
 
+def safely_drop_columns(df, cols_to_drop):
+    safe_cols_to_drop = []
+    for col in cols_to_drop:
+        if col in df.columns:
+            safe_cols_to_drop.append(col)
+
+    df = df.drop(safe_cols_to_drop, axis=1)
+    return df
