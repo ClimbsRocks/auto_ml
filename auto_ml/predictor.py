@@ -141,7 +141,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
-            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True)))
+            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=False, sort=True)))
 
         if self.perform_feature_selection:
             if trained_pipeline is not None:
@@ -442,6 +442,9 @@ class Predictor(object):
         else:
             X_df = raw_training_data
 
+        print('X.shape right after we were given raw X inside train:')
+        print(X_df.shape)
+
         # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
         if len(self.cols_to_ignore) > 0:
             X_df = utils.safely_drop_columns(X_df, self.cols_to_ignore)
@@ -459,8 +462,8 @@ class Predictor(object):
             # However, this means we'll have to train our subpredictors on a different dataset than we train our larger ensemble predictor on.
             # X_ensemble is the X data we'll be using to train our ensemble (the bulk of our data), and y_ensemble is, of course, the relevant y data for training our ensemble.
             # X_subpredictors is the smaller subset of data we'll be using to train our subpredictors on. y_subpredictors doesn't make any sense- it's the y values for our ensemble, but split to mirror the data we're using to train our subpredictors. Thus, we'll ignore it.
-            X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X, y, test_size=0.33)
-            X = X_ensemble
+            X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X_df, y, test_size=0.33)
+            X_df = X_ensemble
             y = y_ensemble
 
             for sub_idx, sub_name in enumerate(self.subpredictors):
@@ -766,6 +769,8 @@ class Predictor(object):
 
 
     def predict(self, prediction_data):
+        if isinstance(prediction_data, list):
+            prediction_data = pd.DataFrame(prediction_data)
 
         # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
         # For some reason, turning it into a list here does not work.
@@ -777,11 +782,15 @@ class Predictor(object):
 
 
     def predict_proba(self, prediction_data):
+        if isinstance(prediction_data, list):
+            prediction_data = pd.DataFrame(prediction_data)
 
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
     def score(self, X_test, y_test, advanced_scoring=False):
+        if isinstance(X_test, list):
+            X_test = pd.DataFrame(X_test)
         y_test = list(y_test)
         if self._scorer is not None:
             # try:
