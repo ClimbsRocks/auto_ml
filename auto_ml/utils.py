@@ -299,6 +299,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
+        if isinstance(X, dict) or isinstance(X, list):
+            X = pd.DataFrame(X)
+        vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
+        cols_to_drop = []
 
         #previously duirng doctionary objects we used to work row wise, but due to dataframe facility we can do transformation for each column
         for key in X.columns:
@@ -325,8 +329,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 X = X.join(textframe)
                 X = X.drop(key, axis=1) #once the transformed datafrane is added , remove original text
 
-            elif col_desc == 'ignore' or col_desc == 'output':
-                X = X.drop(key, axis=1)
+            elif col_desc in vals_to_drop:
+                cols_to_drop.append(key)
 
             else:
                 # If we have gotten here, the value is not any that we recognize
@@ -336,6 +340,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 print(key)
                 print('And here is the value for this column passed into column_descriptions:')
                 print(col_desc)
+
+        if len(cols_to_drop) > 0:
+            X = X.drop(cols_to_drop, axis=1)
 
         return X
 
@@ -479,6 +486,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+        print('X.shape inside FinalModelATC.fit')
+        print(X.shape)
 
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
@@ -490,27 +499,27 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         model_to_fit = get_model_from_name(self.model_name)
 
-        if self.ml_for_analytics:
-            self.feature_ranges = []
+        # if self.ml_for_analytics:
+        #     self.feature_ranges = []
 
-            # Grab the ranges for each feature
-            if scipy.sparse.issparse(X_fit):
-                for col_idx in range(X_fit.shape[1]):
-                    col_vals = X_fit.getcol(col_idx).toarray()
-                    col_vals = sorted(col_vals)
+        #     # Grab the ranges for each feature
+        #     if scipy.sparse.issparse(X_fit):
+        #         for col_idx in range(X_fit.shape[1]):
+        #             col_vals = X_fit.getcol(col_idx).toarray()
+        #             col_vals = sorted(col_vals)
 
-                    # if the entire range is 0 - 1, just append the entire range.
-                    # This works well for binary variables.
-                    # This will break when we do min-max normalization to the range of 0,1
-                    # TODO(PRESTON): check if all values are 0's and 1's, or if we have any values in between.
-                    if col_vals[0] == 0 and col_vals[-1] == 1:
-                        self.feature_ranges.append(1)
-                    else:
-                        twentieth_percentile = col_vals[int(len(col_vals) * 0.2)]
-                        eightieth_percentile = col_vals[int(len(col_vals) * 0.8)]
+        #             # if the entire range is 0 - 1, just append the entire range.
+        #             # This works well for binary variables.
+        #             # This will break when we do min-max normalization to the range of 0,1
+        #             # TODO(PRESTON): check if all values are 0's and 1's, or if we have any values in between.
+        #             if col_vals[0] == 0 and col_vals[-1] == 1:
+        #                 self.feature_ranges.append(1)
+        #             else:
+        #                 twentieth_percentile = col_vals[int(len(col_vals) * 0.2)]
+        #                 eightieth_percentile = col_vals[int(len(col_vals) * 0.8)]
 
-                        self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
-                    del col_vals
+        #                 self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
+        #             del col_vals
 
 
         self.model = get_model_from_name(self.model_name)
@@ -537,6 +546,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def predict_proba(self, X):
+        print('X.shape inside FinalModelATC.predict_proba')
+        print(X.shape)
+
 
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
@@ -744,20 +756,39 @@ def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
 # Note that df.quantile ignores nan values, exactly the behavior we want from a column that could hold sparse (lots of nan) data
 # TODO: in the future, we can move the checking for columns of all nan or all 0 variance earlier (before we train the pipeline) to reduce memory size
 def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
-    upper_percentile = X[col].quantile(max_percentile)
-    lower_percentile = X[col].quantile(min_percentile)
-    inner_range = upper_percentile - lower_percentile
+    # max_val = X[col].quantile(max_percentile)
+    # min_val = X[col].quantile(min_percentile)
+    # print(col)
+    # print(X[col])
+    series_vals = X[col]
+    good_vals_indexes = series_vals.notnull()
+    series_vals = list(series_vals[good_vals_indexes])
+    # print(series_vals)
+    # series_vals.dropna()
+    series_vals = sorted(series_vals)
+
+    max_val_idx = int(max_percentile * len(series_vals)) - 1
+    min_val_idx = int(min_percentile * len(series_vals))
+
+    if len(series_vals) > 0:
+        max_val = series_vals[max_val_idx]
+        min_val = series_vals[min_val_idx]
+    else:
+        max_val = 0
+        min_val = 0
+
+    inner_range = max_val - min_val
     col_summary = {
-        'max_val': upper_percentile
-        , 'min_val': lower_percentile
+        'max_val': max_val
+        , 'min_val': min_val
         , 'inner_range': inner_range
     }
 
     if str(inner_range) == 'nan':
         # If we've already tried to get the range with the maximum possible set of values, and it's still nan, that means this entire column is filled with nothing but nan, and should be ignored
         if max_percentile - min_percentile == 1:
-            # print('This column appears to have only nan values, and will be ignored:')
-            # print(col)
+            print('This column appears to have only nan values, and will be ignored:')
+            print(col)
             return 'ignore'
         else:
             # f the inner range is nan, maybe this column is just highly sparse, and we actually need to go even further to the max and min values to find non-nan values in this column
@@ -767,6 +798,10 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         if max_percentile - min_percentile == 1:
             print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
             print(col)
+            # print(X[col])
+            # print(good_vals_indexes)
+            # print(series_vals)
+            # print(col_summary)
             return 'ignore'
         else:
             return calculate_scaling_ranges(X, col, min_percentile=0, max_percentile=1)
@@ -901,8 +936,8 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
-        if isinstance(X, dict):
-            X = [X]
+        if isinstance(X, dict) or isinstance(X, list):
+            X = pd.DataFrame(X)
         predictions = []
         for predictor in self.trained_subpredictors:
 
@@ -912,21 +947,33 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             else:
                 predictions.append(predictor.predict(X))
 
+        # print(predictions)
+        # print('X.shape')
+        # print(X.shape)
+        # print('predictions shape')
+        # print('len(predictions)')
+        # print(len(predictions))
+        # print('len(predictions[0])')
+        # print(len(predictions[0]))
         if self.include_original_X:
-            X_copy = []
-            for row_idx, row in enumerate(X):
+            for pred_idx, name in enumerate(self.sub_names):
+                X[name + '_sub_prediction'] = predictions[pred_idx]
+            return X
+            
+            # X_copy = []
+            # for row_idx, row in enumerate(X):
 
-                row_copy = {}
-                for k, v in row.items():
-                    row_copy[k] = v
+            #     row_copy = {}
+            #     for k, v in row.items():
+            #         row_copy[k] = v
 
-                for pred_idx, name in enumerate(self.sub_names):
+            #     for pred_idx, name in enumerate(self.sub_names):
 
-                    row_copy[name + '_sub_prediction'] = predictions[pred_idx][row_idx]
+            #         row_copy[name + '_sub_prediction'] = predictions[pred_idx][row_idx]
 
-                X_copy.append(row_copy)
+            #     X_copy.append(row_copy)
 
-            return X_copy
+            # return X_copy
 
         else:
             return predictions
