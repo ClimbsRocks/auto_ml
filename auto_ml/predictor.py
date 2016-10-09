@@ -65,8 +65,9 @@ class Predictor(object):
     def _validate_input_col_descriptions(self):
         found_output_column = False
         self.subpredictors = []
+        self.cols_to_ignore = []
         subpredictor_vals = set(['regressor', 'classifier'])
-        expected_vals = set(['categorical', 'ignore','text','nlp'])
+        expected_vals = set(['categorical', 'text', 'nlp'])
 
         for key, value in self.column_descriptions.items():
             value = value.lower()
@@ -76,6 +77,8 @@ class Predictor(object):
                 found_output_column = True
             elif value == 'date':
                 self.date_cols.append(key)
+            elif value == 'ignore':
+                self.cols_to_ignore.append(key)
             elif value in expected_vals:
                 pass
             elif value in subpredictor_vals:
@@ -90,7 +93,7 @@ class Predictor(object):
         # We will be adding one new categorical variable for each date col
         # Be sure to add it here so the rest of the pipeline knows to handle it as a categorical column
         for date_col in self.date_cols:
-            self.column_descriptions[date_col + '_date_part'] = 'categorical'
+            self.column_descriptions[date_col + '_day_part'] = 'categorical'
 
 
     # We use _construct_pipeline at both the start and end of our training.
@@ -433,6 +436,11 @@ class Predictor(object):
             del raw_training_data
         else:
             X_df = raw_training_data
+
+        # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
+        if len(self.cols_to_ignore) > 0:
+            X_df = utils.safely_drop_columns(X_df, self.cols_to_ignore)
+            # X_df = X_df.drop(self.cols_to_ignore, axis=1)
 
         X_df, y = self._prepare_for_training(X_df)
 
