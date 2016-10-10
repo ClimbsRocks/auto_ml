@@ -1,7 +1,4 @@
-# Authors: Lars Buitinck
-#          Dan Blanchard <dblanchard@ets.org>
-# License: BSD 3 clause
-
+# Modified version of scikit-learn's DictVectorizer
 from array import array
 from collections import Mapping
 from operator import itemgetter
@@ -16,14 +13,6 @@ from sklearn.utils import check_array, tosequence
 from sklearn.utils.fixes import frombuffer_empty
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
-
-
-def _tosequence(X):
-    """Turn X into a sequence or ndarray, avoiding a copy if possible."""
-    if isinstance(X, Mapping):  # single sample
-        return [X]
-    else:
-        return tosequence(X)
 
 
 class DataFrameVectorizer(BaseEstimator, TransformerMixin):
@@ -104,8 +93,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         """
         feature_names = []
         vocab = {}
-        # print(X.columns)
-        # print(X.dtypes)
 
         for col_name in X.columns:
             if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical':
@@ -158,7 +145,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 f = X.columns[col_idx]
                 if isinstance(val, six.string_types):
                     f = f + self.separator + val
-                    # f = "%s%s%s" % (f, self.separator, v)
                     val = 1
 
                 # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
@@ -197,70 +183,8 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         # if fitting:
         #     self.feature_names_ = feature_names
         #     self.vocabulary_ = vocab
-        print('X.shape at the end of DataFrameVectorizer')
-        print(X.shape)
         return result_matrix
 
-    # def fit_transform(self, X, y=None):
-    #     """Learn a list of feature name -> indices mappings and transform X.
-
-    #     Like fit(X) followed by transform(X), but does not require
-    #     materializing X in memory.
-
-    #     Parameters
-    #     ----------
-    #     X : Mapping or iterable over Mappings
-    #         Dict(s) or Mapping(s) from feature names (arbitrary Python
-    #         objects) to feature values (strings or convertible to dtype).
-    #     y : (ignored)
-
-    #     Returns
-    #     -------
-    #     Xa : {array, sparse matrix}
-    #         Feature vectors; always 2-d.
-    #     """
-    #     return self._transform(X, fitting=True)
-
-    # def inverse_transform(self, X, dict_type=dict):
-    #     """Transform array or sparse matrix X back to feature mappings.
-
-    #     X must have been produced by this DictVectorizer's transform or
-    #     fit_transform method; it may only have passed through transformers
-    #     that preserve the number of features and their order.
-
-    #     In the case of one-hot/one-of-K coding, the constructed feature
-    #     names and values are returned rather than the original ones.
-
-    #     Parameters
-    #     ----------
-    #     X : {array-like, sparse matrix}, shape = [n_samples, n_features]
-    #         Sample matrix.
-    #     dict_type : callable, optional
-    #         Constructor for feature mappings. Must conform to the
-    #         collections.Mapping API.
-
-    #     Returns
-    #     -------
-    #     D : list of dict_type objects, length = n_samples
-    #         Feature mappings for the samples in X.
-    #     """
-    #     # COO matrix is not subscriptable
-    #     X = check_array(X, accept_sparse=['csr', 'csc'])
-    #     n_samples = X.shape[0]
-
-    #     names = self.feature_names_
-    #     dicts = [dict_type() for _ in xrange(n_samples)]
-
-    #     if sp.issparse(X):
-    #         for i, j in zip(*X.nonzero()):
-    #             dicts[i][names[j]] = X[i, j]
-    #     else:
-    #         for i, d in enumerate(dicts):
-    #             for j, v in enumerate(X[i, :]):
-    #                 if v != 0:
-    #                     d[names[j]] = X[i, j]
-
-    #     return dicts
 
     def transform(self, X, y=None):
         """Transform DataFrame to array or sparse matrix.

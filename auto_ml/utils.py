@@ -831,34 +831,11 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             else:
                 predictions.append(predictor.predict(X))
 
-        # print(predictions)
-        # print('X.shape')
-        # print(X.shape)
-        # print('predictions shape')
-        # print('len(predictions)')
-        # print(len(predictions))
-        # print('len(predictions[0])')
-        # print(len(predictions[0]))
         if self.include_original_X:
             for pred_idx, name in enumerate(self.sub_names):
                 X[name + '_sub_prediction'] = predictions[pred_idx]
             return X
             
-            # X_copy = []
-            # for row_idx, row in enumerate(X):
-
-            #     row_copy = {}
-            #     for k, v in row.items():
-            #         row_copy[k] = v
-
-            #     for pred_idx, name in enumerate(self.sub_names):
-
-            #         row_copy[name + '_sub_prediction'] = predictions[pred_idx][row_idx]
-
-            #     X_copy.append(row_copy)
-
-            # return X_copy
-
         else:
             return predictions
 
