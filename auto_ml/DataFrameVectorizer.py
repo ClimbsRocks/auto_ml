@@ -15,7 +15,7 @@ from sklearn.externals.six.moves import xrange
 from sklearn.utils import check_array, tosequence
 from sklearn.utils.fixes import frombuffer_empty
 
-bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
 
 def _tosequence(X):

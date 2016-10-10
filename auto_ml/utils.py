@@ -2,7 +2,6 @@ from collections import OrderedDict
 import csv
 import datetime
 import math
-import numpy as np
 import os
 import random
 import pandas as pd
@@ -25,8 +24,7 @@ import xgboost as xgb
 # The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
-# There are several places in our module where it's useful to clean values
-# clean_val will try to turn this value into a float.
+# clean_val will try to turn a value into a float.
 # If it fails, it will attempt to strip commas and then attempt to turn it into a float again
 # Additionally, it will check to make sure the value is not in a set of bad vals (nan, None, inf, etc.)
 # This function will either return a clean value, or raise an error if we cannot turn the value into a float or the value is a bad val
@@ -60,41 +58,6 @@ def clean_val_nan_version(val):
             except:
                 return float('nan')
         return float_val
-
-
-
-
-def split_output_dataframe(X_df, output_column_name, verbose=False):
-
-    # #currently get all the column headers and using pandas loc to index by name or number
-    # if type(datafram)==list:
-    #     dataframe=pd.DataFrame(datafram)
-    # else:
-    #     dataframe=datafram
-    # y=dataframe.loc[:, ['target']] # this will give a 2-D array of class labels
-    # columnnames=dataframe.columns.values.tolist()
-
-    # columnnames.remove(output_column_name)
-
-    # X=dataframe.loc[:,columnnames]
-
-
-    return X, y
-
-# def split_output(X, output_column_name, verbose=False):
-#     y = []
-#     for row in X:
-#         y.append(
-#             row.pop(output_column_name, None)
-#         )
-#
-#     if verbose:
-#         print('Just to make sure that your y-values make sense, here are the first 100 sorted values:')
-#         print(sorted(y)[:100])
-#         print('And here are the final 100 sorted values:')
-#         print(sorted(y)[-100:])
-#
-#     return X, y
 
 
 # Hyperparameter search spaces for each model
@@ -287,28 +250,30 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def fit(self, X_df, y=None):
 
-        # FUTURE: add some input validation here
-            # If this is a column we would try to convert to numeric, and all the values returned from clean_val_nan_version are nan, tell the user that this column is full of nothing but nan, and that they might want to consider either checking their data extraction process, or telling us this is a different type of field
-
-
-        for key in X_df.columns:#check for each name if coulmn description is text is so fit a tfidf vectorizer
-            col_desc = self.column_descriptions.get(key)
+        # See if we should fit TfidfVectorizer or not
+        for key in X_df.columns:
+            col_desc = self.column_descriptions.get(key, False)
             if col_desc in self.text_col_indicators:
                     self.tfidfvec.fit(X_df[key])
 
         return self
 
     def transform(self, X, y=None):
+        # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, dict) or isinstance(X, list):
             X = pd.DataFrame(X)
+
+        # All of these are values we will not want to keep for training this particular estimator or subpredictor
         vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
+
+        # It is much more efficient to drop a bunch of columns at once, rather than one at a time
         cols_to_drop = []
 
-        #previously duirng doctionary objects we used to work row wise, but due to dataframe facility we can do transformation for each column
+
         for key in X.columns:
             col_desc = self.column_descriptions.get(key)
             if col_desc == 'categorical':
-                # We will do get_dummies on these columns later, inside DataFrameVectorizer
+                # We will handle categorical data later, one-hot-encoding it inside DataFrameVectorizer
                 pass
 
             elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
@@ -320,14 +285,15 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 X = add_date_features_df(X, key)
 
             elif col_desc in self.text_col_indicators:
-                #add keys as features and tfvector values as values into cleanrow dictionary object
-                clean_row = {}
+
                 keys = self.tfidfvec.get_feature_names()
 
                 tfvec = self.tfidfvec.transform(X.loc[:,key].values).toarray()
-                textframe = pd.DataFrame(tfvec)#create sepearte dataframe and append next to each other along columns
+                #create sepearte dataframe and append next to each other along columns
+                textframe = pd.DataFrame(tfvec)
                 X = X.join(textframe)
-                X = X.drop(key, axis=1) #once the transformed datafrane is added , remove original text
+                #once the transformed datafrane is added , remove original text
+                X = X.drop(key, axis=1) 
 
             elif col_desc in vals_to_drop:
                 cols_to_drop.append(key)
@@ -345,43 +311,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             X = X.drop(cols_to_drop, axis=1)
 
         return X
-
-# def add_date_features_dataframe(dataframe,date_col):#TODO check with preston regarding naming
-#     datecolumn=dataframe[date_col].values
-#     row={}
-#     #here having dict is better as we can create and merge it with exisiting dataframe, dataframe operations are expensive because of need of multiple merges
-#     #TODO check with preston if this is ok or needs a change
-#     for date_val in datecolumn:
-#         row[date_col + '_day_of_week'] = str(date_val.weekday())
-#         row[date_col + '_hour'] = date_val.hour
-
-#         minutes_into_day = date_val.hour * 60 + date_val.minute
-
-#         if row[date_col + '_day_of_week'] in (5,6):
-#             row[date_col + '_is_weekend'] = True
-#         elif row[date_col + '_day_of_week'] == 4 and row[date_col + '_hour'] > 16:
-#             row[date_col + '_is_weekend'] = True
-#         else:
-#             row[date_col + '_is_weekend'] = False
-
-#             # Grab rush hour times for the weekdays.
-#             # We are intentionally not grabbing them for the weekends, since weekend behavior is likely very different than weekday behavior.
-#             if minutes_into_day < 120:
-#                 row[date_col + '_is_late_night'] = True
-#             elif minutes_into_day < 11.5 * 60:
-#                 row[date_col + '_is_off_peak'] = True
-#             elif minutes_into_day < 13.5 * 60:
-#                 row[date_col + '_is_lunch_rush_hour'] = True
-#             elif minutes_into_day < 17.5 * 60:
-#                 row[date_col + '_is_off_peak'] = True
-#             elif minutes_into_day < 20 * 60:
-#                 row[date_col + '_is_dinner_rush_hour'] = True
-#             elif minutes_into_day < 22.5 * 60:
-#                 row[date_col + '_is_off_peak'] = True
-#             else:
-#                 row[date_col + '_is_late_night'] = True
-
-#         return pd.Dataframe(row)
 
 
 def minutes_into_day_parts(minutes_into_day):
@@ -403,10 +332,6 @@ def minutes_into_day_parts(minutes_into_day):
         return 'late_night'
 
 
-
-
-# For v1, we will keep all the calculated date values as ints, rather than categorical strings
-# TODO TODO: take in column_descriptions, and modify as necessary for stuff like day_part
 def add_date_features_df(df, date_col):
 
     df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int)
@@ -486,8 +411,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
-        print('X.shape inside FinalModelATC.fit')
-        print(X.shape)
 
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
@@ -498,29 +421,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X
 
         model_to_fit = get_model_from_name(self.model_name)
-
-        # if self.ml_for_analytics:
-        #     self.feature_ranges = []
-
-        #     # Grab the ranges for each feature
-        #     if scipy.sparse.issparse(X_fit):
-        #         for col_idx in range(X_fit.shape[1]):
-        #             col_vals = X_fit.getcol(col_idx).toarray()
-        #             col_vals = sorted(col_vals)
-
-        #             # if the entire range is 0 - 1, just append the entire range.
-        #             # This works well for binary variables.
-        #             # This will break when we do min-max normalization to the range of 0,1
-        #             # TODO(PRESTON): check if all values are 0's and 1's, or if we have any values in between.
-        #             if col_vals[0] == 0 and col_vals[-1] == 1:
-        #                 self.feature_ranges.append(1)
-        #             else:
-        #                 twentieth_percentile = col_vals[int(len(col_vals) * 0.2)]
-        #                 eightieth_percentile = col_vals[int(len(col_vals) * 0.8)]
-
-        #                 self.feature_ranges.append(eightieth_percentile - twentieth_percentile)
-        #             del col_vals
-
 
         self.model = get_model_from_name(self.model_name)
 
@@ -546,9 +446,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def predict_proba(self, X):
-        print('X.shape inside FinalModelATC.predict_proba')
-        print(X.shape)
-
 
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
@@ -590,6 +487,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 def advanced_scoring_classifiers(probas, actuals):
     print('Here is how our trained estimator does at each level of predicted probabilities')
+
     # create summary dict
     summary_dict = OrderedDict()
     for num in range(0, 100, 10):
@@ -753,18 +651,12 @@ def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
 
 
 # Used in CustomSparseScaler
-# Note that df.quantile ignores nan values, exactly the behavior we want from a column that could hold sparse (lots of nan) data
-# TODO: in the future, we can move the checking for columns of all nan or all 0 variance earlier (before we train the pipeline) to reduce memory size
 def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
-    # max_val = X[col].quantile(max_percentile)
-    # min_val = X[col].quantile(min_percentile)
-    # print(col)
-    # print(X[col])
+
     series_vals = X[col]
     good_vals_indexes = series_vals.notnull()
+
     series_vals = list(series_vals[good_vals_indexes])
-    # print(series_vals)
-    # series_vals.dropna()
     series_vals = sorted(series_vals)
 
     max_val_idx = int(max_percentile * len(series_vals)) - 1
@@ -774,41 +666,33 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         max_val = series_vals[max_val_idx]
         min_val = series_vals[min_val_idx]
     else:
-        max_val = 0
-        min_val = 0
+        print('This column appears to have only nan values, and will be ignored:')
+        print(col)
+        return 'ignore'
 
     inner_range = max_val - min_val
+
+    if inner_range == 0:
+        # Used to do recursion here, which is prettier and uses less code, but since we've already got the filtered and sorted series_vals, it makes sense to use those to avoid duplicate computation
+        # Grab the absolute largest max and min vals, and see if there is any difference in them, since our 95th and 5th percentile vals had no difference between them
+        max_val = series_vals[len(series_vals) - 1]
+        min_val = series_vals[0]
+        inner_range = max_val - min_val
+
+        if inner_range == 0:
+            print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
+            print(col)
+            return 'ignore'
+
     col_summary = {
         'max_val': max_val
         , 'min_val': min_val
         , 'inner_range': inner_range
     }
 
-    if str(inner_range) == 'nan':
-        # If we've already tried to get the range with the maximum possible set of values, and it's still nan, that means this entire column is filled with nothing but nan, and should be ignored
-        if max_percentile - min_percentile == 1:
-            print('This column appears to have only nan values, and will be ignored:')
-            print(col)
-            return 'ignore'
-        else:
-            # f the inner range is nan, maybe this column is just highly sparse, and we actually need to go even further to the max and min values to find non-nan values in this column
-            return calculate_scaling_ranges(X, col, min_percentile=0, max_percentile=1)
-
-    if inner_range == 0:
-        if max_percentile - min_percentile == 1:
-            print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
-            print(col)
-            # print(X[col])
-            # print(good_vals_indexes)
-            # print(series_vals)
-            # print(col_summary)
-            return 'ignore'
-        else:
-            return calculate_scaling_ranges(X, col, min_percentile=0, max_percentile=1)
-
     return col_summary
 
-# Scale sparse data to the 90th and 10th percentile
+# Scale sparse data to the 95th and 5th percentile
 # Only do so for values that actuall exist (do absolutely nothing with rows that do not have this data point)
 class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
