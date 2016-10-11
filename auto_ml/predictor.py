@@ -10,6 +10,7 @@ except:
     import pickle
 
 import pandas as pd
+import pathos
 
 from sklearn.cross_validation import train_test_split
 from sklearn.decomposition import TruncatedSVD
@@ -136,7 +137,7 @@ class Predictor(object):
             if trained_pipeline is not None:
                 pipeline_list.append(('subpredictors', trained_pipeline.named_steps['subpredictors']))
             else:
-                pipeline_list.append(('subpredictors', utils.AddSubpredictorPredictions(trained_subpredictors=self.subpredictors)))
+                pipeline_list.append(('subpredictors', utils.AddSubpredictorPredictions(trained_subpredictors=self.trained_subpredictors)))
 
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
@@ -322,7 +323,7 @@ class Predictor(object):
         return clean_X_test, clean_y
 
 
-    def _train_subpredictor(self, sub_name, X_subpredictors, sub_idx, sub_model_names=None, sub_ml_analytics=False, sub_compute_power=5):
+    def _train_subpredictor(self, sub_name, X_subpredictors, sub_model_names=None, sub_ml_analytics=False, sub_compute_power=5):
 
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
@@ -356,7 +357,8 @@ class Predictor(object):
 
         abbreviated_pipeline = self._abbreviate_pipeline(ml_predictor)
 
-        self.subpredictors[sub_idx] = abbreviated_pipeline
+        # self.subpredictors[sub_idx] = abbreviated_pipeline
+        return abbreviated_pipeline
 
     def _consolidate_feature_selection_steps(self, trained_pipeline):
         # First, restrict our DictVectorizer
@@ -393,6 +395,34 @@ class Predictor(object):
         # Our abbreviated pipeline will now expect to get dictionaries that have already gone through all the preliminary preparation steps (BasicDataCleaning, date_feature_engineering, scaling, etc.)
         return abbreviated_pipeline
 
+
+    def train_one_subpredictor(self, sub_name):
+        print('Now training a subpredictor for ' + sub_name)
+
+        # Print out analytics for the subpredictor if we are printing them for the parent.
+        sub_ml_analytics = self.ml_for_analytics
+        sub_compute_power = self.compute_power
+
+        sub_model_names = None
+        if sub_name[:14] == 'weak_estimator':
+            weak_estimator_list = self.weak_estimator_store[self.type_of_estimator]
+            # Cycle through the weak estimator names in order.
+            name_index = sub_idx % len(weak_estimator_list)
+            weak_estimator_name = weak_estimator_list[name_index]
+            sub_model_names = [weak_estimator_name]
+
+            # If this is a weak predictor, ignore the analytics.
+            sub_ml_analytics = False
+            sub_compute_power = 1
+
+            # TODO TODO: rework this to work with dataframes!
+
+            # Now we have to give it the data to train on!
+            self.X_subpredictors[sub_name] = self.y_subpredictors
+            # for row_idx, row in enumerate(X_subpredictors):
+            #     row[sub_name] = y_subpredictors[row_idx]
+
+        return self._train_subpredictor(sub_name, self.X_subpredictors, sub_model_names=sub_model_names, sub_ml_analytics=sub_ml_analytics, sub_compute_power=sub_compute_power)
 
 
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, add_cluster_prediction=None, num_weak_estimators=0):
@@ -452,7 +482,6 @@ class Predictor(object):
 
         X_df, y = self._prepare_for_training(X_df)
 
-        # TODO TODO: This is not yet refactored to handle DataFrames
         # Once we have removed the applicable y-values, look into creating any subpredictors we might need
         if len(self.subpredictors) > 0:
             print('We are going to be training up several subpredictors before training up our final ensembled predictor')
@@ -462,33 +491,15 @@ class Predictor(object):
             # However, this means we'll have to train our subpredictors on a different dataset than we train our larger ensemble predictor on.
             # X_ensemble is the X data we'll be using to train our ensemble (the bulk of our data), and y_ensemble is, of course, the relevant y data for training our ensemble.
             # X_subpredictors is the smaller subset of data we'll be using to train our subpredictors on. y_subpredictors doesn't make any sense- it's the y values for our ensemble, but split to mirror the data we're using to train our subpredictors. Thus, we'll ignore it.
-            X_ensemble, X_subpredictors, y_ensemble, y_subpredictors = train_test_split(X_df, y, test_size=0.33)
-            X_df = X_ensemble
-            y = y_ensemble
+            self.X_ensemble, self.X_subpredictors, self.y_ensemble, self.y_subpredictors = train_test_split(X_df, y, test_size=0.33)
+            X_df = self.X_ensemble
+            y = self.y_ensemble
 
-            for sub_idx, sub_name in enumerate(self.subpredictors):
-                print('Now training a subpredictor for ' + sub_name)
-
-                # Print out analytics for the subpredictor if we are printing them for the parent.
-                sub_ml_analytics = self.ml_for_analytics
-                sub_compute_power = self.compute_power
-
-                sub_model_names = None
-                if sub_name[:14] == 'weak_estimator':
-                    weak_estimator_list = self.weak_estimator_store[self.type_of_estimator]
-                    # Cycle through the weak estimator names in order.
-                    name_index = sub_idx % len(weak_estimator_list)
-                    weak_estimator_name = weak_estimator_list[name_index]
-                    sub_model_names = [weak_estimator_name]
-
-                    # If this is a weak predictor, ignore the analytics.
-                    sub_ml_analytics = False
-                    sub_compute_power = 1
-                    # Now we have to give it the data to train on!
-                    for row_idx, row in enumerate(X_subpredictors):
-                        row[sub_name] = y_subpredictors[row_idx]
-
-                self._train_subpredictor(sub_name, X_subpredictors, sub_idx, sub_model_names=sub_model_names, sub_ml_analytics=sub_ml_analytics, sub_compute_power=sub_compute_power)
+            # Train up all of our subpredictors in parallel! 
+            pool = pathos.multiprocessing.ProcessingPool()
+            self.trained_subpredictors = pool.map(self.train_one_subpredictor, self.subpredictors)
+            print('self.trained_subpredictors after parallelized map')
+            print(self.trained_subpredictors)
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
