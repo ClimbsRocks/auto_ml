@@ -4,7 +4,7 @@ import datetime
 import math
 import os
 import random
-import pandas as pd
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
@@ -14,10 +14,9 @@ from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, 
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
-import scipy
 
 import pandas as pd
-
+import scipy
 import xgboost as xgb
 
 

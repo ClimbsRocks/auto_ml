@@ -1,6 +1,7 @@
 import datetime
 import math
 import os
+import random
 import sys
 import warnings
 
@@ -105,7 +106,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer
-    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, perform_feature_scaling=True, trained_pipeline=None):
+    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, perform_feature_scaling=True, trained_pipeline=None, preprocessing_only=False):
 
         pipeline_list = []
 
@@ -133,7 +134,7 @@ class Predictor(object):
             else:
                 pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
 
-        if len(self.subpredictors) > 0:
+        if len(self.trained_subpredictors) > 0:
             if trained_pipeline is not None:
                 pipeline_list.append(('subpredictors', trained_pipeline.named_steps['subpredictors']))
             else:
@@ -143,6 +144,10 @@ class Predictor(object):
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
             pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=False, sort=True)))
+
+        # When training subpredictors, we will perform all of our preprocessing a single time at the beginning of that round of training subpredictors. That will reduce the overall size of our dataset (making it easier to serialize), and also save us the trouble of repeating that exact same computation over and over and over again
+        if preprocessing_only:
+            return Pipeline(pipeline_list)
 
         if self.perform_feature_selection:
             if trained_pipeline is not None:
@@ -406,8 +411,10 @@ class Predictor(object):
         sub_model_names = None
         if sub_name[:14] == 'weak_estimator':
             weak_estimator_list = self.weak_estimator_store[self.type_of_estimator]
-            # Cycle through the weak estimator names in order.
-            name_index = sub_idx % len(weak_estimator_list)
+
+            # It would be ideal to cycle through the weak estimator names in order.
+            # But multiprocessing makes that slightly more challenging, so for now, just grab a random index
+            name_index = int(random.random() * len(weak_estimator_list))
             weak_estimator_name = weak_estimator_list[name_index]
             sub_model_names = [weak_estimator_name]
 
@@ -415,12 +422,9 @@ class Predictor(object):
             sub_ml_analytics = False
             sub_compute_power = 1
 
-            # TODO TODO: rework this to work with dataframes!
-
             # Now we have to give it the data to train on!
+            # In this case, it's just a smaller portion of our final prediction
             self.X_subpredictors[sub_name] = self.y_subpredictors
-            # for row_idx, row in enumerate(X_subpredictors):
-            #     row[sub_name] = y_subpredictors[row_idx]
 
         return self._train_subpredictor(sub_name, self.X_subpredictors, sub_model_names=sub_model_names, sub_ml_analytics=sub_ml_analytics, sub_compute_power=sub_compute_power)
 
@@ -443,6 +447,7 @@ class Predictor(object):
         self.add_cluster_prediction = add_cluster_prediction
         self.num_weak_estimators = num_weak_estimators
         self.model_names = model_names
+        self.trained_subpredictors = []        
 
         # Put in place the markers that will tell us later on to train up a subpredictor for this problem
         if self.num_weak_estimators > 0:
@@ -495,11 +500,20 @@ class Predictor(object):
             X_df = self.X_ensemble
             y = self.y_ensemble
 
+            # Do all the preprocessing steps right at the very start
+            # preprocessing_pipeline = self._construct_pipeline(perform_feature_scaling=True, preprocessing_only=True)
+            # self.X_subpredictors = preprocessing_pipeline.fit_transform(self.X_subpredictors)
+            # print('self.X_subpredictors')
+            # print(self.X_subpredictors)
+            # print('preprocessing_pipeline')
+            # print(preprocessing_pipeline)
+            # print('preprocessing_pipeline.named_steps["dv"]')
+            # print(preprocessing_pipeline.named_steps['dv'])
+            # self.subpredictor_dv = preprocessing_pipeline.named_steps['dv']
+
             # Train up all of our subpredictors in parallel! 
             pool = pathos.multiprocessing.ProcessingPool()
             self.trained_subpredictors = pool.map(self.train_one_subpredictor, self.subpredictors)
-            print('self.trained_subpredictors after parallelized map')
-            print(self.trained_subpredictors)
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
