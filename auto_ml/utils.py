@@ -824,8 +824,17 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             X = pd.DataFrame(X)
         predictions = []
 
-        pool = pathos.multiprocessing.ProcessingPool()
-        predictions = pool.map(lambda predictor: predictor.predict(X), self.trained_subpredictors)
+        if X.shape[0] > 10:
+            pool = pathos.multiprocessing.ProcessingPool()
+            predictions = pool.map(lambda predictor: predictor.predict(X), self.trained_subpredictors)
+        else:
+            for predictor in self.trained_subpredictors:
+
+                if predictor.named_steps['final_model'].type_of_estimator == 'regressor':
+                    predictions.append(predictor.predict(X))
+
+                else:
+                    predictions.append(predictor.predict(X))
 
         # This whole section is about scaling the data
         predictions_as_mapping = {}
@@ -833,15 +842,9 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             predictions_as_mapping[name + '_sub_prediction'] = predictions[idx]
         predictions_df = pd.DataFrame.from_dict(predictions_as_mapping, orient='columns')
         scaler = CustomSparseScaler(column_descriptions={})
-        predictions_df = scaler.fit_transform(predictions_df)
+        scaler.fit(predictions_df)
+        predictions_df = scaler.transform(predictions_df)
 
-        # for predictor in self.trained_subpredictors:
-
-        #     if predictor.named_steps['final_model'].type_of_estimator == 'regressor':
-        #         predictions.append(predictor.predict(X))
-
-        #     else:
-        #         predictions.append(predictor.predict(X))
 
         if self.include_original_X:
             for column in predictions_df.columns:
