@@ -477,8 +477,6 @@ class Predictor(object):
         else:
             X_df = raw_training_data
 
-        print('X.shape right after we were given raw X inside train:')
-        print(X_df.shape)
 
         # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
         if len(self.cols_to_ignore) > 0:

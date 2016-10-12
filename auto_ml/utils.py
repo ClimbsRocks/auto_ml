@@ -16,6 +16,7 @@ from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 import pandas as pd
+import pathos
 import scipy
 import xgboost as xgb
 
@@ -822,20 +823,36 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
         if isinstance(X, dict) or isinstance(X, list):
             X = pd.DataFrame(X)
         predictions = []
-        for predictor in self.trained_subpredictors:
 
-            if predictor.named_steps['final_model'].type_of_estimator == 'regressor':
-                predictions.append(predictor.predict(X))
+        pool = pathos.multiprocessing.ProcessingPool()
+        predictions = pool.map(lambda predictor: predictor.predict(X), self.trained_subpredictors)
 
-            else:
-                predictions.append(predictor.predict(X))
+        # This whole section is about scaling the data
+        predictions_as_mapping = {}
+        for idx, name in enumerate(self.sub_names):
+            predictions_as_mapping[name + '_sub_prediction'] = predictions[idx]
+        predictions_df = pd.DataFrame.from_dict(predictions_as_mapping, orient='columns')
+        scaler = CustomSparseScaler(column_descriptions={})
+        predictions_df = scaler.fit_transform(predictions_df)
+
+        # for predictor in self.trained_subpredictors:
+
+        #     if predictor.named_steps['final_model'].type_of_estimator == 'regressor':
+        #         predictions.append(predictor.predict(X))
+
+        #     else:
+        #         predictions.append(predictor.predict(X))
 
         if self.include_original_X:
-            for pred_idx, name in enumerate(self.sub_names):
-                X[name + '_sub_prediction'] = predictions[pred_idx]
+            for column in predictions_df.columns:
+                X[column] = predictions_df[column]
             return X
+            # for pred_idx, name in enumerate(self.sub_names):
+            #     X[name + '_sub_prediction'] = predictions[pred_idx]
+            # return X
             
         else:
+            # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
             return predictions
 
 def safely_drop_columns(df, cols_to_drop):
