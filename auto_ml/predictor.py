@@ -47,7 +47,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 class Predictor(object):
 
 
-    def __init__(self, type_of_estimator, column_descriptions, verbose=True):
+    def __init__(self, type_of_estimator, column_descriptions, verbose=True, _is_subpredictor=False):
         if type_of_estimator.lower() in ['regressor','regression', 'regressions', 'regressors', 'number', 'numeric', 'continuous']:
             self.type_of_estimator = 'regressor'
         elif type_of_estimator.lower() in ['classifier', 'classification', 'categorizer', 'categorization', 'categories', 'labels', 'labeled', 'label']:
@@ -57,6 +57,7 @@ class Predictor(object):
             raise ValueError('Invalid value for "type_of_estimator". Please pass in either "regressor" or "classifier". You passed in: ' + type_of_estimator)
         self.column_descriptions = column_descriptions
         self.verbose = verbose
+        self._is_subpredictor = _is_subpredictor
         self.trained_pipeline = None
         self._scorer = None
         self.date_cols = []
@@ -110,29 +111,45 @@ class Predictor(object):
 
         pipeline_list = []
 
-        if self.user_input_func is not None:
+        # Our subpredictors will not have these portions of the pipeline, so when we try to pull them from a trained_pipeline later, we will get keyErrors, unless we skip this for subpredictors. 
+        if self._is_subpredictor == False:
+            if self.user_input_func is not None:
+                if trained_pipeline is not None:
+                    pipeline_list.append(('user_func', trained_pipeline.named_steps['user_func']))
+                else:
+                    pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False) ))
+
+            # if len(self.date_cols) > 0:
+            #     if trained_pipeline is not None:
+            #         pipeline_list.append(('date_feature_engineering', trained_pipeline.named_steps['date_feature_engineering']))
+            #     else:
+            #         pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
+
+            # These parts will be included no matter what.
             if trained_pipeline is not None:
-                pipeline_list.append(('user_func', trained_pipeline.named_steps['user_func']))
+                pipeline_list.append(('basic_transform', trained_pipeline.named_steps['basic_transform']))
             else:
-                pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False) ))
+                pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
-        # if len(self.date_cols) > 0:
-        #     if trained_pipeline is not None:
-        #         pipeline_list.append(('date_feature_engineering', trained_pipeline.named_steps['date_feature_engineering']))
-        #     else:
-        #         pipeline_list.append(('date_feature_engineering', date_feature_engineering.FeatureEngineer(date_cols=self.date_cols)))
+            if perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
+                if trained_pipeline is not None:
+                    pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
+                else:
+                    pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
 
-        # These parts will be included no matter what.
-        if trained_pipeline is not None:
-            pipeline_list.append(('basic_transform', trained_pipeline.named_steps['basic_transform']))
-        else:
-            pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
+        # ###################
+        # Subpredictor split in the pipeline
+        # ###################
+        if self._is_subpredictor == True:
+            # If this is a subpredictor, we only want this second portion of our pipeline. 
+            # For our subpredictors, we will already have run the first part of the pipeline as a one-off before training any of the subpredictor pipelines. This saves us from doing the exact same data cleaning for each and every new subpredictor we train. 
+            # So clear out anything that may have been added to our pipeline so far.
+            pipeline_list = []
 
-        if perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
-            if trained_pipeline is not None:
-                pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
-            else:
-                pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
+        # When training subpredictors, we will perform all of our preprocessing a single time at the beginning of that round of training subpredictors. That will reduce the overall size of our dataset (making it easier to serialize), and also save us the trouble of repeating that exact same computation over and over and over again
+        if preprocessing_only:
+            return Pipeline(pipeline_list)
+
 
         if len(self.trained_subpredictors) > 0:
             if trained_pipeline is not None:
@@ -143,11 +160,8 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
-            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=False, sort=True)))
+            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=False, sort=True, column_descriptions=self.column_descriptions)))
 
-        # When training subpredictors, we will perform all of our preprocessing a single time at the beginning of that round of training subpredictors. That will reduce the overall size of our dataset (making it easier to serialize), and also save us the trouble of repeating that exact same computation over and over and over again
-        if preprocessing_only:
-            return Pipeline(pipeline_list)
 
         if self.perform_feature_selection:
             if trained_pipeline is not None:
@@ -202,8 +216,8 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            # base_estimators = ['LinearRegression']
-            base_estimators = ['Ridge', 'XGBRegressor']
+            # base_estimators = ['Ridge', 'XGBRegressor']
+            base_estimators = ['Ridge', 'GradientBoostingRegressor']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -215,7 +229,8 @@ class Predictor(object):
                 return base_estimators
 
         elif self.type_of_estimator == 'classifier':
-            base_estimators = ['RidgeClassifier', 'XGBClassifier']
+            # base_estimators = ['RidgeClassifier', 'XGBClassifier']
+            base_estimators = ['RidgeClassifier', 'GradientBoostingClassifier']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -251,8 +266,6 @@ class Predictor(object):
 
         # Remove the output column from the dataset, and store it into the y varaible
         y = list(X_df.pop(self.output_column))
-
-        print('removed the output column')
 
         # If this is a classifier, try to turn all the y values into proper ints
         # Some classifiers play more nicely if you give them category labels as ints rather than strings, so we'll make our jobs easier here if we can. 
@@ -332,13 +345,13 @@ class Predictor(object):
 
         sub_column_descriptions, sub_type_of_estimator = self._make_sub_column_descriptions(self.column_descriptions, sub_name)
         if sub_model_names is None and sub_type_of_estimator == 'classifier':
-            sub_model_names = ['XGBClassifier']
-            # sub_model_names = ['GradientBoostingClassifier']
+            # sub_model_names = ['XGBClassifier']
+            sub_model_names = ['GradientBoostingClassifier']
         elif sub_model_names is None and sub_type_of_estimator == 'regressor':
-            sub_model_names = ['XGBRegressor']
-            # sub_model_names = ['GradientBoostingRegressor']
+            # sub_model_names = ['XGBRegressor']
+            sub_model_names = ['GradientBoostingRegressor']
 
-        ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions)
+        ml_predictor = Predictor(type_of_estimator=sub_type_of_estimator, column_descriptions=sub_column_descriptions, _is_subpredictor=True)
 
         if self.X_test is not None and self.y_test is not None:
             sub_X_test, sub_y_test = self.make_sub_x_and_y_test(self.X_test, sub_name)
@@ -479,7 +492,7 @@ class Predictor(object):
 
 
         # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
-        if len(self.cols_to_ignore) > 0:
+        if len(self.cols_to_ignore) > 0 and self._is_subpredictor is False:
             X_df = utils.safely_drop_columns(X_df, self.cols_to_ignore)
             # X_df = X_df.drop(self.cols_to_ignore, axis=1)
 
@@ -499,19 +512,22 @@ class Predictor(object):
             y = self.y_ensemble
 
             # Do all the preprocessing steps right at the very start
-            # preprocessing_pipeline = self._construct_pipeline(perform_feature_scaling=True, preprocessing_only=True)
-            # self.X_subpredictors = preprocessing_pipeline.fit_transform(self.X_subpredictors)
-            # print('self.X_subpredictors')
-            # print(self.X_subpredictors)
-            # print('preprocessing_pipeline')
-            # print(preprocessing_pipeline)
-            # print('preprocessing_pipeline.named_steps["dv"]')
-            # print(preprocessing_pipeline.named_steps['dv'])
-            # self.subpredictor_dv = preprocessing_pipeline.named_steps['dv']
+            # This avoids us duplicating this effort by re-doing these steps inside every single subpredictor we want to train up
+            preprocessing_pipeline = self._construct_pipeline(perform_feature_scaling=True, preprocessing_only=True)
+            self.X_subpredictors = preprocessing_pipeline.fit_transform(self.X_subpredictors)
 
             # Train up all of our subpredictors in parallel! 
-            pool = pathos.multiprocessing.ProcessingPool()
+            pool = pathos.multiprocessing.ProcessPool()
+            try:
+                pool.restart()
+            except AssertionError as e:
+                pass
             self.trained_subpredictors = pool.map(self.train_one_subpredictor, self.subpredictors)
+            pool.close()
+            pool.join()
+
+            del self.X_subpredictors
+            del self.y_subpredictors
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
@@ -563,6 +579,7 @@ class Predictor(object):
         del self.y_test
         del self.grid_search_pipelines
         del self.subpredictors
+        del X_df
 
 
     def perform_grid_search_by_model_names(self, estimator_names, scoring, X_df, y):
@@ -714,6 +731,7 @@ class Predictor(object):
 
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        print('predicting ' + self.output_column)
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
         if self.trained_pipeline.named_steps['final_model'].model_name in ['XGBRegressor', 'XGBClassifier']:
@@ -801,6 +819,8 @@ class Predictor(object):
         if self.took_log_of_y:
             for idx, val in predicted_vals:
                 predicted_vals[idx] = math.exp(val)
+
+        del prediction_data
         return predicted_vals
 
 
@@ -808,6 +828,7 @@ class Predictor(object):
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
 
+        del prediction_data
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
