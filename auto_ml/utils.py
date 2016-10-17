@@ -307,8 +307,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 print('And here is the value for this column passed into column_descriptions:')
                 print(col_desc)
 
-        if len(cols_to_drop) > 0:
-            X = X.drop(cols_to_drop, axis=1)
+        # Historically we've deleted columns here. However, we're moving this to DataFrameVectorizer as part of a broader effort to reduce duplicate computation
+        # if len(cols_to_drop) > 0:
+        #     X = X.drop(cols_to_drop, axis=1)
 
         return X
 
@@ -666,8 +667,8 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         max_val = series_vals[max_val_idx]
         min_val = series_vals[min_val_idx]
     else:
-        print('This column appears to have only nan values, and will be ignored:')
-        print(col)
+        # print('This column appears to have only nan values, and will be ignored:')
+        # print(col)
         return 'ignore'
 
     inner_range = max_val - min_val
@@ -680,8 +681,8 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         inner_range = max_val - min_val
 
         if inner_range == 0:
-            print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
-            print(col)
+            # print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
+            # print(col)
             return 'ignore'
 
     col_summary = {
@@ -824,9 +825,19 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             X = pd.DataFrame(X)
         predictions = []
 
-        if X.shape[0] > 10:
-            pool = pathos.multiprocessing.ProcessingPool()
+        if X.shape[0] > 100:
+            pool = pathos.multiprocessing.ProcessPool()
+
+            # Since we may have already closed the pool, try to restart it
+            try:
+                pool.restart()
+            except AssertionError as e:
+                pass
             predictions = pool.map(lambda predictor: predictor.predict(X), self.trained_subpredictors)
+            # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+            pool.close()
+            pool.join()
+                
         else:
             for predictor in self.trained_subpredictors:
 
@@ -836,26 +847,39 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
                 else:
                     predictions.append(predictor.predict(X))
 
-        # This whole section is about scaling the data
-        predictions_as_mapping = {}
-        for idx, name in enumerate(self.sub_names):
-            predictions_as_mapping[name + '_sub_prediction'] = predictions[idx]
-        predictions_df = pd.DataFrame.from_dict(predictions_as_mapping, orient='columns')
-        scaler = CustomSparseScaler(column_descriptions={})
-        scaler.fit(predictions_df)
-        predictions_df = scaler.transform(predictions_df)
+        # # This whole section is about scaling the data
+        # predictions_as_mapping = {}
+        # for idx, name in enumerate(self.sub_names):
+        #     predictions_as_mapping[name + '_sub_prediction'] = predictions[idx]
+        # predictions_df = pd.DataFrame.from_dict(predictions_as_mapping, orient='columns')
+        # scaler = CustomSparseScaler(column_descriptions={})
+        # scaler.fit(predictions_df)
+        # predictions_df = scaler.transform(predictions_df)
 
 
         if self.include_original_X:
-            for column in predictions_df.columns:
-                X[column] = predictions_df[column]
-            return X
-            # for pred_idx, name in enumerate(self.sub_names):
-            #     X[name + '_sub_prediction'] = predictions[pred_idx]
+            # for column in predictions_df.columns:
+            #     # print('column')
+            #     # print(column)
+            #     # print('predictions_df[column]')
+            #     # print(predictions_df[column])
+            #     X[column] = predictions_df[column]
             # return X
+            print('X.shape before adding in subpredictions')
+            print(X.shape)
+            for pred_idx, name in enumerate(self.sub_names):
+                X[name + '_sub_prediction'] = predictions[pred_idx]
+            print('X.shape after adding in subpredictions')
+            print(X.shape)
+            # pool.close()
+            # print('Closed the pool')
+            #     exc
+            # pool.join()
+            return X
             
         else:
             # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
+            pool.join()
             return predictions
 
 def safely_drop_columns(df, cols_to_drop):
