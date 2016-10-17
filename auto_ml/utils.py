@@ -667,8 +667,8 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         max_val = series_vals[max_val_idx]
         min_val = series_vals[min_val_idx]
     else:
-        # print('This column appears to have only nan values, and will be ignored:')
-        # print(col)
+        print('This column appears to have only nan values, and will be ignored:')
+        print(col)
         return 'ignore'
 
     inner_range = max_val - min_val
@@ -681,9 +681,15 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         inner_range = max_val - min_val
 
         if inner_range == 0:
-            # print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
-            # print(col)
-            return 'ignore'
+            # If this is a binary field, keep all the values in it, just make sure they're scaled to 1 or 0. 
+            if max_val == 1:
+                min_val = 0
+                inner_range = 1
+            else:
+                # If this is just a column that holds all the same values for everything though, delete the column to save some space
+                print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
+                print(col)
+                return 'ignore'
 
     col_summary = {
         'max_val': max_val
@@ -847,38 +853,14 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
                 else:
                     predictions.append(predictor.predict(X))
 
-        # # This whole section is about scaling the data
-        # predictions_as_mapping = {}
-        # for idx, name in enumerate(self.sub_names):
-        #     predictions_as_mapping[name + '_sub_prediction'] = predictions[idx]
-        # predictions_df = pd.DataFrame.from_dict(predictions_as_mapping, orient='columns')
-        # scaler = CustomSparseScaler(column_descriptions={})
-        # scaler.fit(predictions_df)
-        # predictions_df = scaler.transform(predictions_df)
-
-
         if self.include_original_X:
-            # for column in predictions_df.columns:
-            #     # print('column')
-            #     # print(column)
-            #     # print('predictions_df[column]')
-            #     # print(predictions_df[column])
-            #     X[column] = predictions_df[column]
-            # return X
-            print('X.shape before adding in subpredictions')
-            print(X.shape)
             for pred_idx, name in enumerate(self.sub_names):
                 X[name + '_sub_prediction'] = predictions[pred_idx]
-            print('X.shape after adding in subpredictions')
-            print(X.shape)
-            # pool.close()
-            # print('Closed the pool')
-            #     exc
-            # pool.join()
             return X
             
         else:
             # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
+            pool.close()
             pool.join()
             return predictions
 
