@@ -293,7 +293,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 textframe = pd.DataFrame(tfvec)
                 X = X.join(textframe)
                 #once the transformed datafrane is added , remove original text
-                X = X.drop(key, axis=1) 
+                X = X.drop(key, axis=1)
 
             elif col_desc in vals_to_drop:
                 cols_to_drop.append(key)
@@ -507,7 +507,7 @@ def advanced_scoring_classifiers(probas, actuals):
             actual = round(actual * 100, 0)
             print('Actual: ' + str(actual) + '%')
             print('# preds: ' + str(len(v)) + '\n')
-            
+
     print('\n\n')
 
 
@@ -627,7 +627,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             return self.selector.transform(X)
 
 
-def rmse_scoring(estimator, X, y, took_log_of_y=False):
+def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False):
     if isinstance(estimator, GradientBoostingRegressor):
         X = X.toarray()
     predictions = estimator.predict(X)
@@ -681,7 +681,7 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         inner_range = max_val - min_val
 
         if inner_range == 0:
-            # If this is a binary field, keep all the values in it, just make sure they're scaled to 1 or 0. 
+            # If this is a binary field, keep all the values in it, just make sure they're scaled to 1 or 0.
             if max_val == 1:
                 min_val = 0
                 inner_range = 1
@@ -712,8 +712,8 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
         self.cols_to_avoid = set([k for k, v in column_descriptions.items() if v not in self.numeric_col_descs])
 
         # Setting these here so that they can be grid searchable
-        # Truncating large values is an interesting strategy. It forces all values to fit inside the 5th - 95th percentiles. 
-        # Essentially, it turns any really large (or small) values into reasonably large (or small) values. 
+        # Truncating large values is an interesting strategy. It forces all values to fit inside the 5th - 95th percentiles.
+        # Essentially, it turns any really large (or small) values into reasonably large (or small) values.
         self.truncate_large_values = truncate_large_values
         self.perform_feature_scaling = perform_feature_scaling
 
@@ -843,7 +843,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
             pool.close()
             pool.join()
-                
+
         else:
             for predictor in self.trained_subpredictors:
 
@@ -857,7 +857,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             for pred_idx, name in enumerate(self.sub_names):
                 X[name + '_sub_prediction'] = predictions[pred_idx]
             return X
-            
+
         else:
             # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
             pool.close()
