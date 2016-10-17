@@ -78,6 +78,8 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         if column_descriptions == None:
             column_descriptions = {}
         self.column_descriptions = column_descriptions
+        self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
+
 
     def fit(self, X, y=None):
         """Learn a list of column_name -> indices mappings.
@@ -95,18 +97,20 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         vocab = {}
 
         for col_name in X.columns:
-            if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical':
-                # If this is a categorical column, or the dtype continues to be object, iterate through each row to get all the possible values that we are one-hot-encoding. 
-                for val in X[col_name]:
-                    feature_name = col_name + self.separator + str(val)
-                    if feature_name not in vocab:
-                        feature_names.append(feature_name)
-                        vocab[feature_name] = len(vocab)
-            # Ideally we shouldn't have to check for for duplicate columns, but in case we're passed a DataFrame with duplicate columns, consolidate down to a single column. Maybe not the ideal solution, but solves a class of bugs, and puts the reasonable onus on the user to not pass in two data columns with different meanings but the same column name
-            # And of course, if this is a categorical column, do not include the column name itself, just include the feature_names as calculated above
-            elif col_name not in vocab:  
-                feature_names.append(col_name)
-                vocab[col_name] = len(vocab)
+            # Ignore 'ignore', 'output', etc. 
+            if self.column_descriptions.get(col_name, False) not in self.vals_to_drop:
+                if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical':
+                    # If this is a categorical column, or the dtype continues to be object, iterate through each row to get all the possible values that we are one-hot-encoding. 
+                    for val in X[col_name]:
+                        feature_name = col_name + self.separator + str(val)
+                        if feature_name not in vocab:
+                            feature_names.append(feature_name)
+                            vocab[feature_name] = len(vocab)
+                # Ideally we shouldn't have to check for for duplicate columns, but in case we're passed a DataFrame with duplicate columns, consolidate down to a single column. Maybe not the ideal solution, but solves a class of bugs, and puts the reasonable onus on the user to not pass in two data columns with different meanings but the same column name
+                # And of course, if this is a categorical column, do not include the column name itself, just include the feature_names as calculated above
+                elif col_name not in vocab:  
+                    feature_names.append(col_name)
+                    vocab[col_name] = len(vocab)
                 
         if self.sort:
             feature_names.sort()
@@ -114,6 +118,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
         self.feature_names_ = feature_names
         self.vocabulary_ = vocab
+        # del self.column_descriptions
         return self
 
     def _transform(self, X):
@@ -143,6 +148,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         for row_idx, row in X.iterrows():
             for col_idx, val in enumerate(row):
                 f = X.columns[col_idx]
+
                 if isinstance(val, six.string_types):
                     f = f + self.separator + val
                     val = 1
@@ -203,26 +209,26 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             Feature vectors; always 2-d.
         """
         return self._transform(X)
-        if self.sparse:
-            return self._transform(X)
+        # if self.sparse:
+        #     return self._transform(X)
 
-        else:
-            dtype = self.dtype
-            vocab = self.vocabulary_
-            X = _tosequence(X)
-            Xa = np.zeros((len(X), len(vocab)), dtype=dtype)
+        # else:
+        #     dtype = self.dtype
+        #     vocab = self.vocabulary_
+        #     X = _tosequence(X)
+        #     Xa = np.zeros((len(X), len(vocab)), dtype=dtype)
 
-            for i, x in enumerate(X):
-                for f, v in six.iteritems(x):
-                    if isinstance(v, six.string_types):
-                        f = "%s%s%s" % (f, self.separator, v)
-                        v = 1
-                    try:
-                        Xa[i, vocab[f]] = dtype(v)
-                    except KeyError:
-                        pass
+        #     for i, x in enumerate(X):
+        #         for f, v in six.iteritems(x):
+        #             if isinstance(v, six.string_types):
+        #                 f = "%s%s%s" % (f, self.separator, v)
+        #                 v = 1
+        #             try:
+        #                 Xa[i, vocab[f]] = dtype(v)
+        #             except KeyError:
+        #                 pass
 
-            return Xa
+        #     return Xa
 
     def get_feature_names(self):
         """Returns a list of feature names, ordered by their indices.
