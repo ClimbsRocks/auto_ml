@@ -839,7 +839,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
                 pool.restart()
             except AssertionError as e:
                 pass
-            predictions = pool.map(lambda predictor: predictor.predict(X), self.trained_subpredictors)
+            predictions = list(pool.uimap(lambda predictor: predictor.predict(X), self.trained_subpredictors))
             # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
             pool.close()
             pool.join()

@@ -522,7 +522,7 @@ class Predictor(object):
                 pool.restart()
             except AssertionError as e:
                 pass
-            self.trained_subpredictors = pool.map(self.train_one_subpredictor, self.subpredictors)
+            self.trained_subpredictors = list(pool.uimap(self.train_one_subpredictor, self.subpredictors))
             pool.close()
             pool.join()
 
