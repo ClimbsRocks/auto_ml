@@ -107,7 +107,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer
-    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, perform_feature_scaling=True, trained_pipeline=None, preprocessing_only=False):
+    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, trained_pipeline=None, preprocessing_only=False):
 
         pipeline_list = []
 
@@ -131,7 +131,7 @@ class Predictor(object):
             else:
                 pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
-            if perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
+            if self.perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
                 if trained_pipeline is not None:
                     pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
                 else:
@@ -436,7 +436,7 @@ class Predictor(object):
         return self._train_subpredictor(sub_name, self.X_subpredictors, sub_model_names=sub_model_names, sub_ml_analytics=sub_ml_analytics, sub_compute_power=sub_compute_power)
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, add_cluster_prediction=None, num_weak_estimators=0):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, add_cluster_prediction=None, num_weak_estimators=0, perform_feature_scaling=True):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -454,6 +454,7 @@ class Predictor(object):
         self.add_cluster_prediction = add_cluster_prediction
         self.num_weak_estimators = num_weak_estimators
         self.model_names = model_names
+        self.perform_feature_scaling = perform_feature_scaling
         self.trained_subpredictors = []        
 
         # Put in place the markers that will tell us later on to train up a subpredictor for this problem
@@ -507,7 +508,7 @@ class Predictor(object):
 
             # Do all the preprocessing steps right at the very start
             # This avoids us duplicating this effort by re-doing these steps inside every single subpredictor we want to train up
-            preprocessing_pipeline = self._construct_pipeline(perform_feature_scaling=True, preprocessing_only=True)
+            preprocessing_pipeline = self._construct_pipeline(preprocessing_only=True)
             self.X_subpredictors = preprocessing_pipeline.fit_transform(self.X_subpredictors)
 
             # Train up all of our subpredictors in parallel! 
