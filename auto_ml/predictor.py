@@ -169,7 +169,7 @@ class Predictor(object):
                 pass
             else:
                 # pipeline_list.append(('pca', TruncatedSVD()))
-                pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, feature_selection_model='SelectFromModel') ))
+                pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
 
         if self.add_cluster_prediction is True or (self.compute_power >=10 and self.add_cluster_prediction is not False):
             if trained_pipeline is not None:
@@ -330,15 +330,9 @@ class Predictor(object):
         return dup_descs, sub_type_of_estimator
 
     def make_sub_x_and_y_test(self, X_test, sub_name):
-        vals_to_ignore = set([None, float('Inf'), 'ignore', 'nan', 'NaN', 'Inf', 'None', ''])
-        clean_X_test = []
-        clean_y = []
-        for row in X_test:
-            y_val = row.pop(sub_name, None)
-            if y_val not in vals_to_ignore and pd.notnull(y_val):
-                clean_X_test.append(row)
-                clean_y.append(y_val)
-        return clean_X_test, clean_y
+        X_test = X_test[X_test.notnull()]
+        y = X_test.pop(sub_name)
+        return X_test, y
 
 
     def _train_subpredictor(self, sub_name, X_subpredictors, sub_model_names=None, sub_ml_analytics=False, sub_compute_power=5):
@@ -676,8 +670,10 @@ class Predictor(object):
 
             if (self.X_test) is not None and (self.y_test) is not None:
                 if not self.X_test.empty and not self.y_test.empty:
-                    print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
+                    print('Calculating score on holdout data')
                     holdout_data_score = self.score(self.X_test, self.y_test)
+                    print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data)')
+                    print(self.output_column + ':')
                     print(holdout_data_score)
 
                     try:
