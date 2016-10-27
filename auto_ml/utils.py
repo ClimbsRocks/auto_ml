@@ -15,6 +15,7 @@ from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 
+import numpy as np
 import pandas as pd
 import pathos
 import scipy
@@ -857,7 +858,25 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
         if self.include_original_X:
             for pred_idx, name in enumerate(self.sub_names):
                 X[name + '_sub_prediction'] = predictions[pred_idx]
-            return X
+                if name[:14] == 'weak_estimator':
+                    weak_estimator_predictions.append(predictions[pred_idx])
+
+            median_predictions = []
+            avg_predictions = []
+            std_of_predictions = []
+
+            # get the median, avg, and standard deviation from our weak estimators
+            for row_idx, row_val in enumerate(weak_estimator_predictions[0]):
+                all_weak_predictions_for_row = []
+                for col_idx, col in enumerate(weak_estimator_predictions):
+                    all_weak_predictions_for_row.append(col[row_idx])
+                median_predictions.append(np.median(all_weak_predictions_for_row))
+                avg_predictions.append(np.average(all_weak_predictions_for_row))
+                std_of_predictions.append(np.std(all_weak_predictions_for_row))
+
+            X['weak_estimators_median_sub_prediction'] = median_predictions
+            X['weak_estimators_avg_sub_prediction'] = avg_predictions
+            X['weak_estimators_std_of_sub_predictions'] = std_of_predictions
 
         else:
             # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
