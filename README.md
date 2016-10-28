@@ -22,16 +22,16 @@ col_desc_dictionary = {col_to_predict: 'output'}
 ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
 # Can pass in type_of_estimator='regressor' as well
 
-ml_predictor.train(list_of_dictionaries)
+ml_predictor.train(training_dataframe)
 # Wait for the machine to learn all the complex and beautiful patterns in your data...
 
 ml_predictor.predict(new_data)
-# Where new_data is also a list of dictionaries
+# Where new_data is either a dataframe, a single dictionary (auto_ml is performance tuned for production environments), or a list of dictionaries
 ```
 
 ### Advice
 
-Before you go any further, try running the code. Load up some dictionaries in Python, where each dictionary is a row of data. Make a `column_descriptions` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into `auto_ml`, and see what happens!
+Before you go any further, try running the code. Load up some data (either a DataFrame, or a list of dictionaries, where each dictionary is a row of data). Make a `column_descriptions` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into `auto_ml`, and see what happens!
 
 Everything else in these docs assumes you have done at least the above. Start there and everything else will build on top. But this part gets you the output you're probably interested in, without unnecessary complexity.
 
@@ -52,7 +52,7 @@ A quick overview of buzzwords, this project automates:
 - Feature Engineering (particularly around dates, and soon, NLP).
 - Robust Scaling (turning all values into their scaled versions between the range of 0 and 1, in a way that is robust to outliers, and works with sparse matrices).
 - Feature Selection (picking only the features that actually prove useful).
-- Data formatting (turning a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems).
+- Data formatting (turning a DataFrame or a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems).
 - Model Selection (which model works best for your problem).
 - Hyperparameter Optimization (what hyperparameters work best for that model).
 - Ensembling Subpredictors (automatically training up models to predict smaller problems within the meta problem).

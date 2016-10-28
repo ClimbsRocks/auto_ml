@@ -775,7 +775,7 @@ class Predictor(object):
         else:
             trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
 
-        feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+        # feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
         # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []

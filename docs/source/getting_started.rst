@@ -20,11 +20,11 @@ Core Functionality Example
   ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
   # Can pass in type_of_estimator='regressor' as well
 
-  ml_predictor.train(list_of_dictionaries)
+  ml_predictor.train(training_dataframe)
   # Wait for the machine to learn all the complex and beautiful patterns in your data...
 
   ml_predictor.predict(new_data)
-  # Where new_data is also a list of dictionaries
+  # Where new_data is either a dataframe, a list of dictionaries, or a single dictionary
 
 
 That's it.
@@ -37,6 +37,6 @@ Sure, there's a ton of complexity hiding under the surface. And yes, I've got a 
 Advice
 ------
 
-Before you go any further, try running the code. Load up some dictionaries in Python, where each dictionary is a row of data. Make a ``column_descriptions`` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into ``auto_ml``, and see what happens!
+Before you go any further, try running the code. Load up some data (either a DataFrame, or a list of dictionaries, where each dictionary is a row of data). Make a `column_descriptions` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into `auto_ml`, and see what happens!
 
 Everything else in these docs assumes you have done at least the above. Start there and everything else will build on top. But this part gets you the output you're probably interested in, without unnecessary complexity.

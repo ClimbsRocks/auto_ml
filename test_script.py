@@ -45,17 +45,17 @@ else:
 
 # print type(pd)
 
-print "Testing with dict objects"
+# print "Testing with dict objects"
 
-ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'sentence':'text','target': 'output'})
+# ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'sentence':'text','target': 'output'})
 
-X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
+# # X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
 
-# ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
-ml_predictor.train(training_data)
+# # ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
+# ml_predictor.train(training_data)
 
-# ml_predictor.predict_proba(X_test)
-print(ml_predictor.score(X_test, y_test))
+# # ml_predictor.predict_proba(X_test)
+# print(ml_predictor.score(X_test, y_test))
 
 
 print "Testing with dataframes"
@@ -64,11 +64,12 @@ testing_data=pd.DataFrame.from_dict(testing_data)
 
 ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions={'sentence':'text','target': 'output'})
 
-X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
+# X_test, y_test = utils.split_output_dataframe(testing_data, output_column_name='target')
 
 # ml_predictor.train(training_data, optimize_entire_pipeline=True, optimize_final_model=True)
 ml_predictor.train(training_data)
 
 # ml_predictor.predict_proba(X_test)
-print(ml_predictor.score(X_test, y_test))
+y_test = testing_data['target']
+print(ml_predictor.score(testing_data, y_test))
 

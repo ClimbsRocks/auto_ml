@@ -17,7 +17,7 @@ auto_ml
   :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
 
   :param raw_training_data: The data to train on. See below for more information on formatting of this data.
-  :type raw_training_data: List of dictionaries, where each dictionary has both the input data as well as the target data the ml estimator is trying to predict.
+  :type raw_training_data: DataFrame, or a list of dictionaries, where each dictionary has both the input data as well as the target data the ml estimator is trying to predict.
 
   :param user_input_func: A function that you can define that will be called as the first step in the pipeline. The function will be passed the entire X dataset, must not alter the order or length of the X dataset, and must return the entire X dataset. You can perform any feature engineering you would like in this function. See below for more details.
   :type user_input_func: function
@@ -38,7 +38,7 @@ auto_ml
   :type perform_feature_selection: Boolean
 
   :param X_test: Validation data. If you give validation data to auto_ml, it will report out on the results of the validation data automatically, and more frequently (once for each model that we try). Must be accompanied by y_test (the true observed values for the validation data). Typically, we recommend passing in 20% of your overall dataset as validation data.
-  :type X_test: list of dictionaries, same format as raw_training_data
+  :type X_test: DataFrame, or list of dictionaries, same format as raw_training_data
 
   :param y_test: The true values for the validation data X_test. This is to compare the accuracy of our trained models to the observed reality.
   :type y_test: list, of length len(X_test)
