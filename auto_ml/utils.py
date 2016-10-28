@@ -643,7 +643,14 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False):
 def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
     if isinstance(estimator, GradientBoostingClassifier):
         X = X.toarray()
-
+    clean_ys = []
+    # try:
+    for val in y:
+        val = int(val)
+        clean_ys.append(val)
+    y = clean_ys
+    # except:
+    #     pass
     predictions = estimator.predict_proba(X)
     probas = [row[1] for row in predictions]
     score = brier_score_loss(y, probas)

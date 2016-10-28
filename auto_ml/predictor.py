@@ -37,9 +37,9 @@ try:
 except:
     from .. auto_ml import DataFrameVectorizer
 
-# Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings. 
-# The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things. 
-# Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary. 
+# Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
+# The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
+# Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
 warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 
@@ -111,7 +111,7 @@ class Predictor(object):
 
         pipeline_list = []
 
-        # Our subpredictors will not have these portions of the pipeline, so when we try to pull them from a trained_pipeline later, we will get keyErrors, unless we skip this for subpredictors. 
+        # Our subpredictors will not have these portions of the pipeline, so when we try to pull them from a trained_pipeline later, we will get keyErrors, unless we skip this for subpredictors.
         if self._is_subpredictor == False:
             if self.user_input_func is not None:
                 if trained_pipeline is not None:
@@ -141,8 +141,8 @@ class Predictor(object):
         # Subpredictor split in the pipeline
         # ###################
         if self._is_subpredictor == True:
-            # If this is a subpredictor, we only want this second portion of our pipeline. 
-            # For our subpredictors, we will already have run the first part of the pipeline as a one-off before training any of the subpredictor pipelines. This saves us from doing the exact same data cleaning for each and every new subpredictor we train. 
+            # If this is a subpredictor, we only want this second portion of our pipeline.
+            # For our subpredictors, we will already have run the first part of the pipeline as a one-off before training any of the subpredictor pipelines. This saves us from doing the exact same data cleaning for each and every new subpredictor we train.
             # So clear out anything that may have been added to our pipeline so far.
             pipeline_list = []
 
@@ -268,7 +268,7 @@ class Predictor(object):
         y = list(X_df.pop(self.output_column))
 
         # If this is a classifier, try to turn all the y values into proper ints
-        # Some classifiers play more nicely if you give them category labels as ints rather than strings, so we'll make our jobs easier here if we can. 
+        # Some classifiers play more nicely if you give them category labels as ints rather than strings, so we'll make our jobs easier here if we can.
         if self.type_of_estimator == 'classifier':
             # The entire column must be turned into floats. If any value fails, don't convert anything in the column to floats
             try:
@@ -455,7 +455,7 @@ class Predictor(object):
         self.num_weak_estimators = num_weak_estimators
         self.model_names = model_names
         self.perform_feature_scaling = perform_feature_scaling
-        self.trained_subpredictors = []        
+        self.trained_subpredictors = []
 
         # Put in place the markers that will tell us later on to train up a subpredictor for this problem
         if self.num_weak_estimators > 0:
@@ -478,7 +478,7 @@ class Predictor(object):
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
 
-        # We accept input as either a DataFrame, or as a list of dictionaries. Internally, we use DataFrames. So if the user gave us a list, convert it to a DataFrame here. 
+        # We accept input as either a DataFrame, or as a list of dictionaries. Internally, we use DataFrames. So if the user gave us a list, convert it to a DataFrame here.
         if isinstance(raw_training_data, list):
             X_df = pd.DataFrame(raw_training_data)
             del raw_training_data
@@ -511,7 +511,7 @@ class Predictor(object):
             preprocessing_pipeline = self._construct_pipeline(preprocessing_only=True)
             self.X_subpredictors = preprocessing_pipeline.fit_transform(self.X_subpredictors)
 
-            # Train up all of our subpredictors in parallel! 
+            # Train up all of our subpredictors in parallel!
             pool = pathos.multiprocessing.ProcessPool()
             try:
                 pool.restart()
@@ -628,7 +628,7 @@ class Predictor(object):
                     print('\n\n********************************************************************************************')
                     print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
-                gs.fit(X, y)
+                gs.fit(X_df, y)
                 self.trained_pipeline = gs.best_estimator_
 
                 # write the results for each param combo to file for user analytics.
@@ -766,7 +766,7 @@ class Predictor(object):
         else:
             trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
 
-        feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+        # feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
 
         # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []
