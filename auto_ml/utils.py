@@ -547,7 +547,7 @@ def advanced_scoring_classifiers(probas, actuals):
 
     # create summary dict
     summary_dict = OrderedDict()
-    for num in range(0, 100, 10):
+    for num in range(0, 110, 10):
         summary_dict[num] = []
 
     for idx, proba in enumerate(probas):
@@ -915,7 +915,20 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
                     predictions.append(predictor.predict(X))
 
                 else:
-                    predictions.append(predictor.predict(X))
+
+                    classifier_predictions = predictor.predict_proba(X)
+                    # There's undoubtedly a more efficient way to do this:
+                    # right now we are only going to grab the predicted probabilities of a binary classifier- ignore probabilities from multi-class subpredictors and just grab the final prediction instead
+
+                    if len(classifier_predictions[0]) > 2:
+                        predictions.append(predictor.predict(X))
+                    else:
+                        # Note that this will only apply to binary predictions
+                        classifier_predictions = [x[1] for x in classifier_predictions]
+                        print('classifier_predictions after grabbing the first item:')
+                        print(classifier_predictions)
+                        predictions.append(classifier_predictions)
+
 
         if self.include_original_X:
             for pred_idx, name in enumerate(self.sub_names):
@@ -930,8 +943,10 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             # get the median, avg, and standard deviation from our weak estimators
             for row_idx, row_val in enumerate(weak_estimator_predictions[0]):
                 all_weak_predictions_for_row = []
+
                 for col_idx, col in enumerate(weak_estimator_predictions):
                     all_weak_predictions_for_row.append(col[row_idx])
+
                 median_predictions.append(np.median(all_weak_predictions_for_row))
                 avg_predictions.append(np.average(all_weak_predictions_for_row))
                 std_of_predictions.append(np.std(all_weak_predictions_for_row))
