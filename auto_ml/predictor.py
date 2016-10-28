@@ -551,7 +551,7 @@ class Predictor(object):
 
         # If we ran GridSearchCV, we will have to pick the best model
         # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
-        if self.fit_grid_search:
+        if self.fit_grid_search and len(self.grid_search_pipelines) > 1:
             # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
             # 1. Holdout data
             # 2. CV data
@@ -625,7 +625,7 @@ class Predictor(object):
                     # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                     # Set the score on this partition to some very negative number, so that we do not choose this estimator.
                     error_score=-1000000000,
-                    scoring=scoring
+                    scoring=scoring,
                     # ,pre_dispatch='1*n_jobs'
                 )
 
@@ -634,6 +634,7 @@ class Predictor(object):
                     print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
                 gs.fit(X_df, y)
+
                 self.trained_pipeline = gs.best_estimator_
 
                 # write the results for each param combo to file for user analytics.
@@ -647,7 +648,7 @@ class Predictor(object):
                 pipeline_results = []
                 pipeline_results.append(gs.best_score_)
                 pipeline_results.append(gs)
-                self.grid_search_pipelines.append(pipeline_results)
+                # self.grid_search_pipelines.append(pipeline_results)
 
             # The case where we just want to run the training straight through, not fitting GridSearchCV
             else:
@@ -668,6 +669,9 @@ class Predictor(object):
 
             # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
             self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+
+            if self.fit_grid_search:
+                self.grid_search_pipelines.append(self.trained_pipeline)
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()

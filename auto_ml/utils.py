@@ -5,8 +5,9 @@ import math
 import os
 import random
 
+from keras.constraints import maxnorm
+from keras.layers import Dense, Dropout
 from keras.models import Sequential
-from keras.layers import Dense
 from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
 
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -68,7 +69,12 @@ def clean_val_nan_version(val):
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):
     grid_search_params = {
-
+        'DeepLearningRegressor': {
+            # 'shape': ['triangle_left', 'triangle_right', 'triangle_cuddles', 'long', 'long_and_wide', 'standard']
+            'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
+            , 'weight_constraint': [0, 1, 3, 5]
+            , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+        },
         'XGBClassifier': {
             'max_depth': [1, 3, 8, 25],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
@@ -88,17 +94,18 @@ def get_search_params(model_name):
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 3, 8, 25],
+            'max_depth': [1, 2, 3, 5],
             'max_features': ['sqrt', 'log2', None],
             # 'loss': ['ls', 'lad', 'huber', 'quantile']
             # 'booster': ['gbtree', 'gblinear', 'dart'],
-            'loss': ['ls', 'lad', 'huber'],
+            # 'loss': ['ls', 'lad', 'huber'],
+            'loss': ['ls', 'huber'],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.5, 1.0]
+            'subsample': [0.5, 0.8, 1.0]
         },
         'GradientBoostingClassifier': {
             'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 3, 8, 25],
+            'max_depth': [1, 2, 3, 5],
             'max_features': ['sqrt', 'log2', None],
             # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
             'subsample': [0.5, 1.0]
@@ -315,7 +322,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         # Historically we've deleted columns here. However, we're moving this to DataFrameVectorizer as part of a broader effort to reduce duplicate computation
         # if len(cols_to_drop) > 0:
         #     X = X.drop(cols_to_drop, axis=1)
-
         return X
 
 
@@ -339,6 +345,9 @@ def minutes_into_day_parts(minutes_into_day):
 
 
 def add_date_features_df(df, date_col):
+    # Pandas nicely tries to prevent you from doing stupid things, like setting values on a copy of a df, not your real one
+    # However, it's a bit overzealous in this case, so we'll side-step a bunch of warnings by setting is_copy to false here
+    df.is_copy = False
 
     df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int)
     df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int)
@@ -353,17 +362,20 @@ def add_date_features_df(df, date_col):
     return df
 
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
-def make_deep_learning_model(num_cols=250):
+def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
     model = Sequential()
     # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
-    model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal'))
+    model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
+    model.add(Dropout(dropout_rate))
+    model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
+    model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
     # For regressors, we want an output layer with a single node
     # For classifiers, we'll want to add in some other processing here (like a softmax activation function)
     model.add(Dense(1, init='normal'))
 
     # The final step is to compile the model
     # TODO: see if we can pass in our own custom loss function here
-    model.compile(loss='mean_squared_error', optimizer='adam')
+    model.compile(loss='mean_squared_error', optimizer=optimizer)
 
     return model
 
@@ -457,14 +469,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             num_cols = X_fit.shape[1]
             kwargs = {
                 'num_cols':num_cols
-                , 'nb_epoch': 200
+                , 'nb_epoch': 20
                 , 'batch_size': 10
                 , 'verbose': 1
             }
+            model_params = self.model.get_params()
+            del model_params['build_fn']
+            for k, v in model_params.items():
+                if k not in kwargs:
+                    kwargs[k] = v
             if self.type_of_estimator == 'regressor':
-                self.model = KerasRegressor(make_deep_learning_model, **kwargs)
-        else:
-            self.model = get_model_from_name(self.model_name)
+                self.model = KerasRegressor(build_fn=make_deep_learning_model, **kwargs)
 
         self.model.fit(X_fit, y)
 
