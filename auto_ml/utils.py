@@ -5,6 +5,10 @@ import math
 import os
 import random
 
+from keras.models import Sequential
+from keras.layers import Dense
+from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
@@ -348,6 +352,21 @@ def add_date_features_df(df, date_col):
 
     return df
 
+# TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
+def make_deep_learning_model(num_cols=250):
+    model = Sequential()
+    # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
+    model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal'))
+    # For regressors, we want an output layer with a single node
+    # For classifiers, we'll want to add in some other processing here (like a softmax activation function)
+    model.add(Dense(1, init='normal'))
+
+    # The final step is to compile the model
+    # TODO: see if we can pass in our own custom loss function here
+    model.compile(loss='mean_squared_error', optimizer='adam')
+
+    return model
+
 
 def get_model_from_name(model_name):
     model_map = {
@@ -363,6 +382,7 @@ def get_model_from_name(model_name):
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
+        'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1),
         'LinearRegression': LinearRegression(n_jobs=-2),
         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
         'Ridge': Ridge(),
@@ -391,6 +411,13 @@ def get_model_from_name(model_name):
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
 # It also gives us more granular control over things like turning the input for GradientBoosting into dense matrices, or appending a set of dummy 1's to the end of sparse matrices getting predictions from XGBoost.
+# TODO: make sure we can actually get the params from GridSearchCV.
+    # Might have to do something tricky, like have a hold-all function that does nothing but get the params from GridSearchCV inside __init__
+        # So, self.model might just be a dictionary or something
+        # Or, a function that takes in anything as kwargs, and sets them on a dictionary, then returns that dictionary
+    # And then that function does nothing but return those params
+    # And we create a model using that inside fit
+
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
@@ -422,9 +449,22 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             X_fit = X
 
-        model_to_fit = get_model_from_name(self.model_name)
 
-        self.model = get_model_from_name(self.model_name)
+        if self.model_name[:12] == 'DeepLearning':
+            if scipy.sparse.issparse(X_fit):
+                X_fit = X_fit.todense()
+
+            num_cols = X_fit.shape[1]
+            kwargs = {
+                'num_cols':num_cols
+                , 'nb_epoch': 200
+                , 'batch_size': 10
+                , 'verbose': 1
+            }
+            if self.type_of_estimator == 'regressor':
+                self.model = KerasRegressor(make_deep_learning_model, **kwargs)
+        else:
+            self.model = get_model_from_name(self.model_name)
 
         self.model.fit(X_fit, y)
 
@@ -478,7 +518,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             # Trying to force XGBoost to play nice with sparse matrices
             X_predict = scipy.sparse.hstack((X, ones))
 
-        elif self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+        elif (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning') and scipy.sparse.issparse(X):
             X_predict = X.todense()
 
         else:
