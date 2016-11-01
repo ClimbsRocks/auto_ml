@@ -139,12 +139,6 @@ class Predictor(object):
                 # pipeline_list.append(('pca', TruncatedSVD()))
                 pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
 
-        if self.add_cluster_prediction is True or (self.compute_power >=10 and self.add_cluster_prediction is not False):
-            if trained_pipeline is not None:
-                pipeline_list.append(('add_cluster_prediction', trained_pipeline['add_cluster_prediction']))
-            else:
-                pipeline_list.append(('add_cluster_prediction', utils.AddPredictedFeature(model_name='MiniBatchKMeans', type_of_estimator=self.type_of_estimator, include_original_X=True)))
-
         if trained_pipeline is not None:
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
@@ -276,7 +270,7 @@ class Predictor(object):
 
 
     def _consolidate_feature_selection_steps(self, trained_pipeline):
-        # First, restrict our DictVectorizer
+        # First, restrict our DictVectorizer or DataFrameVectorizer
         # This goes through and has DV only output the items that have passed our support mask
         # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
         # It also significantly reduces the size of dv.vocabulary_ which can get quite large
@@ -293,25 +287,7 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def _abbreviate_pipeline(self, trained_ml_predictor):
-
-        trained_pipeline = trained_ml_predictor.trained_pipeline
-
-        dv = trained_pipeline.named_steps['dv']
-        final_model = trained_pipeline.named_steps['final_model']
-        final_model.output_column = trained_ml_predictor.output_column
-
-        abbreviated_pipeline = []
-        abbreviated_pipeline.append(('dv', dv))
-        abbreviated_pipeline.append(('final_model', final_model))
-
-        abbreviated_pipeline = Pipeline(abbreviated_pipeline)
-
-        # Our abbreviated pipeline will now expect to get dictionaries that have already gone through all the preliminary preparation steps (BasicDataCleaning, date_feature_engineering, scaling, etc.)
-        return abbreviated_pipeline
-
-
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, add_cluster_prediction=None, perform_feature_scaling=True):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -326,7 +302,6 @@ class Predictor(object):
         self.print_training_summary_to_viewer = print_training_summary_to_viewer
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
-        self.add_cluster_prediction = add_cluster_prediction
         self.model_names = model_names
         self.perform_feature_scaling = perform_feature_scaling
 

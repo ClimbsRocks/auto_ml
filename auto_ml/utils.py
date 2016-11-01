@@ -278,7 +278,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         if isinstance(X, dict) or isinstance(X, list):
             X = pd.DataFrame([X])
 
-        # All of these are values we will not want to keep for training this particular estimator or subpredictor
+        # All of these are values we will not want to keep for training this particular estimator. 
+        # Note that we have already split out the output column and saved it into it's own variable
         vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
 
         # It is much more efficient to drop a bunch of columns at once, rather than one at a time
@@ -444,9 +445,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.y_train = y_train
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
-        # This is purely a placeholder so we can set it if we have to if this is a subpredictor
-        # In that case, we will set it after the whole pipeline has trained and we are abbreviating the subpredictor pipeline
-        self.output_column = output_column
+
 
         if self.type_of_estimator == 'classifier':
             self._scorer = brier_score_loss_wrapper
@@ -839,146 +838,6 @@ def scale_val(val, min_val, total_range, truncate_large_values=False):
 
     return scaled_value
 
-
-class AddPredictedFeature(BaseEstimator, TransformerMixin):
-
-
-    def __init__(self, type_of_estimator=None, model_name='MiniBatchKMeans', include_original_X=False, y_train=None):
-        # 'regressor' or 'classifier'
-        self.type_of_estimator = type_of_estimator
-        # Name of the model to fit.
-        self.model_name = model_name
-        # WHether to append a single new feature onto the entire existing X feature set and return the entire X dataset plus this new feature, or whether to only return a single feature for the predcicted value
-        self.include_original_X = include_original_X
-        # If this is for an esembled subpredictor, these are the y values we will train the predictor on while running .fit()
-        self.y_train = y_train
-        self.n_clusters = 8
-
-
-    def fit(self, X, y=None):
-        self.model = get_model_from_name(self.model_name)
-
-        if self.y_train is not None:
-            y = y_train
-
-        if self.model_name == 'MiniBatchKMeans':
-            self.model.fit(X)
-        else:
-            self.model.fit(X, y)
-
-        # For ml_for_analytics, we'll want to save these feature names somewhere easily accessible
-        self.added_feature_names_ = ['prdicted_cluster_group_' + str(x) for x in range(self.n_clusters)]
-
-        return self
-
-
-    def transform(self, X, y=None):
-        predictions = self.model.predict(X)
-        if self.model_name == 'MiniBatchKMeans':
-
-            # KMeans will return an int cluster prediction. We need to turn that into categorical variables our models can recognize (cluster=1: True, cluster=2: False, etc.)
-            encoded_predictions = []
-            for prediction in predictions:
-                blank_prediction_row = [0 for x in range(self.n_clusters)]
-                blank_prediction_row[prediction] = 1
-                encoded_predictions.append(blank_prediction_row)
-
-            predictions = encoded_predictions
-        else:
-            # We need to reshape our predictions to each be very clearly one row
-            predictions = [[x] for x in predictions]
-        if self.include_original_X:
-            X = scipy.sparse.hstack((X, predictions), format='csr')
-            return X
-        else:
-            return predictions
-
-
-class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
-
-
-    def __init__(self, trained_subpredictors, include_original_X=True):
-        self.trained_subpredictors = trained_subpredictors
-        self.include_original_X = include_original_X
-        self.sub_names = [pred.named_steps['final_model'].output_column for pred in self.trained_subpredictors]
-
-
-    def fit(self, X, y=None):
-        return self
-
-
-    def transform(self, X, y=None):
-        if isinstance(X, dict) or isinstance(X, list):
-            X = pd.DataFrame(X)
-        predictions = []
-
-        if X.shape[0] > 100:
-            pool = pathos.multiprocessing.ProcessPool()
-
-            # Since we may have already closed the pool, try to restart it
-            try:
-                pool.restart()
-            except AssertionError as e:
-                pass
-            predictions = list(pool.uimap(lambda predictor: predictor.predict(X), self.trained_subpredictors))
-            # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-            pool.close()
-            pool.join()
-
-        else:
-            for predictor in self.trained_subpredictors:
-
-                if predictor.named_steps['final_model'].type_of_estimator == 'regressor':
-                    predictions.append(predictor.predict(X))
-
-                else:
-
-                    classifier_predictions = predictor.predict_proba(X)
-                    # There's undoubtedly a more efficient way to do this:
-                    # right now we are only going to grab the predicted probabilities of a binary classifier- ignore probabilities from multi-class subpredictors and just grab the final prediction instead
-
-                    if len(classifier_predictions[0]) > 2:
-                        predictions.append(predictor.predict(X))
-                    else:
-                        # Note that this will only apply to binary predictions
-                        classifier_predictions = [x[1] for x in classifier_predictions]
-                        predictions.append(classifier_predictions)
-
-
-        if self.include_original_X:
-            weak_estimator_predictions = []
-            for pred_idx, name in enumerate(self.sub_names):
-                X[name + '_sub_prediction'] = predictions[pred_idx]
-                if name[:14] == 'weak_estimator':
-                    weak_estimator_predictions.append(predictions[pred_idx])
-
-            median_predictions = []
-            avg_predictions = []
-            std_of_predictions = []
-
-            try:
-                # get the median, avg, and standard deviation from our weak estimators
-                for row_idx, row_val in enumerate(weak_estimator_predictions[0]):
-                    all_weak_predictions_for_row = []
-
-                    for col_idx, col in enumerate(weak_estimator_predictions):
-                        all_weak_predictions_for_row.append(col[row_idx])
-
-                    median_predictions.append(np.median(all_weak_predictions_for_row))
-                    avg_predictions.append(np.average(all_weak_predictions_for_row))
-                    std_of_predictions.append(np.std(all_weak_predictions_for_row))
-
-                X['weak_estimators_median_sub_prediction'] = median_predictions
-                X['weak_estimators_avg_sub_prediction'] = avg_predictions
-                X['weak_estimators_std_of_sub_predictions'] = std_of_predictions
-            except NameError:
-                pass
-
-            return X
-
-        else:
-            # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
-            return predictions
 
 def safely_drop_columns(df, cols_to_drop):
     safe_cols_to_drop = []
