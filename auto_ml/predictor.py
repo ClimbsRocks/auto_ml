@@ -838,12 +838,12 @@ class Predictor(object):
         return self.trained_pipeline.predict_proba(prediction_data)
 
 
-    def score(self, X_test, y_test, advanced_scoring=False):
+    def score(self, X_test, y_test, advanced_scoring=True):
         if isinstance(X_test, list):
             X_test = pd.DataFrame(X_test)
         y_test = list(y_test)
+        
         if self._scorer is not None:
-            # try:
             if self.type_of_estimator == 'regressor':
                 return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring)
             elif self.type_of_estimator == 'classifier':
@@ -853,10 +853,6 @@ class Predictor(object):
                     return score
                 else:
                     return self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
-
-            # except:
-
-            #     return self._scorer(self.trained_pipeline, X_test, y_test)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 

@@ -16,7 +16,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, Extr
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
-from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss
+from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -76,10 +76,13 @@ def get_search_params(model_name):
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         },
         'XGBClassifier': {
-            'max_depth': [1, 3, 8, 25],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.5, 1.0]
-            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+            'max_depth': [1, 3, 5, 10],
+            'learning_rate': [0.01, 0.1, 0.2],
+            'min_child_weight': [1, 5, 10],
+            # 'subsample': [0.5, 1.0]
+            'subsample': [0.5, 0.8, 1.0],
+            'colsample_bytree': [0.5, 0.8, 1.0]
+            # 'lambda': [0.9, 1.0]
         },
         'XGBRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
@@ -273,7 +276,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, dict) or isinstance(X, list):
-            X = pd.DataFrame(X)
+            X = pd.DataFrame([X])
 
         # All of these are values we will not want to keep for training this particular estimator or subpredictor
         vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
@@ -386,7 +389,7 @@ def get_model_from_name(model_name):
         'LogisticRegression': LogisticRegression(n_jobs=-2),
         'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
         'RidgeClassifier': RidgeClassifier(),
-        'XGBClassifier': xgb.XGBClassifier(),
+        'XGBClassifier': xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, max_depth=1, subsample=1.0, learning_rate=0.1),
         'GradientBoostingClassifier': GradientBoostingClassifier(),
 
         'SGDClassifier': SGDClassifier(n_jobs=-1),
@@ -543,7 +546,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
 def advanced_scoring_classifiers(probas, actuals):
-    print('Here is how our trained estimator does at each level of predicted probabilities')
+
+    print('Here is our brier-score-loss, which is the value we optimized for while training, and is the value returned from .score()')
+    print('It is a measure of how close the PROBABILITY predictions are.')
+    print(brier_score_loss(actuals, probas))
+
+    print('\nHere is the trained estimator\'s overall accuracy (when it predicts a label, how frequently is that the correct label?)')
+    predicted_labels = []
+    for pred in probas:
+        if pred >= 0.5:
+            predicted_labels.append(1)
+        else:
+            predicted_labels.append(0)
+    print(accuracy_score(y_true=actuals, y_pred=predicted_labels))
+
+    print('Here is the accuracy of our trained estimator at each level of predicted probabilities')
 
     # create summary dict
     summary_dict = OrderedDict()
@@ -931,6 +948,7 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
 
 
         if self.include_original_X:
+            weak_estimator_predictions = []
             for pred_idx, name in enumerate(self.sub_names):
                 X[name + '_sub_prediction'] = predictions[pred_idx]
                 if name[:14] == 'weak_estimator':
@@ -940,20 +958,25 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
             avg_predictions = []
             std_of_predictions = []
 
-            # get the median, avg, and standard deviation from our weak estimators
-            for row_idx, row_val in enumerate(weak_estimator_predictions[0]):
-                all_weak_predictions_for_row = []
+            try:
+                # get the median, avg, and standard deviation from our weak estimators
+                for row_idx, row_val in enumerate(weak_estimator_predictions[0]):
+                    all_weak_predictions_for_row = []
 
-                for col_idx, col in enumerate(weak_estimator_predictions):
-                    all_weak_predictions_for_row.append(col[row_idx])
+                    for col_idx, col in enumerate(weak_estimator_predictions):
+                        all_weak_predictions_for_row.append(col[row_idx])
 
-                median_predictions.append(np.median(all_weak_predictions_for_row))
-                avg_predictions.append(np.average(all_weak_predictions_for_row))
-                std_of_predictions.append(np.std(all_weak_predictions_for_row))
+                    median_predictions.append(np.median(all_weak_predictions_for_row))
+                    avg_predictions.append(np.average(all_weak_predictions_for_row))
+                    std_of_predictions.append(np.std(all_weak_predictions_for_row))
 
-            X['weak_estimators_median_sub_prediction'] = median_predictions
-            X['weak_estimators_avg_sub_prediction'] = avg_predictions
-            X['weak_estimators_std_of_sub_predictions'] = std_of_predictions
+                X['weak_estimators_median_sub_prediction'] = median_predictions
+                X['weak_estimators_avg_sub_prediction'] = avg_predictions
+                X['weak_estimators_std_of_sub_predictions'] = std_of_predictions
+            except NameError:
+                pass
+
+            return X
 
         else:
             # TODO: Might need to refactor this to take into account that we're using DataFrames now, not a list of lists, where each sublist is a column of predictions
