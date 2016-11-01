@@ -826,7 +826,7 @@ class Predictor(object):
             for idx, val in predicted_vals:
                 predicted_vals[idx] = math.exp(val)
 
-        del prediction_data
+        # del prediction_data
         return predicted_vals
 
 
@@ -834,7 +834,6 @@ class Predictor(object):
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
 
-        del prediction_data
         return self.trained_pipeline.predict_proba(prediction_data)
 
 

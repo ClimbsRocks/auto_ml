@@ -518,7 +518,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         try:
             return self.model.predict_proba(X)
         except AttributeError:
-            print('This model has no predict_proba method. Returning results of .predict instead.')
+            # print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
             tupled_predictions = []
             for prediction in raw_predictions:
@@ -942,8 +942,6 @@ class AddSubpredictorPredictions(BaseEstimator, TransformerMixin):
                     else:
                         # Note that this will only apply to binary predictions
                         classifier_predictions = [x[1] for x in classifier_predictions]
-                        print('classifier_predictions after grabbing the first item:')
-                        print(classifier_predictions)
                         predictions.append(classifier_predictions)
 
 
