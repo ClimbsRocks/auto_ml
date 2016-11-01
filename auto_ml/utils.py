@@ -5,10 +5,10 @@ import math
 import os
 import random
 
-from keras.constraints import maxnorm
-from keras.layers import Dense, Dropout
-from keras.models import Sequential
-from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+# from keras.constraints import maxnorm
+# from keras.layers import Dense, Dropout
+# from keras.models import Sequential
+# from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
@@ -69,12 +69,12 @@ def clean_val_nan_version(val):
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):
     grid_search_params = {
-        'DeepLearningRegressor': {
-            # 'shape': ['triangle_left', 'triangle_right', 'triangle_cuddles', 'long', 'long_and_wide', 'standard']
-            'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
-            , 'weight_constraint': [0, 1, 3, 5]
-            , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-        },
+        # 'DeepLearningRegressor': {
+        #     # 'shape': ['triangle_left', 'triangle_right', 'triangle_cuddles', 'long', 'long_and_wide', 'standard']
+        #     'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
+        #     , 'weight_constraint': [0, 1, 3, 5]
+        #     , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+        # },
         'XGBClassifier': {
             'max_depth': [1, 3, 5, 10],
             'learning_rate': [0.01, 0.1, 0.2],
@@ -365,22 +365,22 @@ def add_date_features_df(df, date_col):
     return df
 
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
-def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
-    model = Sequential()
-    # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
-    model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-    model.add(Dropout(dropout_rate))
-    model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-    model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-    # For regressors, we want an output layer with a single node
-    # For classifiers, we'll want to add in some other processing here (like a softmax activation function)
-    model.add(Dense(1, init='normal'))
+# def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
+#     model = Sequential()
+#     # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
+#     model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
+#     model.add(Dropout(dropout_rate))
+#     model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
+#     model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
+#     # For regressors, we want an output layer with a single node
+#     # For classifiers, we'll want to add in some other processing here (like a softmax activation function)
+#     model.add(Dense(1, init='normal'))
 
-    # The final step is to compile the model
-    # TODO: see if we can pass in our own custom loss function here
-    model.compile(loss='mean_squared_error', optimizer=optimizer)
+#     # The final step is to compile the model
+#     # TODO: see if we can pass in our own custom loss function here
+#     model.compile(loss='mean_squared_error', optimizer=optimizer)
 
-    return model
+#     return model
 
 
 def get_model_from_name(model_name):
@@ -397,7 +397,7 @@ def get_model_from_name(model_name):
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
-        'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1),
+        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1),
         'LinearRegression': LinearRegression(n_jobs=-2),
         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
         'Ridge': Ridge(),
@@ -465,24 +465,24 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X
 
 
-        if self.model_name[:12] == 'DeepLearning':
-            if scipy.sparse.issparse(X_fit):
-                X_fit = X_fit.todense()
+        # if self.model_name[:12] == 'DeepLearning':
+        #     if scipy.sparse.issparse(X_fit):
+        #         X_fit = X_fit.todense()
 
-            num_cols = X_fit.shape[1]
-            kwargs = {
-                'num_cols':num_cols
-                , 'nb_epoch': 20
-                , 'batch_size': 10
-                , 'verbose': 1
-            }
-            model_params = self.model.get_params()
-            del model_params['build_fn']
-            for k, v in model_params.items():
-                if k not in kwargs:
-                    kwargs[k] = v
-            if self.type_of_estimator == 'regressor':
-                self.model = KerasRegressor(build_fn=make_deep_learning_model, **kwargs)
+        #     num_cols = X_fit.shape[1]
+        #     kwargs = {
+        #         'num_cols':num_cols
+        #         , 'nb_epoch': 20
+        #         , 'batch_size': 10
+        #         , 'verbose': 1
+        #     }
+        #     model_params = self.model.get_params()
+        #     del model_params['build_fn']
+        #     for k, v in model_params.items():
+        #         if k not in kwargs:
+        #             kwargs[k] = v
+        #     if self.type_of_estimator == 'regressor':
+        #         self.model = KerasRegressor(build_fn=make_deep_learning_model, **kwargs)
 
         self.model.fit(X_fit, y)
 

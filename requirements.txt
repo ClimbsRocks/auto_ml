@@ -4,4 +4,3 @@ scipy
 python-dateutil
 pandas
 pathos
-keras
