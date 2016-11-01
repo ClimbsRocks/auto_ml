@@ -70,7 +70,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
       encoded as columns of integers.
     """
 
-    def __init__(self, column_descriptions=None, dtype=np.float64, separator="=", sparse=True, sort=True):
+    def __init__(self, column_descriptions=None, dtype=np.float32, separator="=", sparse=True, sort=True):
         self.dtype = dtype
         self.separator = separator
         self.sparse = sparse
@@ -143,17 +143,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         # would require (heuristic) conversion of dtype to typecode...
         values = []
 
-        # collect all the possible feature names and build sparse matrix at
-        # same time
-        for row_idx, row in X.iterrows():
-            for col_idx, val in enumerate(row):
-                f = X.columns[col_idx]
 
+        if isinstance(X, dict):
+            for f, val in X.items():
                 if isinstance(val, six.string_types):
                     f = f + self.separator + val
                     val = 1
 
-                # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
                 if f in vocab and str(val) not in bad_vals_as_strings:
                     # Get the index position from vocab, then append that index position to indices
                     indices.append(vocab[f])
@@ -162,8 +158,32 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
             indptr.append(len(indices))
 
-        if len(indptr) == 1:
-            raise ValueError('The DataFrame passed into DataFrameVectorizer is empty')
+            if len(indptr) == 1:
+                raise ValueError('The dictionary passed into DataFrameVectorizer is empty')
+
+
+        else:
+            # collect all the possible feature names and build sparse matrix at
+            # same time
+            for row_idx, row in X.iterrows():
+                for col_idx, val in enumerate(row):
+                    f = X.columns[col_idx]
+
+                    if isinstance(val, six.string_types):
+                        f = f + self.separator + val
+                        val = 1
+
+                    # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
+                    if f in vocab and str(val) not in bad_vals_as_strings:
+                        # Get the index position from vocab, then append that index position to indices
+                        indices.append(vocab[f])
+                        # Convert the val to the correct dtype, then append to our values list
+                        values.append(dtype(val))
+
+                indptr.append(len(indices))
+
+            if len(indptr) == 1:
+                raise ValueError('The DataFrame passed into DataFrameVectorizer is empty')
 
         indices = frombuffer_empty(indices, dtype=np.intc)
         indptr = np.frombuffer(indptr, dtype=np.intc)
