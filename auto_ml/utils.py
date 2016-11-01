@@ -25,9 +25,9 @@ import pandas as pd
 import pathos
 import scipy
 
-# XGBoost can be a pain to install. It's also a super powerful and effective package. 
+# XGBoost can be a pain to install. It's also a super powerful and effective package.
 # So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
-# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that. 
+# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that.
 # The same logic will apply to deep learning with Keras and TensorFlow
 global xgb_installed
 xgb_installed = False
@@ -292,7 +292,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         if isinstance(X, dict) or isinstance(X, list):
             X = pd.DataFrame([X])
 
-        # All of these are values we will not want to keep for training this particular estimator. 
+        # All of these are values we will not want to keep for training this particular estimator.
         # Note that we have already split out the output column and saved it into it's own variable
         vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
 

@@ -37,9 +37,9 @@ try:
 except:
     from .. auto_ml import DataFrameVectorizer
 
-# XGBoost can be a pain to install. It's also a super powerful and effective package. 
+# XGBoost can be a pain to install. It's also a super powerful and effective package.
 # So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
-# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that. 
+# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that.
 # The same logic will apply to deep learning with Keras and TensorFlow
 global xgb_installed
 xgb_installed = False
@@ -48,8 +48,8 @@ try:
     xgb_installed = True
 except NameError:
     pass
-    
-    
+
+
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
 # Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
@@ -650,7 +650,7 @@ class Predictor(object):
         if isinstance(X_test, list):
             X_test = pd.DataFrame(X_test)
         y_test = list(y_test)
-        
+
         if self._scorer is not None:
             if self.type_of_estimator == 'regressor':
                 return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring)
