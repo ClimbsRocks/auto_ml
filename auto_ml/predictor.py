@@ -37,6 +37,19 @@ try:
 except:
     from .. auto_ml import DataFrameVectorizer
 
+# XGBoost can be a pain to install. It's also a super powerful and effective package. 
+# So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
+# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that. 
+# The same logic will apply to deep learning with Keras and TensorFlow
+global xgb_installed
+xgb_installed = False
+try:
+    import xgboost as xgb
+    xgb_installed = True
+except NameError:
+    pass
+    
+    
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
 # Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
@@ -178,8 +191,10 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            # base_estimators = ['Ridge', 'XGBRegressor']
-            base_estimators = ['Ridge', 'GradientBoostingRegressor']
+            if xgb_installed:
+                base_estimators = ['Ridge', 'XGBRegressor']
+            else:
+                base_estimators = ['Ridge', 'GradientBoostingRegressor']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -191,8 +206,10 @@ class Predictor(object):
                 return base_estimators
 
         elif self.type_of_estimator == 'classifier':
-            # base_estimators = ['RidgeClassifier', 'XGBClassifier']
-            base_estimators = ['RidgeClassifier', 'GradientBoostingClassifier']
+            if xgb_installed:
+                base_estimators = ['RidgeClassifier', 'XGBClassifier']
+            else:
+                base_estimators = ['RidgeClassifier', 'GradientBoostingClassifier']
             if self.compute_power < 7:
                 return base_estimators
             else:

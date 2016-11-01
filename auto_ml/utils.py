@@ -24,7 +24,21 @@ import numpy as np
 import pandas as pd
 import pathos
 import scipy
-import xgboost as xgb
+
+# XGBoost can be a pain to install. It's also a super powerful and effective package. 
+# So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
+# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that. 
+# The same logic will apply to deep learning with Keras and TensorFlow
+global xgb_installed
+xgb_installed = False
+try:
+    import xgboost as xgb
+    xgb_installed = True
+except NameError:
+    pass
+
+if xgb_installed:
+    import xgboost as xgb
 
 
 # The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
@@ -390,7 +404,6 @@ def get_model_from_name(model_name):
         'LogisticRegression': LogisticRegression(n_jobs=-2),
         'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
         'RidgeClassifier': RidgeClassifier(),
-        'XGBClassifier': xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, max_depth=1, subsample=1.0, learning_rate=0.1),
         'GradientBoostingClassifier': GradientBoostingClassifier(),
 
         'SGDClassifier': SGDClassifier(n_jobs=-1),
@@ -402,7 +415,6 @@ def get_model_from_name(model_name):
         'LinearRegression': LinearRegression(n_jobs=-2),
         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
         'Ridge': Ridge(),
-        'XGBRegressor': xgb.XGBRegressor(),
         'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
         'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
         'RANSACRegressor': RANSACRegressor(),
@@ -420,6 +432,10 @@ def get_model_from_name(model_name):
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
     }
+    if xgb_installed:
+        model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, max_depth=1, subsample=1.0, learning_rate=0.1)
+        model_map['XGBRegressor'] = xgb.XGBRegressor()
+
     return model_map[model_name]
 
 

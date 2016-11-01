@@ -87,7 +87,8 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    install_requires=['scikit-learn', 'xgboost', 'scipy', 'pandas', 'pathos', 'python-dateutil'],
+    # We will allow the user to install XGBoost themselves. However, since it can be difficult to install, we will not force them to go through that install challenge if they're just checking out the package and want to get running with it quickly. 
+    install_requires=['scikit-learn', 'scipy', 'pandas', 'pathos', 'python-dateutil'],
 
     # List additional groups of dependencies here (e.g. development
     # dependencies). You can install these using the following syntax,
