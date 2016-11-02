@@ -421,13 +421,21 @@ def add_date_features_df(df, date_col):
 # Same logic as above, except implemented for a single dictionary, which is much faster at prediction time when getting just a single prediction
 def add_date_features_dict(row, date_col):
 
+    date_feature_dict = {}
+
+    # Handle cases where the val for the date_col is None
+    try:
+        date_val = row[date_col]
+        if not isinstance(date_val, (datetime.datetime, datetime.date)):
+            date_val = dateutil.parser.parse(date_val)
+        if date_val == None:
+            return date_feature_dict
+    except:
+        return date_feature_dict
+
     # Make a copy of all the engineered features from the date, without modifying the original object at all
     # This way the same original object can be passed into a number of different trained auto_ml predictors
-    date_feature_dict = {}
-    date_val = row[date_col]
 
-    if not isinstance(date_val, (datetime.datetime, datetime.date)):
-        date_val = dateutil.parser.parse(date_val)
 
     date_feature_dict[date_col + '_day_of_week'] = date_val.weekday()
     date_feature_dict[date_col + '_hour'] = date_val.hour
