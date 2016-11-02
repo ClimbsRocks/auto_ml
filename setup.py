@@ -31,7 +31,7 @@ setup(
     # Versions should comply with PEP440.  For a discussion on single-sourcing
     # the version across setup.py and the project code, see
     # https://packaging.python.org/en/latest/single_source_version.html
-    version='1.5.2',
+    version='1.6',
 
     description='Automated machine learning for production and analytics',
     long_description=long_description,
@@ -87,7 +87,7 @@ setup(
     # your project is installed. For an analysis of "install_requires" vs pip's
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
-    # We will allow the user to install XGBoost themselves. However, since it can be difficult to install, we will not force them to go through that install challenge if they're just checking out the package and want to get running with it quickly. 
+    # We will allow the user to install XGBoost themselves. However, since it can be difficult to install, we will not force them to go through that install challenge if they're just checking out the package and want to get running with it quickly.
     install_requires=['scikit-learn', 'scipy', 'pandas', 'pathos', 'python-dateutil'],
 
     # List additional groups of dependencies here (e.g. development
