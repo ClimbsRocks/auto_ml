@@ -17,7 +17,7 @@ from sklearn.cross_validation import train_test_split
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.grid_search import GridSearchCV
-from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer
+from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
@@ -192,9 +192,9 @@ class Predictor(object):
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
             if xgb_installed:
-                base_estimators = ['Ridge', 'XGBRegressor']
+                base_estimators = ['XGBRegressor']
             else:
-                base_estimators = ['Ridge', 'GradientBoostingRegressor']
+                base_estimators = ['GradientBoostingRegressor']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -207,9 +207,9 @@ class Predictor(object):
 
         elif self.type_of_estimator == 'classifier':
             if xgb_installed:
-                base_estimators = ['RidgeClassifier', 'XGBClassifier']
+                base_estimators = ['XGBClassifier']
             else:
-                base_estimators = ['RidgeClassifier', 'GradientBoostingClassifier']
+                base_estimators = ['GradientBoostingClassifier']
             if self.compute_power < 7:
                 return base_estimators
             else:
@@ -354,7 +354,10 @@ class Predictor(object):
             estimator_names = self._get_estimator_names()
 
         if self.type_of_estimator == 'classifier':
-            scoring = utils.brier_score_loss_wrapper
+            if len(set(y)) > 2:
+                scoring = accuracy_score
+            else:
+                scoring = utils.brier_score_loss_wrapper
             self._scorer = scoring
         else:
             scoring = utils.rmse_scoring
@@ -541,7 +544,7 @@ class Predictor(object):
         print('Here are the feature_importances from the tree-based model:')
         print('The printed list will only contain at most the top 50 features.')
         for feature in sorted_feature_infos[-50:]:
-            print(feature[0] + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
+            print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
 
     def _print_ml_analytics_results_random_forest(self):
@@ -655,7 +658,10 @@ class Predictor(object):
             if self.type_of_estimator == 'regressor':
                 return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring)
             elif self.type_of_estimator == 'classifier':
-                if advanced_scoring:
+                if self._scorer == accuracy_score:
+                    predictions = self.trained_pipeline.predict(X_test)
+                    return self._scorer(y_test, predictions)
+                elif advanced_scoring:
                     score, probas = self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
                     utils.advanced_scoring_classifiers(probas, y_test)
                     return score
