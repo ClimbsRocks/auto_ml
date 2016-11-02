@@ -17,7 +17,7 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, Extr
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
-from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score
+from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score
 from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -646,6 +646,93 @@ def advanced_scoring_classifiers(probas, actuals):
 
     print('\n\n')
 
+def calculate_and_print_differences(predictions, actuals):
+    pos_differences = []
+    neg_differences = []
+    # Technically, we're ignoring cases where we are spot on
+    for idx, pred in enumerate(predictions):
+        difference = pred - actuals[idx]
+        if difference > 0:
+            pos_differences.append(difference)
+        elif difference < 0:
+            neg_differences.append(difference)
+    print('Count of positive differences (prediction > actual):')
+    print(len(pos_differences))
+    print('Count of negative differences:')
+    print(len(neg_differences))
+    print('Average positive difference:')
+    print(sum(pos_differences) * 1.0 / len(pos_differences))
+    print('Average negative difference:')
+    print(sum(neg_differences) * 1.0 / len(neg_differences))
+    print('count predictions > 10 min off')
+    ten_min_off = [x for x in neg_differences if x < -10 * 60]
+    print(len(ten_min_off))
+    print('average amount off by for these cases')
+    print(sum(ten_min_off) * 1.0 / len(ten_min_off))
+
+
+def advanced_scoring_regressors(predictions, actuals):
+
+    print('\n\n***********************************************')
+    print('Advanced scoring metrics for the trained regression model on this particular dataset:\n')
+
+    # 1. overall RMSE
+    print('Here is the overall RMSE for these predictions:')
+    print(mean_squared_error(actuals, predictions)**0.5)
+
+    # 2. overall avg predictions
+    print('\nHere is the average of the predictions:')
+    print(sum(predictions) * 1.0 / len(predictions))
+
+    # 3. overall avg actuals
+    print('\nHere is the average actual value on this validation set:')
+    print(sum(actuals) * 1.0 / len(actuals))
+
+    # 4. avg differences (not RMSE)
+    print('\nHere is the mean absolute error:')
+    print(mean_absolute_error(actuals, predictions))
+
+    print('\nHere is the median absolute error (robust to outliers):')
+    print(median_absolute_error(actuals, predictions))
+
+    print('\nHere is the explained variance:')
+    print(explained_variance_score(actuals, predictions))
+
+    print('\nHere is the R-squared value:')
+    print(r2_score(actuals, predictions))
+
+    # 5. pos and neg differences
+    calculate_and_print_differences(predictions, actuals)
+    # 6.
+
+    actuals_preds = zip(actuals, predictions)
+    # Sort by PREDICTED value, since this is what what we will know at the time we make a prediction
+    actuals_preds.sort(key=lambda pair: pair[1])
+    actuals_sorted = [act for act, pred in actuals_preds]
+    predictions_sorted = [pred for act, pred in actuals_preds]
+
+    print('Here\'s how the trained predictor did on each successive decile (ten percent chunk) of the predictions:')
+    for i in range(1,10):
+        print('\n**************')
+        print('Bucket number:')
+        print(i)
+        # There's probably some fenceposting error here
+        min_idx = int((i - 1) / 10.0 * len(actuals_sorted))
+        max_idx = int(i / 10.0 * len(actuals_sorted))
+        actuals_for_this_decile = actuals_sorted[min_idx:max_idx]
+        predictions_for_this_decile = predictions_sorted[min_idx:max_idx]
+
+        print('Avg predicted val in this bucket')
+        print(sum(predictions_for_this_decile) * 1.0 / len(predictions_for_this_decile))
+        print('Avg actual val in this bucket')
+        print(sum(actuals_for_this_decile) * 1.0 / len(actuals_for_this_decile))
+        print('RMSE for this bucket')
+        print(mean_squared_error(actuals_for_this_decile, predictions_for_this_decile)**0.5)
+        calculate_and_print_differences(predictions_for_this_decile, actuals_for_this_decile)
+
+    print('')
+    print('\n***********************************************\n\n')
+
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
 
@@ -718,7 +805,7 @@ def get_feature_selection_model_from_name(type_of_estimator, model_name):
             'KeepAll': 'KeepAll'
         },
         'regressor': {
-            'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1)),
+            'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1, max_depth=10, n_estimators=15), threshold='0.5*mean'),
             'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
             'GenericUnivariateSelect': GenericUnivariateSelect(),
             'RandomizedSparse': RandomizedLasso(),
@@ -753,6 +840,9 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         else:
             self.selector.fit(X, y)
             self.support_mask = self.selector.get_support()
+
+        end_time = datetime.datetime.now()
+
         return self
 
 
@@ -761,7 +851,8 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         if self.selector == 'KeepAll':
             return X
         else:
-            return self.selector.transform(X)
+            transformed_X = self.selector.transform(X)
+            return transformed_X
 
 
 def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False):
@@ -772,6 +863,8 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False):
         for idx, val in enumerate(predictions):
             predictions[idx] = math.exp(val)
     rmse = mean_squared_error(y, predictions)**0.5
+    if advanced_scoring == True:
+        advanced_scoring_regressors(predictions, y)
     return - 1 * rmse
 
 
