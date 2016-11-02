@@ -260,31 +260,35 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
         self.text_col_indicators = set(['text', 'nlp'])
-        self.tfidfvec = TfidfVectorizer(
-            # If we have any documents that cannot be decoded properly, just ignore them and keep going as planned with everything else
-            decode_error='ignore'
-            # Try to strip accents from characters. Using unicode is slightly slower but more comprehensive than 'ascii'
-            , strip_accents='unicode'
-            # Can also choose 'character', which will likely increase accuracy, at the cost of much more space, generally
-            , analyzer='word'
-            # Remove commonly found english words ('it', 'a', 'the') which do not typically contain much signal
-            , stop_words='english'
-            # Convert all characters to lowercase
-            , lowercase=True
-            # Only consider words that appear in fewer than max_df percent of all documents
-            # In this case, ignore all words that appear in 90% of all documents
-            , max_df=0.9
-            # Consider only the most frequently occurring 3000 words, after taking into account all the other filtering going on
-            , max_features=3000
-        )
+
+        self.text_columns = {}
+        for key, val in self.column_descriptions.items():
+            if val in self.text_col_indicators:
+                self.text_columns[key] = TfidfVectorizer(
+                    # If we have any documents that cannot be decoded properly, just ignore them and keep going as planned with everything else
+                    decode_error='ignore'
+                    # Try to strip accents from characters. Using unicode is slightly slower but more comprehensive than 'ascii'
+                    , strip_accents='unicode'
+                    # Can also choose 'character', which will likely increase accuracy, at the cost of much more space, generally
+                    , analyzer='word'
+                    # Remove commonly found english words ('it', 'a', 'the') which do not typically contain much signal
+                    , stop_words='english'
+                    # Convert all characters to lowercase
+                    , lowercase=True
+                    # Only consider words that appear in fewer than max_df percent of all documents
+                    # In this case, ignore all words that appear in 90% of all documents
+                    , max_df=0.9
+                    # Consider only the most frequently occurring 3000 words, after taking into account all the other filtering going on
+                    , max_features=3000
+                )
 
     def fit(self, X_df, y=None):
 
         # See if we should fit TfidfVectorizer or not
         for key in X_df.columns:
-            col_desc = self.column_descriptions.get(key, False)
-            if col_desc in self.text_col_indicators:
-                    self.tfidfvec.fit(X_df[key])
+            # col_desc = self.column_descriptions.get(key, False)
+            if key in self.text_columns:
+                    self.text_columns[key].fit(X_df[key])
 
         return self
 
@@ -314,6 +318,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     dict_copy.update(date_feature_dict)
                 elif col_desc == 'categorical':
                     dict_copy[key] = val
+                # elif key in self.text_columns:
+                    # Add in logic to handle nlp columns here
                 elif col_desc in vals_to_drop:
                     pass
                     # del X[key]
@@ -333,15 +339,28 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 elif col_desc == 'date':
                     X = add_date_features_df(X, key)
 
-                elif col_desc in self.text_col_indicators:
+                elif key in self.text_columns:
 
-                    keys = self.tfidfvec.get_feature_names()
+                    col_names = self.text_columns[key].get_feature_names()
 
-                    tfvec = self.tfidfvec.transform(X.loc[:,key].values).toarray()
-                    #create sepearte dataframe and append next to each other along columns
-                    textframe = pd.DataFrame(tfvec)
-                    X = X.join(textframe)
-                    #once the transformed datafrane is added , remove original text
+                    # Make weird characters play nice, or just ignore them :)
+                    for idx, word in enumerate(col_names):
+                        try:
+                            col_names[idx] = str(word)
+                        except:
+                            col_names[idx] = 'non_ascii_word_' + str(idx)
+
+                    col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
+
+                    nlp_matrix = self.text_columns[key].transform(X[key].values)
+                    nlp_matrix = nlp_matrix.toarray()
+
+                    text_df = pd.DataFrame(nlp_matrix)
+                    text_df.columns = col_names
+
+                    X = X.join(text_df)
+                    # Once the transformed datafrane is added, remove the original text
+
                     X = X.drop(key, axis=1)
 
                 elif col_desc in vals_to_drop:
@@ -386,6 +405,7 @@ def add_date_features_df(df, date_col):
     # However, it's a bit overzealous in this case, so we'll side-step a bunch of warnings by setting is_copy to false here
     df.is_copy = False
 
+    df[date_col] = pd.to_datetime(df[date_col])
     df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int)
     df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int)
 
@@ -904,8 +924,8 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         max_val = series_vals[max_val_idx]
         min_val = series_vals[min_val_idx]
     else:
-        print('This column appears to have only nan values, and will be ignored:')
-        print(col)
+        # print('This column appears to have only nan values, and will be ignored:')
+        # print(col)
         return 'ignore'
 
     inner_range = max_val - min_val
@@ -924,8 +944,8 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
                 inner_range = 1
             else:
                 # If this is just a column that holds all the same values for everything though, delete the column to save some space
-                print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
-                print(col)
+                # print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
+                # print(col)
                 return 'ignore'
 
     col_summary = {
