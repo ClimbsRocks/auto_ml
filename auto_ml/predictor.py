@@ -48,6 +48,8 @@ try:
     xgb_installed = True
 except NameError:
     pass
+except ImportError:
+    pass
 
 
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.

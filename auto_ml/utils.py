@@ -37,6 +37,8 @@ try:
     xgb_installed = True
 except NameError:
     pass
+except ImportError:
+    pass
 
 if xgb_installed:
     import xgboost as xgb
