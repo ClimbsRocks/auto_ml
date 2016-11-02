@@ -1,12 +1,16 @@
 Ensembling & Subpredictors
 ===================================
 
+NOTE: This feature is temporarily deprecated until we replace with an even better version shortly.
+
 I would say this is the tough stuff, but removing all the annoying manual work typically associated with ensembling is one of `auto_ml`'s best feaures.
 
 Code Example
 -------------------------------------
 
 .. code-block:: python
+
+  NOTE: This feature is temporarily deprecated
 
   from auto_ml import Predictor
 
