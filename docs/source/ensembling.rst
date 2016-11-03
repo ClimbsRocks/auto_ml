@@ -1,6 +1,29 @@
 Ensembling & Subpredictors
 ===================================
 
+Notes on ensembling v2:
+
+Ensembling estimators that have been trained on different cuts of the data can be really useful. Say, training one on holidays, one on weekdays, and one on weekends. Or different months, or different columns (really basic model, potentially overloaded model, etc.).
+
+`train_ensemble` allows you to subset data on the fly with a `data_selection_func` argument.
+
+This function will get in a raw copy of the data that you pass into `train_ensemble`. Each ensemble we train will be given this same full dataset, again, in whatever format you gave it to us in.
+
+This function will NOT be run as part of the pipeline- we subselect the data before we start training the pipeline. So don't perform any feature engineering here- just purely subselecting the dataset you want this predictor to be trained on.
+
+This function should return the datset that you want the pipeline to be trained on.
+
+
+Right now we only support regressors and binary classifiers. Multi-class classification problems are not supported currently.
+
+
+Right now, each ensembled predictor must have the same predicted output column as our meta-estimator.
+
+If you pass in a name for an ensemble_sub_estimator, it must be unique
+
+
+
+
 NOTE: This feature is temporarily deprecated until we replace with an even better version shortly.
 
 I would say this is the tough stuff, but removing all the annoying manual work typically associated with ensembling is one of `auto_ml`'s best feaures.

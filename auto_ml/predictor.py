@@ -83,6 +83,10 @@ class Predictor(object):
 
         self.grid_search_pipelines = []
 
+        self.is_ensemble = False
+        # Set this here for later use if this is an ensembled subpredictor
+        self.name = None
+
 
     def _validate_input_col_descriptions(self):
         found_output_column = False
@@ -306,6 +310,49 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
+    def train_ensemble(self, data, ensemble_training_list):
+
+        self.ensemble_predictors = []
+
+        self.is_ensemble = True
+
+        if self.type_of_estimator == 'classifier':
+            scoring = utils.brier_score_loss_wrapper
+            self._scorer = scoring
+        else:
+            scoring = utils.rmse_scoring
+            self._scorer = scoring
+
+
+        for idx, training_params in enumerate(ensemble_training_list):
+            print('\n\n************************')
+            print('Training a new ensemble!')
+            name = 'ensemble_sub_estimator_' + str(idx)
+            if training_params.get('name', False):
+                name = training_params.pop('name')
+                print('The name you gave for this ensemble is:')
+                print(name)
+            print('\n\n')
+            type_of_estimator = training_params.pop('type_of_estimator')
+            col_descs = training_params.pop('column_descriptions')
+            ml_predictor = Predictor(type_of_estimator, col_descs)
+
+            this_rounds_data = data
+
+            data_selection_func = training_params.pop('data_selection_func', None)
+            if callable(data_selection_func):
+                this_rounds_data = data_selection_func(this_rounds_data)
+
+            training_params['raw_training_data'] = this_rounds_data
+
+            ml_predictor.train(**training_params)
+            ml_predictor.name = name
+
+            self.ensemble_predictors.append(ml_predictor)
+
+        self.trained_pipeline = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator)
+
+
     def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True):
 
         self.user_input_func = user_input_func
@@ -323,6 +370,7 @@ class Predictor(object):
             self.take_log_of_y = take_log_of_y
         self.model_names = model_names
         self.perform_feature_scaling = perform_feature_scaling
+
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
