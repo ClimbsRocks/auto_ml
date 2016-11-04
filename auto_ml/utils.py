@@ -690,11 +690,12 @@ def calculate_and_print_differences(predictions, actuals):
     print(len(pos_differences))
     print('Count of negative differences:')
     print(len(neg_differences))
-    print('Average positive difference:')
-    print(sum(pos_differences) * 1.0 / len(pos_differences))
-    print('Average negative difference:')
-    print(sum(neg_differences) * 1.0 / len(neg_differences))
-    print('count predictions > 10 min off')
+    if len(pos_differences) > 0:
+        print('Average positive difference:')
+        print(sum(pos_differences) * 1.0 / len(pos_differences))
+    if len(neg_differences) > 0:
+        print('Average negative difference:')
+        print(sum(neg_differences) * 1.0 / len(neg_differences))
 
 
 def advanced_scoring_regressors(predictions, actuals):
