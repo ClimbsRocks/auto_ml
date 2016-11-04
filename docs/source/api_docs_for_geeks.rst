@@ -9,8 +9,8 @@ auto_ml
 
   :param type_of_estimator: Whether you want a classifier or regressor
   :type type_of_estimator: 'regressor' or 'classifier'
-  :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'`` or ``'categorical'``. See below for more details.
-  :type column_descriptions: dictionary, where each attribute name represents a column of data that will be present in at least some of the rows of training data, and each value describes that column as being either ['categorical', 'output', 'nlp', or 'continuous']. Note that 'continuous' data does not need to be labeled as such (all columns are assumed to be continuous unless labeled otherwise), and 'nlp' support is not included yet.
+  :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'``, ``'date'``, ``'ignore'``, or ``'categorical'``. See below for more details.
+  :type column_descriptions: dictionary, where each attribute name represents a column of data that will be present in at least some of the rows of training data, and each value describes that column as being either ['categorical', 'output', 'nlp', 'date', 'ignore']. Note that 'continuous' data does not need to be labeled as such (all columns are assumed to be continuous unless labeled otherwise).
 
 .. py:method:: ml_predictor.train(raw_training_data, user_input_func=None)
 
@@ -49,18 +49,19 @@ auto_ml
   :param model_names: Which models to try. Acceptable values are ['Ridge', 'XGBRegressor', 'RANSACRegressor', 'RandomForestRegressor', 'LinearRegression', 'AdaBoostRegressor', 'ExtraTreesRegressor', 'RidgeClassifier', 'XGBClassifier', 'LogisticRegression', 'RandomForestClassifier']. Note that this parameter must be a list of strings, not a single string.
   :type model_names: list of strings
 
-  :param add_cluster_prediction: Whether or not to run a computationally optimized version of unsupervised k-means clustering clustering on the data to group it into the 8 clusters of most similar observations. This simply adds a new feature to each row with the prediction from the k means algorithm as to which of the 8 groups this row falls into. Note that this is not typically effective for high-dimensional spaces.
-  :type add_cluster_prediction: Boolean
-
 
 .. py:method:: ml_predictor.predict(prediction_rows)
 
-  :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Each row will hold a single value. For 'regressor' estimators, each value will be a number. For 'classifier' estimators, each row will be a sting of the predicted label (category), matching the categories passed in to the training data.
+  :param prediction_rows: A single row, or a DataFrame or list of dictionaries with many rows. For production environments, the code is optimized to run quickly on a single row passed in as a dictionary, though batched predictions on thousands of rows at a time are generally more efficient if you're getting predictions for a larger dataset.
+
+  :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Each row will hold a single value. For 'regressor' estimators, each value will be a number. For 'classifier' estimators, each row will be a sting of the predicted label (category), matching the categories passed in to the training data. If a single dictionary is passed in, the return value will be the predicted value, not nested in a list (so just a single number or predicted class).
 
 
 .. py:method:: ml_predictor.predict_proba(prediction_rows)
 
-  :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Only works for 'classifier' estimators. Each row in the returned list will now itself be a list, of length (number of categories in training data). The items in this row's list will represent the probability of each category.
+  :param prediction_rows: Same as for predict above.
+
+  :rtype:  Only works for 'classifier' estimators. Same as above, except each row in the returned list will now itself be a list, of length (number of categories in training data). The items in this row's list will represent the probability of each category.
 
 
 .. py:method:: ml_predictor.score(X_test, y_test)
