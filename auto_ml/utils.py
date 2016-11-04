@@ -695,10 +695,6 @@ def calculate_and_print_differences(predictions, actuals):
     print('Average negative difference:')
     print(sum(neg_differences) * 1.0 / len(neg_differences))
     print('count predictions > 10 min off')
-    ten_min_off = [x for x in neg_differences if x < -10 * 60]
-    print(len(ten_min_off))
-    print('average amount off by for these cases')
-    print(sum(ten_min_off) * 1.0 / len(ten_min_off))
 
 
 def advanced_scoring_regressors(predictions, actuals):
