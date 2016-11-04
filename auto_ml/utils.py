@@ -1043,3 +1043,43 @@ def safely_drop_columns(df, cols_to_drop):
 
     df = df.drop(safe_cols_to_drop, axis=1)
     return df
+
+
+class Ensemble(object):
+
+    def __init__(self, ensemble_predictors, type_of_estimator):
+        self.ensemble_predictors = ensemble_predictors
+        self.type_of_estimator = type_of_estimator
+
+
+    def predict(self, df):
+        predictions_from_all_estimators = {}
+
+        for estimator in self.ensemble_predictors:
+            estimator_name = estimator.name
+
+            if self.type_of_estimator == 'regressor':
+                predictions = estimator.predict(df)
+            else:
+                # For classifiers
+                predictions = estimator.predict_proba(df)
+                # Grab the predicted probability of the positive class
+                # Note that this DOES NOT work with multi-class classification tasks yet
+                predictions = [pred[1] for pred in predictions]
+
+            predictions_from_all_estimators[estimator_name] = predictions
+
+        predictions_df = pd.DataFrame.from_dict(predictions_from_all_estimators, orient='columns')
+        # print(predictions_df)
+
+        summarized_predictions = []
+        for idx, row in predictions_df.iterrows():
+            # row = list(row)
+            # print(np.median(row))
+            summarized_predictions.append(np.average(row))
+
+        return summarized_predictions
+
+    # def score(self, df):
+
+
