@@ -428,10 +428,10 @@ def add_date_features_dict(row, date_col):
     # Handle cases where the val for the date_col is None
     try:
         date_val = row[date_col]
-        if not isinstance(date_val, (datetime.datetime, datetime.date)):
-            date_val = dateutil.parser.parse(date_val)
         if date_val == None:
             return date_feature_dict
+        if not isinstance(date_val, (datetime.datetime, datetime.date)):
+            date_val = dateutil.parser.parse(date_val)
     except:
         return date_feature_dict
 
