@@ -1,6 +1,7 @@
 from collections import OrderedDict
 import csv
 import datetime
+import itertools
 import dateutil
 import math
 import os
@@ -401,7 +402,7 @@ def minutes_into_day_parts(minutes_into_day):
     else:
         return 'late_night'
 
-
+# Note: assumes that the column is already formatted as a pandas date type
 def add_date_features_df(df, date_col):
     # Pandas nicely tries to prevent you from doing stupid things, like setting values on a copy of a df, not your real one
     # However, it's a bit overzealous in this case, so we'll side-step a bunch of warnings by setting is_copy to false here
@@ -470,6 +471,7 @@ def add_date_features_dict(row, date_col):
 #     return model
 
 
+
 def get_model_from_name(model_name):
     model_map = {
         # Classifiers
@@ -525,12 +527,10 @@ def get_model_from_name(model_name):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name, X_train=None, y_train=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None):
+    def __init__(self, model, model_name, ml_for_analytics=False, type_of_estimator='classifier', output_column=None):
 
         self.model = model
         self.model_name = model_name
-        self.X_train = X_train
-        self.y_train = y_train
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
 
@@ -698,7 +698,7 @@ def calculate_and_print_differences(predictions, actuals):
         print(sum(neg_differences) * 1.0 / len(neg_differences))
 
 
-def advanced_scoring_regressors(predictions, actuals):
+def advanced_scoring_regressors(predictions, actuals, verbose=2):
 
     print('\n\n***********************************************')
     print('Advanced scoring metrics for the trained regression model on this particular dataset:\n')
@@ -738,24 +738,25 @@ def advanced_scoring_regressors(predictions, actuals):
     actuals_sorted = [act for act, pred in actuals_preds]
     predictions_sorted = [pred for act, pred in actuals_preds]
 
-    print('Here\'s how the trained predictor did on each successive decile (ten percent chunk) of the predictions:')
-    for i in range(1,10):
-        print('\n**************')
-        print('Bucket number:')
-        print(i)
-        # There's probably some fenceposting error here
-        min_idx = int((i - 1) / 10.0 * len(actuals_sorted))
-        max_idx = int(i / 10.0 * len(actuals_sorted))
-        actuals_for_this_decile = actuals_sorted[min_idx:max_idx]
-        predictions_for_this_decile = predictions_sorted[min_idx:max_idx]
+    if verbose > 2:
+        print('Here\'s how the trained predictor did on each successive decile (ten percent chunk) of the predictions:')
+        for i in range(1,10):
+            print('\n**************')
+            print('Bucket number:')
+            print(i)
+            # There's probably some fenceposting error here
+            min_idx = int((i - 1) / 10.0 * len(actuals_sorted))
+            max_idx = int(i / 10.0 * len(actuals_sorted))
+            actuals_for_this_decile = actuals_sorted[min_idx:max_idx]
+            predictions_for_this_decile = predictions_sorted[min_idx:max_idx]
 
-        print('Avg predicted val in this bucket')
-        print(sum(predictions_for_this_decile) * 1.0 / len(predictions_for_this_decile))
-        print('Avg actual val in this bucket')
-        print(sum(actuals_for_this_decile) * 1.0 / len(actuals_for_this_decile))
-        print('RMSE for this bucket')
-        print(mean_squared_error(actuals_for_this_decile, predictions_for_this_decile)**0.5)
-        calculate_and_print_differences(predictions_for_this_decile, actuals_for_this_decile)
+            print('Avg predicted val in this bucket')
+            print(sum(predictions_for_this_decile) * 1.0 / len(predictions_for_this_decile))
+            print('Avg actual val in this bucket')
+            print(sum(actuals_for_this_decile) * 1.0 / len(actuals_for_this_decile))
+            print('RMSE for this bucket')
+            print(mean_squared_error(actuals_for_this_decile, predictions_for_this_decile)**0.5)
+            calculate_and_print_differences(predictions_for_this_decile, actuals_for_this_decile)
 
     print('')
     print('\n***********************************************\n\n')
@@ -868,8 +869,8 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             self.selector.fit(X, y)
             self.support_mask = self.selector.get_support()
 
-        end_time = datetime.datetime.now()
-
+        # Get a mask of which indices it is we want to keep
+        self.index_mask = [idx for idx, val in enumerate(self.support_mask) if val == True]
         return self
 
 
@@ -877,12 +878,25 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
         if self.selector == 'KeepAll':
             return X
+
+        if scipy.sparse.issparse(X):
+            if X.getformat() == 'csr':
+                # convert to a csc (column) matrix, rather than a csr (row) matrix
+                X = X.tocsc()
+
+            # Slice that column matrix to only get the relevant columns that we already calculated in fit:
+            X = X[:, self.index_mask]
+
+            # convert back to a csr matrix
+            return X.tocsr()
+
+        # If this is a dense matrix:
         else:
-            transformed_X = self.selector.transform(X)
-            return transformed_X
+            pruned_X = [list(itertools.compress(row, self.support_mask)) for row in X]
+            return pruned_X
 
 
-def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False):
+def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2):
     if isinstance(estimator, GradientBoostingRegressor):
         X = X.toarray()
     predictions = estimator.predict(X)
@@ -891,7 +905,9 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False):
             predictions[idx] = math.exp(val)
     rmse = mean_squared_error(y, predictions)**0.5
     if advanced_scoring == True:
-        advanced_scoring_regressors(predictions, y)
+        if hasattr(estimator, 'name'):
+            print(estimator.name)
+        advanced_scoring_regressors(predictions, y, verbose=verbose)
     return - 1 * rmse
 
 
@@ -1040,3 +1056,68 @@ def safely_drop_columns(df, cols_to_drop):
 
     df = df.drop(safe_cols_to_drop, axis=1)
     return df
+
+
+class Ensemble(object):
+
+    def __init__(self, ensemble_predictors, type_of_estimator, method='average'):
+        self.ensemble_predictors = ensemble_predictors
+        self.type_of_estimator = type_of_estimator
+        self.method = method
+
+
+
+    def predict(self, df):
+
+        def get_predictions_for_one_estimator(estimator, df):
+            estimator_name = estimator.name
+
+            if self.type_of_estimator == 'regressor':
+                predictions = estimator.predict(df)
+            else:
+                # For classifiers
+                predictions = estimator.predict_proba(df)
+                # Grab the predicted probability of the positive class
+                # Note that this DOES NOT work with multi-class classification tasks yet
+                predictions = [pred[1] for pred in predictions]
+
+            return {estimator_name: predictions}
+
+
+        # Open a new multiprocessing pool
+        pool = pathos.multiprocessing.ProcessPool()
+
+        # Since we may have already closed the pool, try to restart it
+        try:
+            pool.restart()
+        except AssertionError as e:
+            pass
+
+        predictions_from_all_estimators = pool.map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors)
+        predictions_from_all_estimators = list(predictions_from_all_estimators)
+
+        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+        pool.close()
+        pool.join()
+
+
+        results = {}
+        for result_dict in predictions_from_all_estimators:
+            results.update(result_dict)
+
+        predictions_df = pd.DataFrame.from_dict(results, orient='columns')
+
+        summarized_predictions = []
+        for idx, row in predictions_df.iterrows():
+            if self.method == 'median':
+                summarized_predictions.append(np.median(row))
+            elif self.method == 'average' or self.method == 'mean':
+                summarized_predictions.append(np.average(row))
+            elif self.method == 'max':
+                summarized_predictions.append(np.max(row))
+            elif self.method == 'min':
+                summarized_predictions.append(np.min(row))
+
+
+        return summarized_predictions
+
