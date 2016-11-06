@@ -1066,8 +1066,12 @@ class Ensemble(object):
         self.method = method
 
 
+    # ################################
+    # Get a dataframe that is all the predictions from all the sub-models
+    # ################################
+    # Note that we will get these predictions in parallel (relatively quick)
 
-    def predict(self, df):
+    def _get_all_predictions(self, df):
 
         def get_predictions_for_one_estimator(estimator, df):
             estimator_name = estimator.name
@@ -1107,6 +1111,16 @@ class Ensemble(object):
 
         predictions_df = pd.DataFrame.from_dict(results, orient='columns')
 
+        return predictions_df
+
+    # ################################
+    # Public API to get a single prediction from each row, where that single prediction is somehow an ensemble of all our trained subpredictors
+    # ################################
+
+    def predict(self, df):
+
+        predictions = self._get_all_predictions(df)
+
         summarized_predictions = []
         for idx, row in predictions_df.iterrows():
             if self.method == 'median':
@@ -1120,4 +1134,6 @@ class Ensemble(object):
 
 
         return summarized_predictions
+
+    # def find_best_ensemble_method()
 

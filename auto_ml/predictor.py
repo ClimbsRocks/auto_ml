@@ -249,9 +249,6 @@ class Predictor(object):
             print('We will remove these values, and continue with training on the cleaned dataset')
         X_df = X_df.dropna(subset=[self.output_column])
 
-        # # See if we have a date_column
-        # if len(self.date_cols) > 0:
-        #     X_df = X_df.sort_values(by=self.date_cols[0])
 
         # Remove the output column from the dataset, and store it into the y varaible
         y = list(X_df.pop(self.output_column))
@@ -314,7 +311,7 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median'):
+    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None):
 
         self.ensemble_predictors = []
 
@@ -327,6 +324,16 @@ class Predictor(object):
         else:
             scoring = utils.rmse_scoring
             self._scorer = scoring
+
+        # ################################
+        # If we're using machine learning to assemble our final ensemble, and we don't have data for it from the user, split out data here
+        # ################################
+        if self.ensemble_method in ['machine learning', 'ml', 'machine_learning'] and data_for_final_ensembling is None:
+            # Just grab the last 20% of the dataset in the order it was given to us
+            ensemble_idx = int(0.2 * len(data))
+            data_for_final_ensembling = data[ensemble_idx:]
+            data = data[:ensemble_idx]
+
 
 
         # ################################
@@ -375,9 +382,23 @@ class Predictor(object):
         pool.close()
         pool.join()
 
+        # ################################
+        # Ensemble together our trained subpredictors, either using simple averaging, or training a new machine learning model to pick from amongst them
+        # ################################
 
-        # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
-        self.trained_pipeline = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+        if ensemble_method in ['machine learning', 'ml', 'machine_learning']:
+            ensembler = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+            predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
+            print('predictions_on_ensemble_data')
+            print(predictions_on_ensemble_data)
+            data_for_final_ensembling = pd.concat([data_for_final_ensembling, predictions_on_ensemble_data], axis=1)
+            print('data_for_final_ensembling')
+            print(data_for_final_ensembling)
+
+        else:
+
+            # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
+            self.trained_pipeline = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
 
         # ################################
         # Print scoring information for each trained subpredictor
@@ -400,6 +421,8 @@ class Predictor(object):
             # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
             pool.close()
             pool.join()
+
+
 
 
 
