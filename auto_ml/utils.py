@@ -1080,10 +1080,7 @@ class Ensemble(object):
                 predictions = estimator.predict(df)
             else:
                 # For classifiers
-                predictions = estimator.predict_proba(df)
-                # Grab the predicted probability of the positive class
-                # Note that this DOES NOT work with multi-class classification tasks yet
-                predictions = [pred[1] for pred in predictions]
+                predictions = list(estimator.predict_proba(df))
 
             return {estimator_name: predictions}
 
@@ -1119,7 +1116,7 @@ class Ensemble(object):
 
     def predict(self, df):
 
-        predictions = self._get_all_predictions(df)
+        predictions_df = self._get_all_predictions(df)
 
         summarized_predictions = []
         for idx, row in predictions_df.iterrows():
@@ -1134,6 +1131,38 @@ class Ensemble(object):
 
 
         return summarized_predictions
+
+    # ################################
+    # Public API to get a propbability predictions from each row, where each row will have a list of values, representing the probability of that class
+    # ################################
+    def predict_proba(self, df):
+
+        predictions_df = self._get_all_predictions(df)
+
+        summarized_predictions = []
+
+        # Building in support for multi-class problems
+        # Each row represents a single row that we want to get a prediction for
+        # Each row is a list, with predicted probabilities from as many sub-estimators as we have trained
+        # Each item in those subestimator lists represents the predicted probability of that class
+        for row_idx, row in predictions_df.iterrows():
+            row_ensembled_probabilities = []
+
+            num_classes = len(row[0])
+            for class_prediction_idx in range(num_classes):
+                class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
+
+                if self.method == 'median':
+                    row_ensembled_probabilities.append(np.median(class_preds))
+                elif self.method == 'average' or self.method == 'mean':
+                    row_ensembled_probabilities.append(np.average(class_preds))
+                elif self.method == 'max':
+                    row_ensembled_probabilities.append(np.max(class_preds))
+                elif self.method == 'min':
+                    row_ensembled_probabilities.append(np.min(class_preds))
+            summarized_predictions.append(row_ensembled_probabilities)
+        return summarized_predictions
+
 
     # def find_best_ensemble_method()
 
