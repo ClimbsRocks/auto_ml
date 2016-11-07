@@ -638,10 +638,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return prediction
 
 
-def advanced_scoring_classifiers(probas, actuals):
+def advanced_scoring_classifiers(probas, actuals, name=None):
 
     print('Here is our brier-score-loss, which is the value we optimized for while training, and is the value returned from .score()')
     print('It is a measure of how close the PROBABILITY predictions are.')
+    if name != None:
+        print(name)
     print(brier_score_loss(actuals, probas))
 
     print('\nHere is the trained estimator\'s overall accuracy (when it predicts a label, how frequently is that the correct label?)')
@@ -1110,6 +1112,47 @@ class Ensemble(object):
 
         return predictions_df
 
+    # Gets summary stats on a set of predictions
+    def get_summary_stats(self, predictions_df):
+        summarized_predictions = []
+
+        # Building in support for multi-class problems
+        # Each row represents a single row that we want to get a prediction for
+        # Each row is a list, with predicted probabilities from as many sub-estimators as we have trained
+        # Each item in those subestimator lists represents the predicted probability of that class
+        for row_idx, row in predictions_df.iterrows():
+            row_results = {}
+
+            num_classes = len(row[0])
+            for class_prediction_idx in range(num_classes):
+                class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
+
+                class_summarized_predictions = self.get_summary_stats_from_row(class_preds, prefix='subpredictor_class=' + str(class_prediction_idx))
+                row_results.update(class_summarized_predictions)
+
+            summarized_predictions.append(row_results)
+
+        results_df = pd.DataFrame(summarized_predictions)
+        # print('results_df')
+        # print(results_df)
+        return results_df
+
+
+    def get_summary_stats_from_row(self, row, prefix=''):
+        results = {}
+
+        results[prefix + '_median'] = np.median(row)
+        results[prefix + '_average'] = np.average(row)
+        results[prefix + '_max'] = np.max(row)
+        results[prefix + '_min'] = np.min(row)
+        results[prefix + '_range'] = results[prefix + '_max'] - results[prefix + '_min']
+
+        return results
+
+
+
+
+
     # ################################
     # Public API to get a single prediction from each row, where that single prediction is somehow an ensemble of all our trained subpredictors
     # ################################
@@ -1183,6 +1226,8 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
         # print(X)
         predictions = self.ensembler.get_all_predictions(X)
 
+        summarized_predictions = self.ensembler.get_summary_stats(predictions)
+
         # If this is a classifier, the predictions from each estimator will be an array of predicted probabilities.
         # We will need to unpack that list
         if self.type_of_estimator == 'classifier':
@@ -1191,9 +1236,13 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
                 flattened_df = pd.DataFrame(predictions[col].tolist())
                 col_names = []
                 for col_num in flattened_df:
-                    col_names.append(str(col) + '_class=' + str(col_num))
+                    col_names.append('subpredictor_' + str(col) + '_class=' + str(col_num))
 
                 flattened_df.columns = col_names
+
+                # Drop the first column in the DataFrame, since it just contains the inverse data from the other column(s)
+                flattened_df = flattened_df.drop(flattened_df.columns[0], axis=1)
+
                 # print('flattened_df')
                 # print(flattened_df)
                 flattened_predictions_dfs.append(flattened_df)
@@ -1203,7 +1252,8 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
             # print(predictions)
 
         X = X.reset_index()
-        X = pd.concat([X, predictions], axis=1)
+        X = pd.concat([X, predictions, summarized_predictions], axis=1)
+        # X = pd.concat([predictions, summarized_predictions], axis=1)
         print('X.shape at the end of transform')
         print(X.shape)
         # print(X)
