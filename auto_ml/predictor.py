@@ -308,7 +308,12 @@ class Predictor(object):
         # It also significantly reduces the size of dv.vocabulary_ which can get quite large
 
         dv = trained_pipeline.named_steps['dv']
-        feature_selection = trained_pipeline.named_steps['feature_selection']
+
+        # If we do not have feature selection in the pipeline, just return the pipeline as is
+        try:
+            feature_selection = trained_pipeline.named_steps['feature_selection']
+        except KeyError:
+            return trained_pipeline
         feature_selection_mask = feature_selection.support_mask
         dv.restrict(feature_selection_mask)
 
@@ -430,7 +435,7 @@ class Predictor(object):
 
             print('Using machine learning to ensemble together a bunch of trained estimators!')
             data_for_final_ensembling = data_for_final_ensembling.reset_index()
-            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler)
+            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False)
 
 
             # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
@@ -820,7 +825,7 @@ class Predictor(object):
                     return self._scorer(y_test, predictions)
                 elif advanced_scoring:
                     score, probas = self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
-                    utils.advanced_scoring_classifiers(probas, y_test)
+                    utils.advanced_scoring_classifiers(probas, y_test, name=self.name)
                     return score
                 else:
                     return self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
