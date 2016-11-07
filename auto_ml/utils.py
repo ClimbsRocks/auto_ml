@@ -1252,8 +1252,8 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
             # print(predictions)
 
         X = X.reset_index()
-        X = pd.concat([X, predictions, summarized_predictions], axis=1)
-        # X = pd.concat([predictions, summarized_predictions], axis=1)
+        # X = pd.concat([X, predictions, summarized_predictions], axis=1)
+        X = pd.concat([predictions, summarized_predictions], axis=1)
         print('X.shape at the end of transform')
         print(X.shape)
         # print(X)

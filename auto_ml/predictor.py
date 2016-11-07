@@ -343,7 +343,7 @@ class Predictor(object):
         # ################################
         if ensemble_method in ['machine learning', 'ml', 'machine_learning'] and data_for_final_ensembling is None:
             # Just grab the last 20% of the dataset in the order it was given to us
-            ensemble_idx = int(0.8 * len(data))
+            ensemble_idx = int(0.7 * len(data))
             data_for_final_ensembling = data[ensemble_idx:]
             data = data[:ensemble_idx]
 
