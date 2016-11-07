@@ -1071,7 +1071,7 @@ class Ensemble(object):
     # ################################
     # Note that we will get these predictions in parallel (relatively quick)
 
-    def _get_all_predictions(self, df):
+    def get_all_predictions(self, df):
 
         def get_predictions_for_one_estimator(estimator, df):
             estimator_name = estimator.name
@@ -1116,7 +1116,7 @@ class Ensemble(object):
 
     def predict(self, df):
 
-        predictions_df = self._get_all_predictions(df)
+        predictions_df = self.get_all_predictions(df)
 
         summarized_predictions = []
         for idx, row in predictions_df.iterrows():
@@ -1137,7 +1137,7 @@ class Ensemble(object):
     # ################################
     def predict_proba(self, df):
 
-        predictions_df = self._get_all_predictions(df)
+        predictions_df = self.get_all_predictions(df)
 
         summarized_predictions = []
 
@@ -1166,3 +1166,45 @@ class Ensemble(object):
 
     # def find_best_ensemble_method()
 
+
+class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
+
+    def __init__(self, ensembler, type_of_estimator):
+        self.ensembler = ensembler
+        self.type_of_estimator = type_of_estimator
+
+
+    def fit(self, X, y=None):
+        return self
+
+    def transform(self, X, y=None):
+        print('X.shape at the start of transform')
+        print(X.shape)
+        # print(X)
+        predictions = self.ensembler.get_all_predictions(X)
+
+        # If this is a classifier, the predictions from each estimator will be an array of predicted probabilities.
+        # We will need to unpack that list
+        if self.type_of_estimator == 'classifier':
+            flattened_predictions_dfs = []
+            for col in predictions:
+                flattened_df = pd.DataFrame(predictions[col].tolist())
+                col_names = []
+                for col_num in flattened_df:
+                    col_names.append(str(col) + '_class=' + str(col_num))
+
+                flattened_df.columns = col_names
+                # print('flattened_df')
+                # print(flattened_df)
+                flattened_predictions_dfs.append(flattened_df)
+
+            predictions = pd.concat(flattened_predictions_dfs, axis=1)
+            # print('predictions')
+            # print(predictions)
+
+        X = X.reset_index()
+        X = pd.concat([X, predictions], axis=1)
+        print('X.shape at the end of transform')
+        print(X.shape)
+        # print(X)
+        return X
