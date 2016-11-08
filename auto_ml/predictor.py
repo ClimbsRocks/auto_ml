@@ -324,8 +324,10 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None):
+    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False):
 
+        if y_test != None:
+            y_test = list(y_test)
         self.ensemble_predictors = []
 
         self.is_ensemble = True
@@ -342,6 +344,9 @@ class Predictor(object):
         # If we're using machine learning to assemble our final ensemble, and we don't have data for it from the user, split out data here
         # ################################
         if ensemble_method in ['machine learning', 'ml', 'machine_learning'] and data_for_final_ensembling is None:
+
+
+
             # Just grab the last 20% of the dataset in the order it was given to us
             ensemble_idx = int(0.7 * len(data))
             data_for_final_ensembling = data[ensemble_idx:]
@@ -370,9 +375,11 @@ class Predictor(object):
             if callable(data_selection_func):
                 try:
                     # TODO: figure out how to see if this function is expecting to take in the name argument or not
-                    this_rounds_data = data_selection_func(this_rounds_data, name)
+                    this_rounds_data = data_selection_func(data, name)
                 except TypeError:
-                    this_rounds_data = data_selection_func(this_rounds_data)
+                    this_rounds_data = data_selection_func(data)
+            else:
+                this_rounds_data = data
 
 
             training_params['raw_training_data'] = this_rounds_data
@@ -435,7 +442,11 @@ class Predictor(object):
 
             print('Using machine learning to ensemble together a bunch of trained estimators!')
             data_for_final_ensembling = data_for_final_ensembling.reset_index()
-            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False)
+            if self.type_of_estimator == 'regressor':
+                model_names = ['RandomForestRegressor']
+            else:
+                model_names = ['RandomForestClassifier']
+            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names)
 
 
             # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
@@ -447,6 +458,9 @@ class Predictor(object):
 
             # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
             self.trained_pipeline = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+
+        if find_best_method == True:
+            self.trained_pipeline.find_best_ensemble_method(df=X_test, actuals=y_test)
 
 
 
@@ -818,7 +832,8 @@ class Predictor(object):
 
         if self._scorer is not None:
             if self.type_of_estimator == 'regressor':
-                return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring, verbose=verbose)
+                return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring, verbose=verbose, name=self.name)
+
             elif self.type_of_estimator == 'classifier':
                 if self._scorer == accuracy_score:
                     predictions = self.trained_pipeline.predict(X_test)

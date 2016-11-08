@@ -552,9 +552,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X
 
 
-        # if self.model_name[:12] == 'DeepLearning':
-        #     if scipy.sparse.issparse(X_fit):
-        #         X_fit = X_fit.todense()
+        if self.model_name[:12] == 'DeepLearning' or self.model_name == 'BayesianRidge':
+            if scipy.sparse.issparse(X_fit):
+                X_fit = X_fit.todense()
 
         #     num_cols = X_fit.shape[1]
         #     kwargs = {
@@ -678,7 +678,7 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
 
     print('\n\n')
 
-def calculate_and_print_differences(predictions, actuals):
+def calculate_and_print_differences(predictions, actuals, name=None):
     pos_differences = []
     neg_differences = []
     # Technically, we're ignoring cases where we are spot on
@@ -688,6 +688,9 @@ def calculate_and_print_differences(predictions, actuals):
             pos_differences.append(difference)
         elif difference < 0:
             neg_differences.append(difference)
+
+    if name != None:
+        print(name)
     print('Count of positive differences (prediction > actual):')
     print(len(pos_differences))
     print('Count of negative differences:')
@@ -700,9 +703,11 @@ def calculate_and_print_differences(predictions, actuals):
         print(sum(neg_differences) * 1.0 / len(neg_differences))
 
 
-def advanced_scoring_regressors(predictions, actuals, verbose=2):
+def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
 
     print('\n\n***********************************************')
+    if name != None:
+        print(name)
     print('Advanced scoring metrics for the trained regression model on this particular dataset:\n')
 
     # 1. overall RMSE
@@ -731,7 +736,7 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2):
     print(r2_score(actuals, predictions))
 
     # 5. pos and neg differences
-    calculate_and_print_differences(predictions, actuals)
+    calculate_and_print_differences(predictions, actuals, name=name)
     # 6.
 
     actuals_preds = zip(actuals, predictions)
@@ -898,7 +903,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             return pruned_X
 
 
-def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2):
+def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
     if isinstance(estimator, GradientBoostingRegressor):
         X = X.toarray()
     predictions = estimator.predict(X)
@@ -909,7 +914,7 @@ def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, v
     if advanced_scoring == True:
         if hasattr(estimator, 'name'):
             print(estimator.name)
-        advanced_scoring_regressors(predictions, y, verbose=verbose)
+        advanced_scoring_regressors(predictions, y, verbose=verbose, name=name)
     return - 1 * rmse
 
 
@@ -1123,12 +1128,16 @@ class Ensemble(object):
         for row_idx, row in predictions_df.iterrows():
             row_results = {}
 
-            num_classes = len(row[0])
-            for class_prediction_idx in range(num_classes):
-                class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
+            if self.type_of_estimator == 'classifier':
+                num_classes = len(row[0])
+                for class_prediction_idx in range(num_classes):
+                    class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
 
-                class_summarized_predictions = self.get_summary_stats_from_row(class_preds, prefix='subpredictor_class=' + str(class_prediction_idx))
-                row_results.update(class_summarized_predictions)
+                    class_summarized_predictions = self.get_summary_stats_from_row(class_preds, prefix='subpredictor_class=' + str(class_prediction_idx))
+                    row_results.update(class_summarized_predictions)
+            else:
+                row_summarized = self.get_summary_stats_from_row(row, prefix='subpredictors_')
+                row_results.update(row_summarized)
 
             summarized_predictions.append(row_results)
 
@@ -1207,7 +1216,25 @@ class Ensemble(object):
         return summarized_predictions
 
 
-    # def find_best_ensemble_method()
+
+    # ################################
+    # Find the best enemble method that is not ml
+    # ################################
+    def find_best_ensemble_method(self, df, actuals):
+        predictions_df = self.get_all_predictions(df)
+
+        summary_df = self.get_summary_stats(predictions_df)
+
+        for method in ['min', 'max', 'average', 'median']:
+            print(method)
+            for col in summary_df.columns:
+                if method in col:
+                    if self.type_of_estimator == 'regressor':
+                        advanced_scoring_regressors(summary_df[col], actuals, name=method)
+                    else:
+                        advanced_scoring_classifiers(summary_df[col], actuals)
+
+
 
 
 class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
@@ -1251,7 +1278,7 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
             # print('predictions')
             # print(predictions)
 
-        X = X.reset_index()
+        X = X.reset_index(drop=True)
         # X = pd.concat([X, predictions, summarized_predictions], axis=1)
         X = pd.concat([predictions, summarized_predictions], axis=1)
         print('X.shape at the end of transform')
