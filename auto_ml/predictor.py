@@ -401,7 +401,7 @@ class Predictor(object):
             pool.restart()
         except AssertionError as e:
             pass
-        self.ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list)
+        self.ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list, chunksize=100)
         self.ensemble_predictors = list(self.ensemble_predictors)
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
@@ -424,7 +424,7 @@ class Predictor(object):
                 pool.restart()
             except AssertionError as e:
                 pass
-            pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors)
+            pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors, chunksize=100)
             # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
             pool.close()
             pool.join()
@@ -445,7 +445,8 @@ class Predictor(object):
             if self.type_of_estimator == 'regressor':
                 model_names = ['RandomForestRegressor']
             else:
-                model_names = ['RandomForestClassifier']
+                model_names = ['RandomForestClassifier', 'GradientBoostingClassifier', 'RidgeClassifier', 'LogisticRegression']
+                # model_names = ['LogisticRegression']
             ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names)
 
 
