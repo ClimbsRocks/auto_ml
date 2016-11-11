@@ -14,7 +14,7 @@ import random
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
-from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier
+from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
@@ -479,6 +479,9 @@ def get_model_from_name(model_name):
         'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
         'RidgeClassifier': RidgeClassifier(),
         'GradientBoostingClassifier': GradientBoostingClassifier(),
+        'ExtraTreesClassifier': ExtraTreesClassifier(n_jobs=-1),
+        'AdaBoostClassifier': AdaBoostClassifier(n_estimators=10),
+
 
         'SGDClassifier': SGDClassifier(n_jobs=-1),
         'Perceptron': Perceptron(n_jobs=-1),
@@ -490,7 +493,7 @@ def get_model_from_name(model_name):
         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
         'Ridge': Ridge(),
         'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-        'AdaBoostRegressor': AdaBoostRegressor(n_estimators=5),
+        'AdaBoostRegressor': AdaBoostRegressor(n_estimators=10),
         'RANSACRegressor': RANSACRegressor(),
         'GradientBoostingRegressor': GradientBoostingRegressor(presort=False),
 
@@ -739,7 +742,7 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
     calculate_and_print_differences(predictions, actuals, name=name)
     # 6.
 
-    actuals_preds = zip(actuals, predictions)
+    actuals_preds = list(zip(actuals, predictions))
     # Sort by PREDICTED value, since this is what what we will know at the time we make a prediction
     actuals_preds.sort(key=lambda pair: pair[1])
     actuals_sorted = [act for act, pred in actuals_preds]
@@ -903,19 +906,23 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             return pruned_X
 
 
-def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
+def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None, scoring='rmse'):
     if isinstance(estimator, GradientBoostingRegressor):
         X = X.toarray()
     predictions = estimator.predict(X)
     if took_log_of_y:
         for idx, val in enumerate(predictions):
             predictions[idx] = math.exp(val)
-    rmse = mean_squared_error(y, predictions)**0.5
+
+    if scoring == 'rmse':
+        score = mean_squared_error(y, predictions)**0.5
+    elif scoring == 'median_absolute_error':
+        score = median_absolute_error(y, predictions)
     if advanced_scoring == True:
         if hasattr(estimator, 'name'):
             print(estimator.name)
         advanced_scoring_regressors(predictions, y, verbose=verbose, name=name)
-    return - 1 * rmse
+    return - 1 * score
 
 
 def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
@@ -1101,8 +1108,14 @@ class Ensemble(object):
         except AssertionError as e:
             pass
 
-        predictions_from_all_estimators = pool.map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors)
-        predictions_from_all_estimators = list(predictions_from_all_estimators)
+        # Pathos doesn't like datasets beyond a certain size. So fall back on single, non-parallel predictions instead.
+        try:
+            predictions_from_all_estimators = pool.map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors, chunksize=100)
+            predictions_from_all_estimators = list(predictions_from_all_estimators)
+        except:
+            predictions_from_all_estimators = map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors)
+            predictions_from_all_estimators = list(predictions_from_all_estimators)
+
 
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
