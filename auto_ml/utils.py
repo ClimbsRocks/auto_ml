@@ -1155,8 +1155,6 @@ class Ensemble(object):
             summarized_predictions.append(row_results)
 
         results_df = pd.DataFrame(summarized_predictions)
-        # print('results_df')
-        # print(results_df)
         return results_df
 
 
@@ -1261,9 +1259,6 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        print('X.shape at the start of transform')
-        print(X.shape)
-        # print(X)
         predictions = self.ensembler.get_all_predictions(X)
 
         summarized_predictions = self.ensembler.get_summary_stats(predictions)
@@ -1283,18 +1278,12 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
                 # Drop the first column in the DataFrame, since it just contains the inverse data from the other column(s)
                 flattened_df = flattened_df.drop(flattened_df.columns[0], axis=1)
 
-                # print('flattened_df')
-                # print(flattened_df)
                 flattened_predictions_dfs.append(flattened_df)
 
             predictions = pd.concat(flattened_predictions_dfs, axis=1)
-            # print('predictions')
-            # print(predictions)
 
         X = X.reset_index(drop=True)
         # X = pd.concat([X, predictions, summarized_predictions], axis=1)
         X = pd.concat([predictions, summarized_predictions], axis=1)
-        print('X.shape at the end of transform')
-        print(X.shape)
-        # print(X)
+
         return X

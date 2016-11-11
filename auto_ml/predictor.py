@@ -130,8 +130,6 @@ class Predictor(object):
             if trained_pipeline is not None:
                 pipeline_list.append(('add_ensemble_predictions', trained_pipeline.named_steps['add_ensemble_predictions']))
             else:
-                print('self.ensembler')
-                print(self.ensembler)
                 pipeline_list.append(('add_ensemble_predictions', utils.AddEnsembledPredictions(ensembler=self.ensembler, type_of_estimator=self.type_of_estimator)))
 
         if self.user_input_func is not None:
