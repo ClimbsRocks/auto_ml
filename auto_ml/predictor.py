@@ -441,7 +441,7 @@ class Predictor(object):
             print('Using machine learning to ensemble together a bunch of trained estimators!')
             data_for_final_ensembling = data_for_final_ensembling.reset_index()
             if self.type_of_estimator == 'regressor':
-                model_names = ['RandomForestRegressor']
+                model_names = ['RandomForestRegressor', 'LinearRegression', 'ExtraTreesRegressor', 'Ridge', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'SGDRegressor']
             else:
                 model_names = ['RandomForestClassifier', 'GradientBoostingClassifier', 'RidgeClassifier', 'LogisticRegression']
                 # model_names = ['LogisticRegression']
@@ -453,13 +453,16 @@ class Predictor(object):
 
             self.trained_pipeline = ml_predictor
 
+            if find_best_method == True:
+                ensembler.find_best_ensemble_method(df=X_test, actuals=y_test)
+
         else:
 
             # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
             self.trained_pipeline = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
 
-        if find_best_method == True:
-            self.trained_pipeline.find_best_ensemble_method(df=X_test, actuals=y_test)
+            if find_best_method == True:
+                self.trained_pipeline.find_best_ensemble_method(df=X_test, actuals=y_test)
 
 
 

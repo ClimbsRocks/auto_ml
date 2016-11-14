@@ -555,7 +555,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X
 
 
-        if self.model_name[:12] == 'DeepLearning' or self.model_name == 'BayesianRidge':
+        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
 
@@ -581,7 +581,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def score(self, X, y):
         # At the time of writing this, GradientBoosting does not support sparse matrices for predictions
-        if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
 
         if self._scorer is not None:
@@ -602,7 +602,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             # Trying to force XGBoost to play nice with sparse matrices
             X = scipy.sparse.hstack((X, ones))
 
-        if self.model_name[:16] == 'GradientBoosting' and scipy.sparse.issparse(X):
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
 
         try:
@@ -626,7 +626,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             # Trying to force XGBoost to play nice with sparse matrices
             X_predict = scipy.sparse.hstack((X, ones))
 
-        elif (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning') and scipy.sparse.issparse(X):
+        elif (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()
 
         else:
