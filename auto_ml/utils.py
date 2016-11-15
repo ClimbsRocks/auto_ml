@@ -530,12 +530,13 @@ def get_model_from_name(model_name):
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name, ml_for_analytics=False, type_of_estimator='classifier', output_column=None):
+    def __init__(self, model, model_name, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None):
 
         self.model = model
         self.model_name = model_name
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
+        self.name = name
 
 
         if self.type_of_estimator == 'classifier':
@@ -1088,7 +1089,7 @@ class Ensemble(object):
     def get_all_predictions(self, df):
 
         def get_predictions_for_one_estimator(estimator, df):
-            estimator_name = estimator.name
+            estimator_name = estimator.named_steps['final_model'].name
 
             if self.type_of_estimator == 'regressor':
                 predictions = estimator.predict(df)

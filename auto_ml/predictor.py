@@ -169,7 +169,7 @@ class Predictor(object):
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils.get_model_from_name(model_name)
-            pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics)))
+            pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
 
 
         constructed_pipeline = Pipeline(pipeline_list)
@@ -322,7 +322,7 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False):
+    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2):
 
         if y_test != None:
             y_test = list(y_test)
@@ -399,8 +399,15 @@ class Predictor(object):
             pool.restart()
         except AssertionError as e:
             pass
-        self.ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list, chunksize=100)
-        self.ensemble_predictors = list(self.ensemble_predictors)
+        trained_ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list, chunksize=100)
+        trained_ensemble_predictors = list(trained_ensemble_predictors)
+
+        for predictor in trained_ensemble_predictors:
+            trained_pipeline = predictor.trained_pipeline
+            # trained_pipeline.named_steps['final_model']['name'] = predictor.name
+            self.ensemble_predictors.append(trained_pipeline)
+
+        # self.ensemble_predictors = [predictor.trained_pipeline for predictor in self.ensemble_predictors]
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
         pool.join()
@@ -408,7 +415,7 @@ class Predictor(object):
         # ################################
         # Print scoring information for each trained subpredictor
         # ################################
-        if X_test is not None:
+        if X_test is not None and verbose >= 3:
             print('Scoring each of the trained subpredictors on the holdout data')
 
             def score_predictor(predictor, X_test, y_test):
@@ -451,7 +458,7 @@ class Predictor(object):
             # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
             # data_for_final_ensembling = pd.concat([data_for_final_ensembling, predictions_on_ensemble_data], axis=1)
 
-            self.trained_pipeline = ml_predictor
+            self.trained_pipeline = ml_predictor.trained_pipeline
 
             if find_best_method == True:
                 ensembler.find_best_ensemble_method(df=X_test, actuals=y_test)
