@@ -24,19 +24,28 @@ from sklearn.preprocessing import FunctionTransformer
 
 # This is ugly, but allows auto_ml to work whether it's installed using pip, or the whole project is installed using git clone https://github.com/ClimbsRocks/auto_ml
 try:
-    from auto_ml import utils
-except:
-    from .. auto_ml import utils
-
-try:
-    from auto_ml import date_feature_engineering
-except:
-    from .. auto_ml import date_feature_engineering
-
-try:
+# from auto_ml import date_feature_engineering
     from auto_ml import DataFrameVectorizer
-except:
+    from auto_ml import utils
+    from auto_ml import utils_data_cleaning
+    from auto_ml import utils_ensemble
+    from auto_ml import utils_feature_selection
+    from auto_ml import utils_model_training
+    from auto_ml import utils_models
+    from auto_ml import utils_scaling
+    from auto_ml import utils_scoring
+except ImportError:
+    from .. auto_ml import date_feature_engineering
     from .. auto_ml import DataFrameVectorizer
+    from .. auto_ml import utils
+    from .. auto_ml import utils_data_cleaning
+    from .. auto_ml import utils_ensemble
+    from .. auto_ml import utils_feature_selection
+    from .. auto_ml import utils_model_training
+    from .. auto_ml import utils_models
+    from .. auto_ml import utils_scaling
+    from .. auto_ml import utils_scoring
+
 
 # XGBoost can be a pain to install. It's also a super powerful and effective package.
 # So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
@@ -130,7 +139,7 @@ class Predictor(object):
             if trained_pipeline is not None:
                 pipeline_list.append(('add_ensemble_predictions', trained_pipeline.named_steps['add_ensemble_predictions']))
             else:
-                pipeline_list.append(('add_ensemble_predictions', utils.AddEnsembledPredictions(ensembler=self.ensembler, type_of_estimator=self.type_of_estimator)))
+                pipeline_list.append(('add_ensemble_predictions', utils_ensemble.AddEnsembledPredictions(ensembler=self.ensembler, type_of_estimator=self.type_of_estimator)))
 
         if self.user_input_func is not None:
             if trained_pipeline is not None:
@@ -142,13 +151,13 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('basic_transform', trained_pipeline.named_steps['basic_transform']))
         else:
-            pipeline_list.append(('basic_transform', utils.BasicDataCleaning(column_descriptions=self.column_descriptions)))
+            pipeline_list.append(('basic_transform', utils_data_cleaning.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
         if self.perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
             if trained_pipeline is not None:
                 pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
             else:
-                pipeline_list.append(('scaler', utils.CustomSparseScaler(self.column_descriptions)))
+                pipeline_list.append(('scaler', utils_scaling.CustomSparseScaler(self.column_descriptions)))
 
 
         if trained_pipeline is not None:
@@ -163,13 +172,13 @@ class Predictor(object):
                 pass
             else:
                 # pipeline_list.append(('pca', TruncatedSVD()))
-                pipeline_list.append(('feature_selection', utils.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
+                pipeline_list.append(('feature_selection', utils_feature_selection.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
 
         if trained_pipeline is not None:
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
-            final_model = utils.get_model_from_name(model_name)
-            pipeline_list.append(('final_model', utils.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
+            final_model = utils_models.get_model_from_name(model_name)
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
 
 
         constructed_pipeline = Pipeline(pipeline_list)
@@ -277,7 +286,7 @@ class Predictor(object):
             bad_vals = []
             for idx, val in enumerate(y):
                 try:
-                    float_val = utils.clean_val(val)
+                    float_val = utils_data_cleaning.clean_val(val)
                     y_floats.append(float_val)
                 except ValueError as err:
                     indices_to_delete.append(idx)
@@ -332,10 +341,10 @@ class Predictor(object):
         self.ml_for_analytics = True
 
         if self.type_of_estimator == 'classifier':
-            scoring = utils.brier_score_loss_wrapper
+            scoring = utils_scoring.brier_score_loss_wrapper
             self._scorer = scoring
         else:
-            scoring = utils.rmse_scoring
+            scoring = utils_scoring.rmse_scoring
             self._scorer = scoring
 
         # ################################
@@ -440,7 +449,7 @@ class Predictor(object):
         # ################################
 
         if ensemble_method in ['machine learning', 'ml', 'machine_learning']:
-            ensembler = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+            ensembler = utils_ensemble.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
 
 
             ml_predictor = Predictor(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, name=self.name)
@@ -466,7 +475,7 @@ class Predictor(object):
         else:
 
             # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
-            self.trained_pipeline = utils.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+            self.trained_pipeline = utils_ensemble.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
 
             if find_best_method == True:
                 self.trained_pipeline.find_best_ensemble_method(df=X_test, actuals=y_test)
@@ -531,10 +540,10 @@ class Predictor(object):
             if len(set(y)) > 2:
                 scoring = accuracy_score
             else:
-                scoring = utils.brier_score_loss_wrapper
+                scoring = utils_scoring.brier_score_loss_wrapper
             self._scorer = scoring
         else:
-            scoring = utils.rmse_scoring
+            scoring = utils_scoring.rmse_scoring
             self._scorer = scoring
 
         if verbose:
@@ -578,7 +587,7 @@ class Predictor(object):
             self.grid_search_params['final_model__model_name'] = [model_name]
 
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
-                raw_search_params = utils.get_search_params(model_name)
+                raw_search_params = utils_models.get_search_params(model_name)
                 for param_name, param_list in raw_search_params.items():
                     self.grid_search_params['final_model__model__' + param_name] = param_list
 
@@ -849,7 +858,7 @@ class Predictor(object):
                     return self._scorer(y_test, predictions)
                 elif advanced_scoring:
                     score, probas = self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
-                    utils.advanced_scoring_classifiers(probas, y_test, name=self.name)
+                    utils_scoring.advanced_scoring_classifiers(probas, y_test, name=self.name)
                     return score
                 else:
                     return self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
