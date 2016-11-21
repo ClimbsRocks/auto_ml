@@ -895,6 +895,6 @@ class Predictor(object):
             # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
             #     self._print_ml_analytics_results_random_forest()
 
-        return os.getcwd() + file_name
+        return os.path.join(os.getcwd(), file_name)
 
 
