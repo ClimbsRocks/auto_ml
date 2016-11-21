@@ -71,12 +71,12 @@ def get_search_params(model_name):
         #     , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         # },
         'XGBClassifier': {
-            'max_depth': [1, 3, 5, 10],
-            'learning_rate': [0.01, 0.1, 0.2],
-            'min_child_weight': [1, 5, 10],
-            # 'subsample': [0.5, 1.0]
+            'max_depth': [1, 5, 10, 15],
+            'learning_rate': [0.1],
+            'min_child_weight': [1, 5, 10, 50],
             'subsample': [0.5, 0.8, 1.0],
             'colsample_bytree': [0.5, 0.8, 1.0]
+            # 'subsample': [0.5, 1.0]
             # 'lambda': [0.9, 1.0]
         },
         'XGBRegressor': {

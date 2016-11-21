@@ -664,8 +664,8 @@ class Predictor(object):
             # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
             self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
-            if self.fit_grid_search:
-                self.grid_search_pipelines.append(self.trained_pipeline)
+            # if self.fit_grid_search:
+            #     self.grid_search_pipelines.append(self.trained_pipeline)
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_regression()
