@@ -483,12 +483,11 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=True, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
         self.optimize_entire_pipeline = optimize_entire_pipeline
-        self.perform_feature_selection = perform_feature_selection
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.compute_power = compute_power
         self.ml_for_analytics = ml_for_analytics
@@ -502,10 +501,8 @@ class Predictor(object):
         self.perform_feature_scaling = perform_feature_scaling
         self.ensembler = ensembler
 
-
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
-
 
         # We accept input as either a DataFrame, or as a list of dictionaries. Internally, we use DataFrames. So if the user gave us a list, convert it to a DataFrame here.
         if isinstance(raw_training_data, list):
@@ -514,6 +511,12 @@ class Predictor(object):
         else:
             X_df = raw_training_data
 
+        if len(X_df.columns) < 50 and perform_feature_selection != True:
+            perform_feature_selection = False
+        else:
+            perform_feature_selection = True
+
+        self.perform_feature_selection = perform_feature_selection
 
         # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
         if len(self.cols_to_ignore) > 0:
