@@ -13,6 +13,12 @@ except:
 import pandas as pd
 import pathos
 
+# Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
+# The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
+# Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
+# warnings.filterwarnings("ignore", category=UserWarning)
+warnings.filterwarnings("ignore", category=DeprecationWarning)
+
 from sklearn.cross_validation import train_test_split
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
@@ -61,12 +67,6 @@ except NameError:
 except ImportError:
     pass
 
-
-# Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
-# The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
-# Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
-warnings.filterwarnings("ignore", category=UserWarning)
-warnings.filterwarnings("ignore", category=DeprecationWarning)
 
 
 class Predictor(object):
