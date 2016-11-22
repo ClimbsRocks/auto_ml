@@ -5,10 +5,7 @@ import random
 import sys
 import warnings
 
-try:
-    import cPickle as pickle
-except:
-    import pickle
+import dill
 
 import pandas as pd
 import pathos
@@ -869,20 +866,20 @@ class Predictor(object):
             return self.trained_pipeline.score(X_test, y_test)
 
 
-    def save(self, file_name='auto_ml_saved_pipeline.pkl', verbose=True):
+    def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
         with open(file_name, 'wb') as open_file_name:
-            pickle.dump(self.trained_pipeline, open_file_name, protocol=pickle.HIGHEST_PROTOCOL)
+            dill.dump(self.trained_pipeline, open_file_name)
 
         if verbose:
-            print('\n\nWe have saved the trained pipeline to a filed called "auto_ml_saved_pipeline.pkl"')
+            print('\n\nWe have saved the trained pipeline to a filed called "auto_ml_saved_pipeline.dill"')
             print('It is saved in the directory: ')
             print(os.getcwd())
             print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
-            print('`with open("auto_ml_saved_pipeline.pkl", "rb") as read_file:`')
-            print('`    trained_ml_pipeline = pickle.load(read_file)`')
+            print('`with open("auto_ml_saved_pipeline.dill", "rb") as read_file:`')
+            print('`    trained_ml_pipeline = dill.load(read_file)`')
             print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
 
-            print('Note that this pickle file can only be loaded in an environment with the same modules installed, and running the same Python version.')
+            print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
             print('This version of Python is:')
             print(sys.version_info)
 
