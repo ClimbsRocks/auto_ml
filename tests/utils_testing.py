@@ -3,6 +3,7 @@ sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 
 import pandas as pd
 from sklearn.datasets import load_boston
+from sklearn.metrics import brier_score_loss, mean_squared_error
 from sklearn.model_selection import train_test_split
 
 from auto_ml import Predictor
@@ -58,3 +59,10 @@ def train_basic_regressor(df_boston_train):
 
     ml_predictor.train(df_boston_train, verbose=False)
     return ml_predictor
+
+def calculate_rmse(actuals, preds):
+    return mean_squared_error(actuals, preds)**0.5 * -1
+
+def calculate_brier_score_loss(actuals, probas):
+    return -1 * brier_score_loss(actuals, probas)
+
