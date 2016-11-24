@@ -1,6 +1,6 @@
 """
 To get standard out, run nosetests as follows:
-  $ nosetests -sv tests
+  $ nosetests -s tests
 """
 import datetime
 import os
