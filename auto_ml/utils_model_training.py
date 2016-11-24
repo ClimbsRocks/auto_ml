@@ -95,7 +95,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X = X.todense()
 
         try:
-            return self.model.predict_proba(X)
+            predictions = self.model.predict_proba(X)
+            if X.shape[0] == 1:
+                return predictions[0]
+            else:
+                return predictions
         except AttributeError:
             # print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
@@ -105,7 +109,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     tupled_predictions.append([0,1])
                 else:
                     tupled_predictions.append([1,0])
-            return tupled_predictions
+            predictions = tupled_predictions
+            # return tupled_predictions
+            if X.shape[0] == 1:
+                return predictions[0]
+            else:
+                return predictions
 
 
     def predict(self, X):
