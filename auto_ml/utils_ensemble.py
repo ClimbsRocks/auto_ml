@@ -34,8 +34,8 @@ class Ensemble(object):
             else:
                 # For classifiers
                 predictions = list(estimator.predict_proba(df))
-
-            return {estimator_name: predictions}
+            return_obj = {estimator_name: predictions}
+            return return_obj
 
 
         # Open a new multiprocessing pool
@@ -127,9 +127,7 @@ class Ensemble(object):
         # If this is just a single dictionary we're getting predictions from:
         if isinstance(df, dict):
             # predictions_df is just a dictionary where all the values are the predicted values from one of our subpredictors. we'll want that as a list
-            print(predictions_df)
             predicted_vals = predictions_df.values()
-            print(predicted_vals)
             if self.method == 'median':
                 return np.median(predicted_vals)
             elif self.method == 'average' or self.method == 'mean':
@@ -163,19 +161,9 @@ class Ensemble(object):
         predictions_df = self.get_all_predictions(df)
 
         if isinstance(df, dict):
-            print('inside predict_proba where we think we are')
             # predictions_df is just a dictionary where all the values are the predicted values from one of our subpredictors. we'll want that as a list
-            print(predictions_df)
             predicted_vals = predictions_df.values()
-            # for pred in predicted_vals:
-                # print(pred)
-                # print(type(pred))
-                # print(pred[0])
-                # print(type(pred[0]))
-                # print(pred[0][0])
-                # print(type(pred[0][0]))
-            predicted_vals = [pred[0][0] for pred in predicted_vals]
-            print(predicted_vals)
+            predicted_vals = [pred[1] for pred in predicted_vals]
             if self.method == 'median':
                 return np.median(predicted_vals)
             elif self.method == 'average' or self.method == 'mean':

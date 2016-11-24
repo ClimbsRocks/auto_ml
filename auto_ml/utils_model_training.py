@@ -100,7 +100,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 return predictions[0]
             else:
                 return predictions
-        except AttributeError:
+        except AttributeError as e:
             # print('This model has no predict_proba method. Returning results of .predict instead.')
             raw_predictions = self.model.predict(X)
             tupled_predictions = []

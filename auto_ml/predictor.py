@@ -344,6 +344,11 @@ class Predictor(object):
             scoring = utils_scoring.rmse_scoring
             self._scorer = scoring
 
+        # Make it optional for the person to pass in type_of_estimator
+        for training_params in ensemble_training_list:
+            if training_params.get('type_of_estimator', None) == None:
+                training_params['type_of_estimator'] = self.type_of_estimator
+
         # ################################
         # If we're using machine learning to assemble our final ensemble, and we don't have data for it from the user, split out data here
         # ################################
