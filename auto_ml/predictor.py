@@ -15,11 +15,12 @@ import pathos
 # Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
 # warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
+pd.options.mode.chained_assignment = None  # default='warn'
 
-from sklearn.cross_validation import train_test_split
+# from sklearn.model_selection import
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.grid_search import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
