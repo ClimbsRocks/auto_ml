@@ -514,10 +514,12 @@ class Predictor(object):
         else:
             X_df = raw_training_data
 
-        if len(X_df.columns) < 50 and perform_feature_selection != True:
-            perform_feature_selection = False
-        else:
-            perform_feature_selection = True
+        # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
+        if perform_feature_selection == None:
+            if len(X_df.columns) < 50 or len(X_df) < 100000:
+                perform_feature_selection = False
+            else:
+                perform_feature_selection = True
 
         self.perform_feature_selection = perform_feature_selection
 
