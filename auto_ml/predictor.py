@@ -687,12 +687,6 @@ class Predictor(object):
                     print(self.output_column + ':')
                     print(holdout_data_score)
 
-
-            if self.X_test and self.y_test:
-                print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data) are:')
-                holdout_data_score = self.score(self.X_test, self.y_test)
-                print(holdout_data_score)
-
                 try:
                     # We want our score on the holdout data to be the first thing in our pipeline results tuple. This is what we will be selecting our best model from.
                     pipeline_results.prepend(holdout_data_score)
