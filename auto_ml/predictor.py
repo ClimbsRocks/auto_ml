@@ -514,7 +514,7 @@ class Predictor(object):
             X_df = raw_training_data
 
         # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
-        if perform_feature_selection == None:
+        if perform_feature_selection == None and self.compute_power < 9:
             if len(X_df.columns) < 50 or len(X_df) < 100000:
                 perform_feature_selection = False
             else:
