@@ -4,6 +4,8 @@ python:
   - "3.5"
 
 # Command to install dependencies
-install: "pip install -r requirements.txt"
+install:
+  - pip install --only-binary=numpy,scipy numpy scipy
+  - pip install -r requirements.txt
 # Command to run tests
-script: nosetests -v tests
+script: travis_wait nosetests -v tests
