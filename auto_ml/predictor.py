@@ -164,7 +164,7 @@ class Predictor(object):
             pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions)))
 
 
-        if self.perform_feature_selection:
+        if self.perform_feature_selection == True or (self.compute_power >= 9 and self.perform_feature_selection == None):
             if trained_pipeline is not None:
                 # This is the step we are trying to remove from the trained_pipeline, since it has already been combined with dv using dv.restrict
                 pass
@@ -177,7 +177,6 @@ class Predictor(object):
         else:
             final_model = utils_models.get_model_from_name(model_name)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
-
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
