@@ -240,5 +240,6 @@ def test_all_algos_classification():
 # print results for linear model
 # Try passing in a list of dictionaries everywhere (train, predict, predict_proba, score, on both the saved pipeline and the ml_predictor object)
 # call predict and predict_proba on the ml_predictor object, not just the final pipeline
+# Test the num_features for standard problem (should be all of them). Then test num_features if we pass in a ton of duplicate columns where it should be removing some features. then same thing, but perform_feature_selection=False. we can get the num_features from the final trained model. even if some features are not useful, we should be able to see the number of features the model has considered.
 
 

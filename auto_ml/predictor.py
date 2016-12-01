@@ -164,7 +164,7 @@ class Predictor(object):
             pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions)))
 
 
-        if self.perform_feature_selection == True or (self.compute_power >= 9 and self.perform_feature_selection == None):
+        if self.perform_feature_selection == True or (self.compute_power >= 9 and self.perform_feature_selection is None):
             if trained_pipeline is not None:
                 # This is the step we are trying to remove from the trained_pipeline, since it has already been combined with dv using dv.restrict
                 pass
@@ -177,6 +177,8 @@ class Predictor(object):
         else:
             final_model = utils_models.get_model_from_name(model_name)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
+            # final_model = utils_models.get_model_from_name(model_name)
+            # pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -346,7 +348,7 @@ class Predictor(object):
 
         # Make it optional for the person to pass in type_of_estimator
         for training_params in ensemble_training_list:
-            if training_params.get('type_of_estimator', None) == None:
+            if training_params.get('type_of_estimator', None) is None:
                 training_params['type_of_estimator'] = self.type_of_estimator
 
         # ################################
@@ -514,7 +516,7 @@ class Predictor(object):
             X_df = raw_training_data
 
         # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
-        if perform_feature_selection == None and self.compute_power < 9:
+        if perform_feature_selection is None and self.compute_power < 9:
             if len(X_df.columns) < 50 or len(X_df) < 100000:
                 perform_feature_selection = False
             else:
@@ -613,7 +615,19 @@ class Predictor(object):
                 if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1:
                     self.fit_grid_search = True
 
-            if self.fit_grid_search:
+            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models. Just add them to the GSCV params, and run GSCV, and we should be set.
+            self.continue_after_single_gscv = False
+
+            if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
+                # self.grid_search_params['final_model__model_name'] = estimator_names
+                final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
+                print(final_model_models)
+                print(estimator_names)
+                self.grid_search_params['final_model__model'] = final_model_models
+                self.fit_grid_search = True
+                self.continue_after_single_gscv = True
+
+            if self.fit_grid_search == True:
 
                 gs = GridSearchCV(
                     # Fit on the pipeline.
@@ -633,7 +647,10 @@ class Predictor(object):
 
                 if self.verbose:
                     print('\n\n********************************************************************************************')
-                    print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+                    if self.continue_after_single_gscv:
+                        print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
+                    else:
+                        print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
                 gs.fit(X_df, y)
 
@@ -650,6 +667,9 @@ class Predictor(object):
                 pipeline_results = []
                 pipeline_results.append(gs.best_score_)
                 pipeline_results.append(gs)
+
+                if self.continue_after_single_gscv == True:
+                    break
 
             # The case where we just want to run the training straight through, not fitting GridSearchCV
             else:
