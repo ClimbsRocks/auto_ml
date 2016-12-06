@@ -2,7 +2,7 @@ import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 try:
     from auto_ml.utils_scoring import brier_score_loss_wrapper, rmse_scoring
-    from auto_ml.utils_models import get_model_from_name
+    from auto_ml.utils_models import get_model_from_name, get_name_from_model
 except ImportError:
     from ..auto_ml.utils_scoring import brier_score_loss_wrapper, rmse_scoring
     from ..auto_ml.utils_models import get_model_from_name, get_name_from_model
@@ -23,13 +23,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None):
 
         self.model = model
-        self.model_name = model_name
-        if self.model_name is None:
-            # print('self.model_name')
-            # print(self.model_name)
-            self.model_name = get_name_from_model(self.model)
-            # print('self.model_name')
-            # print(self.model_name)
+        self.model_name = get_name_from_model(self.model)
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
         self.name = name

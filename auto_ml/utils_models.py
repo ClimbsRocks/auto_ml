@@ -79,8 +79,6 @@ def get_name_from_model(model):
         return 'Perceptron'
     if isinstance(model, PassiveAggressiveClassifier):
         return 'PassiveAggressiveClassifier'
-    if isinstance(model, KerasRegressor):
-        return 'KerasRegressor'
     if isinstance(model, LinearRegression):
         return 'LinearRegression'
     if isinstance(model, RandomForestRegressor):
@@ -119,6 +117,8 @@ def get_name_from_model(model):
     if isinstance(model, xgb.XGBRegressor):
         return 'MiniBatchKMeans'
 
+    # if isinstance(model, KerasRegressor):
+    #     return 'KerasRegressor'
 
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):

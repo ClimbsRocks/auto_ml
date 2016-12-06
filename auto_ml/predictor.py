@@ -176,7 +176,7 @@ class Predictor(object):
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
             # final_model = utils_models.get_model_from_name(model_name)
             # pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
 
@@ -191,12 +191,18 @@ class Predictor(object):
         if self.compute_power >= 6:
             gs_params['scaler__truncate_large_values'] = [True, False]
 
-        if user_defined_model_names:
+        if user_defined_model_names is not None:
             model_names = user_defined_model_names
         else:
             model_names = self._get_estimator_names()
 
-        gs_params['final_model__model_name'] = model_names
+        final_model__models = []
+        for model_name in model_names:
+            final_model__models.append(utils_models.get_model_from_name(model_name))
+
+
+        # gs_params['final_model__model_name'] = model_names
+        gs_params['final_model__model'] = final_model__models
 
         if self.compute_power >= 7:
             gs_params['scaler__perform_feature_scaling'] = [True, False]
@@ -540,7 +546,7 @@ class Predictor(object):
         if verbose:
             print('Successfully performed basic preparations and y-value cleaning')
 
-        if model_names != None:
+        if model_names is not None:
             estimator_names = model_names
         else:
             estimator_names = self._get_estimator_names()
@@ -589,11 +595,12 @@ class Predictor(object):
     def perform_grid_search_by_model_names(self, estimator_names, scoring, X_df, y):
 
         for model_name in estimator_names:
+
             ppl = self._construct_pipeline(model_name=model_name)
 
             self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
-            self.grid_search_params['final_model__model_name'] = [model_name]
+            # self.grid_search_params['final_model__model_name'] = [model_name]
 
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
                 raw_search_params = utils_models.get_search_params(model_name)
@@ -612,7 +619,7 @@ class Predictor(object):
             for key, val in self.grid_search_params.items():
 
                 # if it is a list, and has a length > 1, we will want to fit grid search
-                if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1:
+                if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
                     self.fit_grid_search = True
 
             # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models. Just add them to the GSCV params, and run GSCV, and we should be set.
@@ -621,9 +628,10 @@ class Predictor(object):
             if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
                 # self.grid_search_params['final_model__model_name'] = estimator_names
                 final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
-                print(final_model_models)
-                print(estimator_names)
+                # print(final_model_models)
+                # print(estimator_names)
                 self.grid_search_params['final_model__model'] = final_model_models
+                # del self.grid_search_params['final_model__model_name']
                 self.fit_grid_search = True
                 self.continue_after_single_gscv = True
 
@@ -694,8 +702,10 @@ class Predictor(object):
             # if self.fit_grid_search:
             #     self.grid_search_pipelines.append(self.trained_pipeline)
 
+            print("self.trained_pipeline.named_steps['final_model'] inside perform_grid_search_by_model_names")
+            print(self.trained_pipeline.named_steps['final_model'])
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-                self._print_ml_analytics_results_regression()
+                self._print_ml_analytics_results_linear_model()
             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
                 self._print_ml_analytics_results_random_forest()
 
@@ -761,7 +771,7 @@ class Predictor(object):
 
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
-        if self.name != None:
+        if self.name is not None:
             print(self.name)
         print('predicting ' + self.output_column)
 
@@ -791,7 +801,7 @@ class Predictor(object):
         return trained_feature_names
 
 
-    def _print_ml_analytics_results_regression(self):
+    def _print_ml_analytics_results_linear_model(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
         trained_feature_names = self._get_trained_feature_names()
@@ -829,13 +839,28 @@ class Predictor(object):
             print('    Note that this score is calculated using the natural logs of the y values.')
         print(gs.best_score_)
         print('The best params were')
-        print(gs.best_params_)
+
+        # Remove 'final_model__model' from what we print- it's redundant with model name, and is difficult to read quickly in a list since it's a python object.
+        if 'final_model__model' in gs.best_params_:
+            printing_copy = {}
+            for k, v in gs.best_params_.items():
+                if k != 'final_model__model':
+                    printing_copy[k] = v
+                else:
+                    printing_copy[k] = utils_models.get_name_from_model(v)
+        else:
+            printing_copy = gs.best_params_
+
+        print(printing_copy)
 
         if self.verbose:
             print('Here are all the hyperparameters that were tried:')
             raw_scores = gs.grid_scores_
             sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
             for score in sorted_scores:
+                for k, v in score[0].items():
+                    if k == 'final_model__model':
+                        score[0][k] = utils_models.get_name_from_model(v)
                 print(score)
         # Print some nice summary output of all the training we did.
         # maybe allow the user to pass in a flag to write info to a file
@@ -909,7 +934,7 @@ class Predictor(object):
             # print('\nThese are the most important features that were fed into the model:')
 
             # if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            #     self._print_ml_analytics_results_regression()
+            #     self._print_ml_analytics_results_linear_model()
             # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
             #     self._print_ml_analytics_results_random_forest()
 
