@@ -3,7 +3,7 @@ from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifi
 
 import math
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score
-
+import numpy as np
 
 def advanced_scoring_classifiers(probas, actuals, name=None):
 
@@ -88,6 +88,14 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
     # 3. overall avg actuals
     print('\nHere is the average actual value on this validation set:')
     print(sum(actuals) * 1.0 / len(actuals))
+
+    # 2(a). median predictions
+    print('\nHere is the median prediction:')
+    print(np.median(predictions))
+
+    # 3(a). median actuals
+    print('\nHere is the median actual value:')
+    print(np.median(actuals))
 
     # 4. avg differences (not RMSE)
     print('\nHere is the mean absolute error:')
