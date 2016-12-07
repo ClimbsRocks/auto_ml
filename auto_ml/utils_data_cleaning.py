@@ -84,6 +84,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
+        X = X.copy()
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)

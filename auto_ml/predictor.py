@@ -164,7 +164,7 @@ class Predictor(object):
             pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions)))
 
 
-        if self.perform_feature_selection == True or (self.compute_power >= 9 and self.perform_feature_selection == None):
+        if self.perform_feature_selection == True or (self.compute_power >= 9 and self.perform_feature_selection is None):
             if trained_pipeline is not None:
                 # This is the step we are trying to remove from the trained_pipeline, since it has already been combined with dv using dv.restrict
                 pass
@@ -176,7 +176,9 @@ class Predictor(object):
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
+            # final_model = utils_models.get_model_from_name(model_name)
+            # pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -189,12 +191,18 @@ class Predictor(object):
         if self.compute_power >= 6:
             gs_params['scaler__truncate_large_values'] = [True, False]
 
-        if user_defined_model_names:
+        if user_defined_model_names is not None:
             model_names = user_defined_model_names
         else:
             model_names = self._get_estimator_names()
 
-        gs_params['final_model__model_name'] = model_names
+        final_model__models = []
+        for model_name in model_names:
+            final_model__models.append(utils_models.get_model_from_name(model_name))
+
+
+        # gs_params['final_model__model_name'] = model_names
+        gs_params['final_model__model'] = final_model__models
 
         if self.compute_power >= 7:
             gs_params['scaler__perform_feature_scaling'] = [True, False]
@@ -346,7 +354,7 @@ class Predictor(object):
 
         # Make it optional for the person to pass in type_of_estimator
         for training_params in ensemble_training_list:
-            if training_params.get('type_of_estimator', None) == None:
+            if training_params.get('type_of_estimator', None) is None:
                 training_params['type_of_estimator'] = self.type_of_estimator
 
         # ################################
@@ -514,7 +522,7 @@ class Predictor(object):
             X_df = raw_training_data
 
         # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
-        if perform_feature_selection == None and self.compute_power < 9:
+        if perform_feature_selection is None and self.compute_power < 9:
             if len(X_df.columns) < 50 or len(X_df) < 100000:
                 perform_feature_selection = False
             else:
@@ -535,10 +543,7 @@ class Predictor(object):
             y = [math.log(val) for val in y]
             self.took_log_of_y = True
 
-        if verbose:
-            print('Successfully performed basic preparations and y-value cleaning')
-
-        if model_names != None:
+        if model_names is not None:
             estimator_names = model_names
         else:
             estimator_names = self._get_estimator_names()
@@ -553,15 +558,12 @@ class Predictor(object):
             scoring = utils_scoring.rmse_scoring
             self._scorer = scoring
 
-        if verbose:
-            print('Created estimator_names and scoring')
-
 
         self.perform_grid_search_by_model_names(estimator_names, scoring, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
         # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
-        if self.fit_grid_search and len(self.grid_search_pipelines) > 1:
+        if len(self.grid_search_pipelines) > 1:
             # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
             # 1. Holdout data
             # 2. CV data
@@ -575,7 +577,15 @@ class Predictor(object):
             # Our best grid search result is the thing at the end of that list.
             best_trained_gs = best_result_list[-1]
             # And the pipeline is the best estimator within that grid search object.
-            self.trained_pipeline = best_trained_gs.best_estimator_
+            try:
+                self.trained_pipeline = best_trained_gs.best_estimator_
+            except:
+                # We are also supporting the use case of the user training multiple model types, without optimzing any of them (so no GridSearchCV), but using X_test and y_test to determine the best model
+                # In that case, the thing at the end of the best_result_list will be the trained pipeline we're interested in
+                self.trained_pipeline = best_trained_gs
+
+        # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
+        self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
         # Delete values that we no longer need that are just taking up space.
         del self.X_test
@@ -587,11 +597,12 @@ class Predictor(object):
     def perform_grid_search_by_model_names(self, estimator_names, scoring, X_df, y):
 
         for model_name in estimator_names:
+
             ppl = self._construct_pipeline(model_name=model_name)
 
             self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
-            self.grid_search_params['final_model__model_name'] = [model_name]
+            # self.grid_search_params['final_model__model_name'] = [model_name]
 
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
                 raw_search_params = utils_models.get_search_params(model_name)
@@ -610,10 +621,20 @@ class Predictor(object):
             for key, val in self.grid_search_params.items():
 
                 # if it is a list, and has a length > 1, we will want to fit grid search
-                if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1:
+                if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
                     self.fit_grid_search = True
 
-            if self.fit_grid_search:
+            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models. Just add them to the GSCV params, and run GSCV, and we should be set.
+            self.continue_after_single_gscv = False
+
+            if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
+
+                final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
+                self.grid_search_params['final_model__model'] = list(final_model_models)
+                self.fit_grid_search = True
+                self.continue_after_single_gscv = True
+
+            if self.fit_grid_search == True:
 
                 gs = GridSearchCV(
                     # Fit on the pipeline.
@@ -633,7 +654,10 @@ class Predictor(object):
 
                 if self.verbose:
                     print('\n\n********************************************************************************************')
-                    print('About to fit the GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+                    if self.continue_after_single_gscv:
+                        print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
+                    else:
+                        print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
                 gs.fit(X_df, y)
 
@@ -650,6 +674,9 @@ class Predictor(object):
                 pipeline_results = []
                 pipeline_results.append(gs.best_score_)
                 pipeline_results.append(gs)
+
+                if self.continue_after_single_gscv == True:
+                    break
 
             # The case where we just want to run the training straight through, not fitting GridSearchCV
             else:
@@ -668,14 +695,9 @@ class Predictor(object):
                     print('Total training time:')
                     print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
-            # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-            self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
-
-            # if self.fit_grid_search:
-            #     self.grid_search_pipelines.append(self.trained_pipeline)
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-                self._print_ml_analytics_results_regression()
+                self._print_ml_analytics_results_linear_model()
             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
                 self._print_ml_analytics_results_random_forest()
 
@@ -691,11 +713,20 @@ class Predictor(object):
                     # We want our score on the holdout data to be the first thing in our pipeline results tuple. This is what we will be selecting our best model from.
                     pipeline_results.prepend(holdout_data_score)
                 except:
+                    # If we do not have pipeline_results defined already, that means we did not fit grid search, but are relying on X_test/y_test to determine our best model
+                    pipeline_results = []
+                    pipeline_results.append(holdout_data_score)
+                    pipeline_results.append(self.trained_pipeline)
+
                     # If we don't have pipeline_results (if we did not fit GSCV), then pass
                     pass
 
-            if self.fit_grid_search:
+            try:
                 self.grid_search_pipelines.append(pipeline_results)
+            except Exception as e:
+                pass
+
+            # if self.fit_grid_search:
 
 
     def _get_xgb_feat_importances(self, clf):
@@ -741,7 +772,7 @@ class Predictor(object):
 
     def _print_ml_analytics_results_random_forest(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
-        if self.name != None:
+        if self.name is not None:
             print(self.name)
         print('predicting ' + self.output_column)
 
@@ -771,7 +802,7 @@ class Predictor(object):
         return trained_feature_names
 
 
-    def _print_ml_analytics_results_regression(self):
+    def _print_ml_analytics_results_linear_model(self):
         print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
 
         trained_feature_names = self._get_trained_feature_names()
@@ -809,19 +840,35 @@ class Predictor(object):
             print('    Note that this score is calculated using the natural logs of the y values.')
         print(gs.best_score_)
         print('The best params were')
-        print(gs.best_params_)
+
+        # Remove 'final_model__model' from what we print- it's redundant with model name, and is difficult to read quickly in a list since it's a python object.
+        if 'final_model__model' in gs.best_params_:
+            printing_copy = {}
+            for k, v in gs.best_params_.items():
+                if k != 'final_model__model':
+                    printing_copy[k] = v
+                else:
+                    printing_copy[k] = utils_models.get_name_from_model(v)
+        else:
+            printing_copy = gs.best_params_
+
+        print(printing_copy)
 
         if self.verbose:
             print('Here are all the hyperparameters that were tried:')
             raw_scores = gs.grid_scores_
             sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
             for score in sorted_scores:
+                for k, v in score[0].items():
+                    if k == 'final_model__model':
+                        score[0][k] = utils_models.get_name_from_model(v)
                 print(score)
         # Print some nice summary output of all the training we did.
         # maybe allow the user to pass in a flag to write info to a file
 
 
     def predict(self, prediction_data):
+        prediction_data = prediction_data.copy()
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
 
@@ -837,6 +884,7 @@ class Predictor(object):
 
 
     def predict_proba(self, prediction_data):
+        prediction_data = prediction_data.copy()
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
 
@@ -889,7 +937,7 @@ class Predictor(object):
             # print('\nThese are the most important features that were fed into the model:')
 
             # if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            #     self._print_ml_analytics_results_regression()
+            #     self._print_ml_analytics_results_linear_model()
             # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
             #     self._print_ml_analytics_results_random_forest()
 

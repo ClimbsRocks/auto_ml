@@ -2,8 +2,10 @@ import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 try:
     from auto_ml.utils_scoring import brier_score_loss_wrapper, rmse_scoring
+    from auto_ml.utils_models import get_model_from_name, get_name_from_model
 except ImportError:
     from ..auto_ml.utils_scoring import brier_score_loss_wrapper, rmse_scoring
+    from ..auto_ml.utils_models import get_model_from_name, get_name_from_model
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
@@ -18,7 +20,7 @@ except ImportError:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None):
 
         self.model = model
         self.model_name = model_name
@@ -34,6 +36,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+        self.model_name = get_name_from_model(self.model)
 
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
@@ -44,7 +47,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X
 
 
-        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']:
+        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression', ]:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
 
@@ -63,7 +66,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         #     if self.type_of_estimator == 'regressor':
         #         self.model = KerasRegressor(build_fn=make_deep_learning_model, **kwargs)
 
-        self.model.fit(X_fit, y)
+        try:
+            self.model.fit(X_fit, y)
+        except TypeError as e:
+            if scipy.sparse.issparse(X_fit):
+                X_fit = X_fit.todense()
+            self.model.fit()
 
         return self
 
@@ -96,26 +104,37 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         try:
             predictions = self.model.predict_proba(X)
-            if X.shape[0] == 1:
-                return predictions[0]
-            else:
-                return predictions
+
         except AttributeError as e:
             # print('This model has no predict_proba method. Returning results of .predict instead.')
-            raw_predictions = self.model.predict(X)
+            try:
+                predictions = self.model.predict(X)
+            except TypeError as e:
+                if scipy.sparse.issparse(X):
+                    X = X.todense()
+                predictions = self.model.predict(X)
+
+        except TypeError as e:
+            if scipy.sparse.issparse(X):
+                X = X.todense()
+            predictions = self.model.predict(X)
+
+        # If this model does not have predict_proba, and we have fallen back on predict, we want to make sure we give results back in the same format the user would expect for predict_proba, namely each prediction is a list of predicted probabilities for each class.
+        # Note that this DOES NOT WORK for multi-label problems, or problems that are not reduced to 0,1
+        # If this is not an iterable (ignoring strings, which might be iterable), then we will want to turn our predictions into tupled predictions
+        if not (hasattr(predictions[0], '__iter__') and not isinstance(predictions[0], str)):
             tupled_predictions = []
-            for prediction in raw_predictions:
+            for prediction in predictions:
                 if prediction == 1:
                     tupled_predictions.append([0,1])
                 else:
                     tupled_predictions.append([1,0])
             predictions = tupled_predictions
-            # return tupled_predictions
-            if X.shape[0] == 1:
-                return predictions[0]
-            else:
-                return predictions
 
+        if X.shape[0] == 1:
+            return predictions[0]
+        else:
+            return predictions
 
     def predict(self, X):
 
