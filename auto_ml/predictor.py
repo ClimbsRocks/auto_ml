@@ -630,7 +630,7 @@ class Predictor(object):
             if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
 
                 final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
-                self.grid_search_params['final_model__model'] = final_model_models
+                self.grid_search_params['final_model__model'] = list(final_model_models)
                 self.fit_grid_search = True
                 self.continue_after_single_gscv = True
 

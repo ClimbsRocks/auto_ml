@@ -121,7 +121,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         # If this model does not have predict_proba, and we have fallen back on predict, we want to make sure we give results back in the same format the user would expect for predict_proba, namely each prediction is a list of predicted probabilities for each class.
         # Note that this DOES NOT WORK for multi-label problems, or problems that are not reduced to 0,1
-        if isinstance(predictions[0], int):
+        # If this is not an iterable (ignoring strings, which might be iterable), then we will want to turn our predictions into tupled predictions
+        if not (hasattr(predictions[0], '__iter__') and not isinstance(predictions[0], str)):
             tupled_predictions = []
             for prediction in predictions:
                 if prediction == 1:
@@ -129,7 +130,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 else:
                     tupled_predictions.append([1,0])
             predictions = tupled_predictions
-
 
         if X.shape[0] == 1:
             return predictions[0]

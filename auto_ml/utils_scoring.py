@@ -168,6 +168,7 @@ def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
     # except:
     #     pass
     predictions = estimator.predict_proba(X)
+
     probas = [row[1] for row in predictions]
     score = brier_score_loss(y, probas)
     if advanced_scoring:
