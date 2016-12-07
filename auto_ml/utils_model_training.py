@@ -23,7 +23,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None):
 
         self.model = model
-        self.model_name = get_name_from_model(self.model)
+        self.model_name = model_name
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
         self.name = name
@@ -36,6 +36,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+        self.model_name = get_name_from_model(self.model)
 
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]

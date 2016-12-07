@@ -113,9 +113,9 @@ def get_name_from_model(model):
         return 'MiniBatchKMeans'
     # Putting these at the end. By this point, we've already determined it is not any of our other models
     if isinstance(model, xgb.XGBClassifier):
-        return 'MiniBatchKMeans'
+        return 'XGBClassifier'
     if isinstance(model, xgb.XGBRegressor):
-        return 'MiniBatchKMeans'
+        return 'XGBRegressor'
 
     # if isinstance(model, KerasRegressor):
     #     return 'KerasRegressor'

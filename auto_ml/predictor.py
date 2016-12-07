@@ -543,9 +543,6 @@ class Predictor(object):
             y = [math.log(val) for val in y]
             self.took_log_of_y = True
 
-        if verbose:
-            print('Successfully performed basic preparations and y-value cleaning')
-
         if model_names is not None:
             estimator_names = model_names
         else:
@@ -561,15 +558,12 @@ class Predictor(object):
             scoring = utils_scoring.rmse_scoring
             self._scorer = scoring
 
-        if verbose:
-            print('Created estimator_names and scoring')
-
 
         self.perform_grid_search_by_model_names(estimator_names, scoring, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
         # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
-        if self.fit_grid_search and len(self.grid_search_pipelines) > 1:
+        if len(self.grid_search_pipelines) > 1:
             # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
             # 1. Holdout data
             # 2. CV data
@@ -583,7 +577,15 @@ class Predictor(object):
             # Our best grid search result is the thing at the end of that list.
             best_trained_gs = best_result_list[-1]
             # And the pipeline is the best estimator within that grid search object.
-            self.trained_pipeline = best_trained_gs.best_estimator_
+            try:
+                self.trained_pipeline = best_trained_gs.best_estimator_
+            except:
+                # We are also supporting the use case of the user training multiple model types, without optimzing any of them (so no GridSearchCV), but using X_test and y_test to determine the best model
+                # In that case, the thing at the end of the best_result_list will be the trained pipeline we're interested in
+                self.trained_pipeline = best_trained_gs
+
+        # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
+        self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
         # Delete values that we no longer need that are just taking up space.
         del self.X_test
@@ -626,12 +628,9 @@ class Predictor(object):
             self.continue_after_single_gscv = False
 
             if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
-                # self.grid_search_params['final_model__model_name'] = estimator_names
+
                 final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
-                # print(final_model_models)
-                # print(estimator_names)
                 self.grid_search_params['final_model__model'] = final_model_models
-                # del self.grid_search_params['final_model__model_name']
                 self.fit_grid_search = True
                 self.continue_after_single_gscv = True
 
@@ -696,14 +695,7 @@ class Predictor(object):
                     print('Total training time:')
                     print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
-            # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-            self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
-            # if self.fit_grid_search:
-            #     self.grid_search_pipelines.append(self.trained_pipeline)
-
-            print("self.trained_pipeline.named_steps['final_model'] inside perform_grid_search_by_model_names")
-            print(self.trained_pipeline.named_steps['final_model'])
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_linear_model()
             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
@@ -721,11 +713,20 @@ class Predictor(object):
                     # We want our score on the holdout data to be the first thing in our pipeline results tuple. This is what we will be selecting our best model from.
                     pipeline_results.prepend(holdout_data_score)
                 except:
+                    # If we do not have pipeline_results defined already, that means we did not fit grid search, but are relying on X_test/y_test to determine our best model
+                    pipeline_results = []
+                    pipeline_results.append(holdout_data_score)
+                    pipeline_results.append(self.trained_pipeline)
+
                     # If we don't have pipeline_results (if we did not fit GSCV), then pass
                     pass
 
-            if self.fit_grid_search:
+            try:
                 self.grid_search_pipelines.append(pipeline_results)
+            except Exception as e:
+                pass
+
+            # if self.fit_grid_search:
 
 
     def _get_xgb_feat_importances(self, clf):
@@ -867,6 +868,7 @@ class Predictor(object):
 
 
     def predict(self, prediction_data):
+        prediction_data = prediction_data.copy()
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
 
@@ -882,6 +884,7 @@ class Predictor(object):
 
 
     def predict_proba(self, prediction_data):
+        prediction_data = prediction_data.copy()
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
 
