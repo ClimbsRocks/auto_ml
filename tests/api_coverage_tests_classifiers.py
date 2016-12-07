@@ -34,7 +34,7 @@ def test_optimize_final_model_classification():
     assert -0.215 < test_score < -0.17
 
 
-def test_perform_feature_selection_true():
+def test_perform_feature_selection_true_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -54,7 +54,7 @@ def test_perform_feature_selection_true():
 
     assert -0.225 < test_score < -0.17
 
-def test_perform_feature_selection_false():
+def test_perform_feature_selection_false_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -75,7 +75,7 @@ def test_perform_feature_selection_false():
     assert -0.215 < test_score < -0.17
 
 
-def test_perform_feature_scaling_true():
+def test_perform_feature_scaling_true_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -95,7 +95,7 @@ def test_perform_feature_scaling_true():
 
     assert -0.215 < test_score < -0.17
 
-def test_perform_feature_scaling_false():
+def test_perform_feature_scaling_false_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -116,7 +116,7 @@ def test_perform_feature_scaling_false():
     assert -0.215 < test_score < -0.17
 
 
-def test_optimize_entire_pipeline():
+def test_optimize_entire_pipeline_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -127,7 +127,7 @@ def test_optimize_entire_pipeline():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_scaling=False)
+    ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -137,7 +137,7 @@ def test_optimize_entire_pipeline():
     assert -0.215 < test_score < -0.17
 
 
-def test_X_test_and_y_test():
+def test_X_test_and_y_test_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -158,7 +158,7 @@ def test_X_test_and_y_test():
     assert -0.215 < test_score < -0.17
 
 
-def test_compute_power_1():
+def test_compute_power_1_classification():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -189,8 +189,28 @@ def test_all_algos_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names=[
-        'LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'])
+    ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'])
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+# If the user passes in X_test and y_test, we will use those to determine the best model, rather than CV scores
+def test_select_from_multiple_classification_models_using_X_test_and_y_test():
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'], X_test=df_titanic_test, y_test=df_titanic_test.survived)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -200,7 +220,7 @@ def test_all_algos_classification():
     assert -0.215 < test_score < -0.17
 
 
-
+# Right now this just takes forever to run. Will have to look into optimizing
 # def test_compute_power_10():
 #     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
