@@ -99,7 +99,7 @@ def test_getting_single_predictions_regression():
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    assert 0.4 < duration.total_seconds() / 1.0 < 3
+    assert 0.2 < duration.total_seconds() / 1.0 < 3
 
 
     # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
@@ -159,7 +159,7 @@ def test_getting_single_predictions_classification():
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    assert 0.4 < duration.total_seconds() < 3
+    assert 0.2 < duration.total_seconds() < 3
 
 
     # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)

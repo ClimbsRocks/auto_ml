@@ -194,7 +194,7 @@ def test_all_algos_regression():
     print('test_score')
     print(test_score)
 
-    assert -3.2 < test_score < -2.8
+    assert -3.25 < test_score < -2.8
 
 # If the user passes in X_test and y_test, we will use those to determine the best model, rather than CV scores
 def test_select_from_multiple_regression_models_using_X_test_and_y_test():
