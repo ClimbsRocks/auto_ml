@@ -58,7 +58,10 @@ class Ensemble(object):
 
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
-        pool.join()
+        try:
+            pool.join()
+        except AssertionError:
+            pass
 
 
         results = {}
@@ -75,6 +78,10 @@ class Ensemble(object):
 
     # Gets summary stats on a set of predictions
     def get_summary_stats(self, predictions_df):
+
+        # TODO(PRESTON): Super hacky. see if we can just build in native support for dictionaries instead
+        if isinstance(predictions_df, dict):
+            predictions_df = pd.DataFrame(predictions_df)
         summarized_predictions = []
 
         # Building in support for multi-class problems
@@ -85,6 +92,8 @@ class Ensemble(object):
             row_results = {}
 
             if self.type_of_estimator == 'classifier':
+                # TODO(PRESTON): This is erroring out when we use 'ml' as our ensemble method
+                # TypeError: object of type 'numpy.float64' has no len()
                 num_classes = len(row[0])
                 for class_prediction_idx in range(num_classes):
                     class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
@@ -249,6 +258,7 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
                 flattened_df.columns = col_names
 
                 # Drop the first column in the DataFrame, since it just contains the inverse data from the other column(s)
+                # TODO(PRESTON): somewhere we appear to be inverting our probability predictions. The line below might be the culprit
                 flattened_df = flattened_df.drop(flattened_df.columns[0], axis=1)
 
                 flattened_predictions_dfs.append(flattened_df)

@@ -430,7 +430,10 @@ class Predictor(object):
         # self.ensemble_predictors = [predictor.trained_pipeline for predictor in self.ensemble_predictors]
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
-        pool.join()
+        try:
+            pool.join()
+        except AssertionError:
+            pass
 
         # ################################
         # Print scoring information for each trained subpredictor
@@ -452,8 +455,10 @@ class Predictor(object):
             pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors, chunksize=100)
             # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
             pool.close()
-            pool.join()
-
+            try:
+                pool.join()
+            except AssertionError:
+                pass
 
         # ################################
         # Ensemble together our trained subpredictors, either using simple averaging, or training a new machine learning model to pick from amongst them
@@ -469,8 +474,12 @@ class Predictor(object):
             data_for_final_ensembling = data_for_final_ensembling.reset_index()
             if self.type_of_estimator == 'regressor':
                 model_names = ['RandomForestRegressor', 'LinearRegression', 'ExtraTreesRegressor', 'Ridge', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'SGDRegressor']
+                if xgb_installed:
+                    model_names.append('XGBRegressor')
             else:
                 model_names = ['RandomForestClassifier', 'GradientBoostingClassifier', 'RidgeClassifier', 'LogisticRegression']
+                if xgb_installed:
+                    model_names.append('XGBClassifier')
                 # model_names = ['LogisticRegression']
             ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names)
 
