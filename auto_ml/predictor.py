@@ -18,6 +18,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.options.mode.chained_assignment = None  # default='warn'
 
 # from sklearn.model_selection import
+from sklearn.calibration import CalibratedClassifierCV
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import GridSearchCV, train_test_split
@@ -493,7 +494,7 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -510,6 +511,7 @@ class Predictor(object):
         self.model_names = model_names
         self.perform_feature_scaling = perform_feature_scaling
         self.ensembler = ensembler
+        self.calibrate_final_model = calibrate_final_model
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -586,6 +588,39 @@ class Predictor(object):
 
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
         self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+
+
+        # Calibrate the probability predictions from our final model
+        if self.calibrate_final_model is True and X_test is not None and y_test is not None:
+
+            trained_model = self.trained_pipeline.named_steps['final_model'].model
+
+            if len(X_test) < 1000:
+                calibration_method = 'sigmoid'
+            else:
+                calibration_method = 'isotonic'
+
+            calibrated_classifier = CalibratedClassifierCV(trained_model, method=calibration_method, cv='prefit')
+
+            # We need to make sure X_test has been processed the exact same way y_test has.
+            # So grab all the steps of the pipeline up to, but not including, the final_model
+            # and run X_test through that transformer pipeline
+            self.trained_transformer_pipeline = self.trained_pipeline
+            transformer_pipeline = []
+            for step in self.trained_transformer_pipeline.steps:
+                if step[0] != 'final_model':
+                    transformer_pipeline.append(step)
+
+            self.trained_transformer_pipeline = Pipeline(transformer_pipeline)
+
+            X_test = self.trained_transformer_pipeline.transform(X_test)
+
+            calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
+
+            # Now insert the calibrated model back into our final_model step
+            self.trained_pipeline.named_steps['final_model'].model = calibrated_classifier
+
+
 
         # Delete values that we no longer need that are just taking up space.
         del self.X_test
@@ -702,7 +737,7 @@ class Predictor(object):
                 self._print_ml_analytics_results_random_forest()
 
             if (self.X_test) is not None and (self.y_test) is not None:
-                if not self.X_test.empty and not self.y_test.empty:
+                if len(self.X_test) > 0 and len(self.y_test) > 0 and len(self.X_test) == len(self.y_test):
                     print('Calculating score on holdout data')
                     holdout_data_score = self.score(self.X_test, self.y_test)
                     print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data)')
