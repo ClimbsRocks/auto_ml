@@ -337,7 +337,7 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2):
+    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2, include_original_X=True):
 
         if y_test != None:
             y_test = list(y_test)
@@ -470,6 +470,8 @@ class Predictor(object):
 
             ml_predictor = Predictor(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, name=self.name)
 
+            print('\n\n\n')
+            print('We have trained up a bunch of individual estimators on this problem. Now it is time to train one final estimator that will ensemble all these predictions together for us')
             print('Using machine learning to ensemble together a bunch of trained estimators!')
             data_for_final_ensembling = data_for_final_ensembling.reset_index()
             if self.type_of_estimator == 'regressor':
@@ -481,7 +483,7 @@ class Predictor(object):
                 if xgb_installed:
                     model_names.append('XGBClassifier')
                 # model_names = ['LogisticRegression']
-            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names)
+            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names, _include_original_X=include_original_X)
 
 
             # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
@@ -503,7 +505,7 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -720,6 +722,17 @@ class Predictor(object):
                 pipeline_results.append(gs)
 
                 if self.continue_after_single_gscv == True:
+
+                    # Print ml_for_analytics here, since we break out of the loop before we can do it below
+                    if 'final_model__model' in gs.best_params_:
+                        model_name = gs.best_params_['final_model__model']
+
+                    if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+                        self._print_ml_analytics_results_linear_model()
+
+                    elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
+                        self._print_ml_analytics_results_random_forest()
+
                     break
 
             # The case where we just want to run the training straight through, not fitting GridSearchCV
@@ -738,7 +751,6 @@ class Predictor(object):
                     print('Finished training the pipeline!')
                     print('Total training time:')
                     print(datetime.datetime.now().replace(microsecond=0) - start_time)
-
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_linear_model()
