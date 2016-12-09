@@ -38,30 +38,36 @@ class Ensemble(object):
             return return_obj
 
 
-        # Open a new multiprocessing pool
-        pool = pathos.multiprocessing.ProcessPool()
-
-        # Since we may have already closed the pool, try to restart it
-        try:
-            pool.restart()
-        except AssertionError as e:
-            pass
-
-        # Pathos doesn't like datasets beyond a certain size. So fall back on single, non-parallel predictions instead.
-        try:
-            predictions_from_all_estimators = pool.map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors, chunksize=100)
-            predictions_from_all_estimators = list(predictions_from_all_estimators)
-        except:
+        # Don't bother parallelizing if this is a single dictionary
+        if isinstance(df, dict):
             predictions_from_all_estimators = map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors)
             predictions_from_all_estimators = list(predictions_from_all_estimators)
 
+        else:
+            # Open a new multiprocessing pool
+            pool = pathos.multiprocessing.ProcessPool()
 
-        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-        pool.close()
-        try:
-            pool.join()
-        except AssertionError:
-            pass
+            # Since we may have already closed the pool, try to restart it
+            try:
+                pool.restart()
+            except AssertionError as e:
+                pass
+
+            # Pathos doesn't like datasets beyond a certain size. So fall back on single, non-parallel predictions instead.
+            try:
+                predictions_from_all_estimators = pool.map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors, chunksize=100)
+                predictions_from_all_estimators = list(predictions_from_all_estimators)
+            except:
+                predictions_from_all_estimators = map(lambda predictor: get_predictions_for_one_estimator(predictor, df), self.ensemble_predictors)
+                predictions_from_all_estimators = list(predictions_from_all_estimators)
+
+
+            # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+            pool.close()
+            try:
+                pool.join()
+            except AssertionError:
+                pass
 
 
         results = {}
@@ -79,36 +85,51 @@ class Ensemble(object):
     # Gets summary stats on a set of predictions
     def get_summary_stats(self, predictions_df):
 
+        # print('predictions_df inside get_summary_stats')
+        # print(predictions_df)
+
         # TODO(PRESTON): Super hacky. see if we can just build in native support for dictionaries instead
-        if isinstance(predictions_df, dict):
-            predictions_df = pd.DataFrame(predictions_df)
+        # if isinstance(predictions_df, dict):
+        #     predictions_df = pd.DataFrame(predictions_df)
         summarized_predictions = []
 
         # Building in support for multi-class problems
         # Each row represents a single row that we want to get a prediction for
         # Each row is a list, with predicted probabilities from as many sub-estimators as we have trained
         # Each item in those subestimator lists represents the predicted probability of that class
-        for row_idx, row in predictions_df.iterrows():
-            row_results = {}
+        if isinstance(predictions_df, dict):
+            flattened_dict = []
+            for k, v in predictions_df.items():
+                flattened_dict.append(v)
 
-            if self.type_of_estimator == 'classifier':
-                # TODO(PRESTON): This is erroring out when we use 'ml' as our ensemble method
-                # TypeError: object of type 'numpy.float64' has no len()
-                num_classes = len(row[0])
-                for class_prediction_idx in range(num_classes):
-                    class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
+            summarized_predictions.append(self.process_one_row(flattened_dict))
 
-                    class_summarized_predictions = self.get_summary_stats_from_row(class_preds, prefix='subpredictor_class=' + str(class_prediction_idx))
-                    row_results.update(class_summarized_predictions)
-            else:
-                row_summarized = self.get_summary_stats_from_row(row, prefix='subpredictors_')
-                row_results.update(row_summarized)
+        else:
+            for row_idx, row in predictions_df.iterrows():
 
-            summarized_predictions.append(row_results)
+                row_results = self.process_one_row(row)
+                summarized_predictions.append(row_results)
 
         results_df = pd.DataFrame(summarized_predictions)
         return results_df
 
+    def process_one_row(self, row):
+        row_results = {}
+
+        if self.type_of_estimator == 'classifier':
+            # TODO(PRESTON): This is erroring out when we use 'ml' as our ensemble method
+            # TypeError: object of type 'numpy.float64' has no len()
+            num_classes = len(row[0])
+            for class_prediction_idx in range(num_classes):
+                class_preds = [estimator_prediction[class_prediction_idx] for estimator_prediction in row]
+
+                class_summarized_predictions = self.get_summary_stats_from_row(class_preds, prefix='subpredictor_class=' + str(class_prediction_idx))
+                row_results.update(class_summarized_predictions)
+        else:
+            row_summarized = self.get_summary_stats_from_row(row, prefix='subpredictors_')
+            row_results.update(row_summarized)
+
+        return row_results
 
     def get_summary_stats_from_row(self, row, prefix=''):
         results = {}
@@ -172,6 +193,7 @@ class Ensemble(object):
         if isinstance(df, dict):
             # predictions_df is just a dictionary where all the values are the predicted values from one of our subpredictors. we'll want that as a list
             predicted_vals = predictions_df.values()
+            # NOTE: this only works for binary classification at the moment
             predicted_vals = [pred[1] for pred in predicted_vals]
             if self.method == 'median':
                 return np.median(predicted_vals)
@@ -232,9 +254,10 @@ class Ensemble(object):
 
 class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
 
-    def __init__(self, ensembler, type_of_estimator):
+    def __init__(self, ensembler, type_of_estimator, include_original_X=False):
         self.ensembler = ensembler
         self.type_of_estimator = type_of_estimator
+        self.include_original_X = include_original_X
 
 
     def fit(self, X, y=None):
@@ -243,14 +266,35 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
     def transform(self, X, y=None):
         predictions = self.ensembler.get_all_predictions(X)
 
+        # print('predictions inside AddEnsembledPredictions.predict() when using ML to ensemble together:')
+        # print(predictions)
+
         summarized_predictions = self.ensembler.get_summary_stats(predictions)
+        # print('summarized_predictions inside AddEnsembledPredictions.predict() when using ML to ensemble together:')
+        # print(summarized_predictions)
+
+        # print('summarized_predictions inside AddEnsembledPredictions')
+        # print(summarized_predictions)
 
         # If this is a classifier, the predictions from each estimator will be an array of predicted probabilities.
         # We will need to unpack that list
+        # print('predictions')
+        # print(predictions)
         if self.type_of_estimator == 'classifier':
+
             flattened_predictions_dfs = []
             for col in predictions:
-                flattened_df = pd.DataFrame(predictions[col].tolist())
+                # print('col in predictions inside AddEnsembledPredictions')
+                # print(col)
+
+                # each column of values in predictions is a list, containing predicted probabilities for each label (two labels for binary classification, more labelse for multi-label classification)
+                if isinstance(predictions, dict):
+                    flattened_df = pd.DataFrame(predictions[col])
+                else:
+                    flattened_df = pd.DataFrame(predictions[col].tolist())
+                # So this flattened_df is now a df where each column represents the predicted probabilities for one of those classes, for this given subpredictor
+
+
                 col_names = []
                 for col_num in flattened_df:
                     col_names.append('subpredictor_' + str(col) + '_class=' + str(col_num))
@@ -263,10 +307,23 @@ class AddEnsembledPredictions(BaseEstimator, TransformerMixin):
 
                 flattened_predictions_dfs.append(flattened_df)
 
+            # predictions is now a DataFrame where each column holds the positive label probabilities from one of our classifiers
+            # Collectively, predictions holds the probabilities of the positive case for all of our classifiers
             predictions = pd.concat(flattened_predictions_dfs, axis=1)
 
-        X = X.reset_index(drop=True)
-        # X = pd.concat([X, predictions, summarized_predictions], axis=1)
-        X = pd.concat([predictions, summarized_predictions], axis=1)
+        if isinstance(X, dict):
+            X = pd.DataFrame(X, index=[0])
+
+
+        # Either only include predicted vals, or include predictions along with all the original features of X
+        if self.include_original_X is True:
+            X = X.reset_index(drop=True)
+            X = pd.concat([X, predictions, summarized_predictions], axis=1)
+        else:
+            X = pd.concat([predictions, summarized_predictions], axis=1)
+
+
+
+        # print('X at the end of AddEnsembledPredictions')
 
         return X

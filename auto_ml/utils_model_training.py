@@ -118,7 +118,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         except TypeError as e:
             if scipy.sparse.issparse(X):
                 X = X.todense()
-            predictions = self.model.predict(X)
+            predictions = self.model.predict_proba(X)
 
         # If this model does not have predict_proba, and we have fallen back on predict, we want to make sure we give results back in the same format the user would expect for predict_proba, namely each prediction is a list of predicted probabilities for each class.
         # Note that this DOES NOT WORK for multi-label problems, or problems that are not reduced to 0,1
