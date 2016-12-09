@@ -67,7 +67,7 @@ def calculate_brier_score_loss(actuals, probas):
     return -1 * brier_score_loss(actuals, probas)
 
 
-def make_titanic_ensemble(df_titanic_train):
+def make_titanic_ensemble(df_titanic_train, method='median'):
     column_descriptions = {
         'survived': 'output'
         , 'embarked': 'categorical'
@@ -126,7 +126,7 @@ def make_titanic_ensemble(df_titanic_train):
         }
     ]
 
-    ml_predictor.train_ensemble(data=df_titanic_train, ensemble_training_list=ensemble_list)
+    ml_predictor.train_ensemble(data=df_titanic_train, ensemble_training_list=ensemble_list, ensemble_method=method)
 
     return ml_predictor
 
