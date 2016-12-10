@@ -339,7 +339,7 @@ class Predictor(object):
 
     def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2, include_original_X=True):
 
-        if y_test != None:
+        if y_test is not None:
             y_test = list(y_test)
         self.ensemble_predictors = []
 
@@ -380,7 +380,7 @@ class Predictor(object):
             print('\n\n************************')
             print('Training a new subpredictor for the ensemble!')
             name = training_params.pop('name')
-            print('The name you gave for this ensemble is:')
+            print('The name you gave for this estimator is:')
             print(name)
             print('\n\n')
             type_of_estimator = training_params.pop('type_of_estimator')
@@ -422,11 +422,6 @@ class Predictor(object):
         trained_ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list, chunksize=100)
         trained_ensemble_predictors = list(trained_ensemble_predictors)
 
-        for predictor in trained_ensemble_predictors:
-            trained_pipeline = predictor.trained_pipeline
-            # trained_pipeline.named_steps['final_model']['name'] = predictor.name
-            self.ensemble_predictors.append(trained_pipeline)
-
         # self.ensemble_predictors = [predictor.trained_pipeline for predictor in self.ensemble_predictors]
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
@@ -442,7 +437,12 @@ class Predictor(object):
             print('Scoring each of the trained subpredictors on the holdout data')
 
             def score_predictor(predictor, X_test, y_test):
-                print(predictor.name)
+                try:
+                    print(predictor.name)
+                except AttributeError:
+                    pass
+
+
                 predictor.score(X_test, y_test)
 
             pool = pathos.multiprocessing.ProcessPool()
@@ -452,13 +452,20 @@ class Predictor(object):
                 pool.restart()
             except AssertionError as e:
                 pass
-            pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors, chunksize=100)
+            pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), trained_ensemble_predictors, chunksize=100)
+            # pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors, chunksize=100)
             # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
             pool.close()
             try:
                 pool.join()
             except AssertionError:
                 pass
+
+        # Now that we've handled scoring (for which we will want the full ml_predictor objects with name and advanced_scoring, etc.), only grab the trained pipelines, which are much, much smaller objects
+        for predictor in trained_ensemble_predictors:
+            trained_pipeline = predictor.trained_pipeline
+            # trained_pipeline.named_steps['final_model']['name'] = predictor.name
+            self.ensemble_predictors.append(trained_pipeline)
 
         # ################################
         # Ensemble together our trained subpredictors, either using simple averaging, or training a new machine learning model to pick from amongst them
@@ -976,11 +983,11 @@ class Predictor(object):
             dill.dump(self.trained_pipeline, open_file_name)
 
         if verbose:
-            print('\n\nWe have saved the trained pipeline to a filed called "auto_ml_saved_pipeline.dill"')
+            print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
             print('It is saved in the directory: ')
             print(os.getcwd())
             print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
-            print('`with open("auto_ml_saved_pipeline.dill", "rb") as read_file:`')
+            print('`with open("' + file_name + '", "rb") as read_file:`')
             print('`    trained_ml_pipeline = dill.load(read_file)`')
             print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
 

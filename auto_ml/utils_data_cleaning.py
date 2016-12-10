@@ -125,9 +125,33 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     pass
 
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
+                    # Make sure this isn't actually a date column, and if it is, give the user good information on how to fix this
+                    is_unmarked_date_col = False
+                    try:
+                        pd.to_datetime(X[key])
+                        is_unmarked_date_col = True
+                    except:
+                        pass
                     # For all of our numerical columns, try to turn all of these values into floats
                     # This function handles commas inside strings that represent numbers, and returns nan if we cannot turn this value into a float. nans are ignored in DataFrameVectorizer
-                    X[key] = X[key].apply(clean_val_nan_version)
+                    try:
+                        X[key] = X[key].apply(clean_val_nan_version)
+                    except TypeError as e:
+                        if is_unmarked_date_col == True:
+                            print('\n\n\n')
+                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                            print('We have found a column that is not marked as a "date" column, but can be converted to dates.')
+                            print('The name of this column is:\n')
+                            print(key)
+                            print('\nThis column causes errors when we try to parse it as a numerical column.')
+                            print('If it is in fact a date column, please add this to the column_descriptions hash:')
+                            print('{' + key + ': date}')
+                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n')
+                        raise(e)
+
+
 
                 elif col_desc == 'date':
                     X = add_date_features_df(X, key)
