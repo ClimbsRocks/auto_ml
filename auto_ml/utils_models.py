@@ -55,8 +55,8 @@ def get_model_from_name(model_name):
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
     }
     if xgb_installed:
-        model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, max_depth=1, subsample=1.0, learning_rate=0.1, n_estimators=100)
-        model_map['XGBRegressor'] = xgb.XGBRegressor()
+        model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, max_depth=1, subsample=1.0, learning_rate=0.1, n_estimators=100, nthread=-1)
+        model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1)
 
     return model_map[model_name]
 

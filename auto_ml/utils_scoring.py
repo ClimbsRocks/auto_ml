@@ -2,7 +2,7 @@ from collections import OrderedDict
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 
 import math
-from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score
+from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
 
 def advanced_scoring_classifiers(probas, actuals, name=None):
@@ -143,44 +143,94 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
     print('')
     print('\n***********************************************\n\n')
 
+def rmse_func(y, predictions):
+    return mean_squared_error(y, predictions)**0.5
 
 
-def rmse_scoring(estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None, scoring='rmse'):
-    if isinstance(estimator, GradientBoostingRegressor):
-        X = X.toarray()
-    predictions = estimator.predict(X)
-    if took_log_of_y:
-        for idx, val in enumerate(predictions):
-            predictions[idx] = math.exp(val)
-
-    if scoring == 'rmse':
-        score = mean_squared_error(y, predictions)**0.5
-    elif scoring == 'median_absolute_error':
-        score = median_absolute_error(y, predictions)
-    if advanced_scoring == True:
-        if hasattr(estimator, 'name'):
-            print(estimator.name)
-        advanced_scoring_regressors(predictions, y, verbose=verbose, name=name)
-    return - 1 * score
+scoring_name_function_map = {
+    'rmse': rmse_func
+    , 'median_absolute_error': median_absolute_error
+    , 'r2': r2_score
+    , 'r-squared': r2_score
+    , 'mean_absolute_error': mean_absolute_error
+    , 'accuracy': accuracy_score
+    , 'log_loss': log_loss
+    , 'roc_auc': roc_auc_score
+    , 'brier_score_loss': brier_score_loss
+}
 
 
-def brier_score_loss_wrapper(estimator, X, y, advanced_scoring=False):
-    if isinstance(estimator, GradientBoostingClassifier):
-        X = X.toarray()
-    clean_ys = []
-    # try:
-    for val in y:
-        val = int(val)
-        clean_ys.append(val)
-    y = clean_ys
-    # except:
-    #     pass
-    predictions = estimator.predict_proba(X)
+class RegressionScorer(object):
 
-    probas = [row[1] for row in predictions]
-    score = brier_score_loss(y, probas)
-    if advanced_scoring:
-        return (-1 * score, probas)
-    else:
-        return -1 * score
+    def __init__(self, scoring_method=None):
 
+        if scoring_method is None:
+            scoring_method = 'rmse'
+
+        self.scoring_method = scoring_method
+
+        if callable(scoring_method):
+            self.scoring_func = scoring_method
+        else:
+            self.scoring_func = scoring_name_function_map[scoring_method]
+
+
+    def score(self, estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
+        if isinstance(estimator, GradientBoostingRegressor):
+            X = X.toarray()
+
+        predictions = estimator.predict(X)
+
+        if took_log_of_y:
+            for idx, val in enumerate(predictions):
+                predictions[idx] = math.exp(val)
+
+        score = self.scoring_func(y, predictions)
+        # if scoring == 'rmse':
+        #     score = mean_squared_error(y, predictions)**0.5
+        # elif scoring == 'median_absolute_error':
+        #     score = median_absolute_error(y, predictions)
+
+        if advanced_scoring == True:
+            if hasattr(estimator, 'name'):
+                print(estimator.name)
+            advanced_scoring_regressors(predictions, y, verbose=verbose, name=name)
+        return - 1 * score
+
+
+class ClassificationScorer(object):
+
+    def __init__(self, scoring_method=None):
+
+        if scoring_method is None:
+            scoring_method = 'brier_score_loss'
+
+
+        if callable(scoring_method):
+            self.scoring_func = scoring_method
+        else:
+            self.scoring_func = scoring_name_function_map[scoring_method]
+
+
+    def score(self, estimator, X, y, advanced_scoring=False):
+        if isinstance(estimator, GradientBoostingClassifier):
+            X = X.toarray()
+        clean_ys = []
+        # try:
+        for val in y:
+            val = int(val)
+            clean_ys.append(val)
+        y = clean_ys
+        # except:
+        #     pass
+        predictions = estimator.predict_proba(X)
+
+        probas = [row[1] for row in predictions]
+        # score = brier_score_loss(y, probas)
+
+        score = self.scoring_func(y, probas)
+
+        if advanced_scoring:
+            return (-1 * score, probas)
+        else:
+            return -1 * score

@@ -337,7 +337,9 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2, include_original_X=True):
+    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2, include_original_X=True, scoring=None):
+
+        self.scoring = scoring
 
         if y_test is not None:
             y_test = list(y_test)
@@ -347,16 +349,18 @@ class Predictor(object):
         self.ml_for_analytics = True
 
         if self.type_of_estimator == 'classifier':
-            scoring = utils_scoring.brier_score_loss_wrapper
+            scoring = utils_scoring.ClassificationScorer(self.scoring)
             self._scorer = scoring
         else:
-            scoring = utils_scoring.rmse_scoring
+            scoring = utils_scoring.RegressionScorer(self.scoring)
             self._scorer = scoring
 
         # Make it optional for the person to pass in type_of_estimator
         for training_params in ensemble_training_list:
             if training_params.get('type_of_estimator', None) is None:
                 training_params['type_of_estimator'] = self.type_of_estimator
+            if training_params.get('scoring', None) is None:
+                training_params['scoring'] = self.scoring
 
         # ################################
         # If we're using machine learning to assemble our final ensemble, and we don't have data for it from the user, split out data here
@@ -490,7 +494,7 @@ class Predictor(object):
                 if xgb_installed:
                     model_names.append('XGBClassifier')
                 # model_names = ['LogisticRegression']
-            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names, _include_original_X=include_original_X)
+            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names, _include_original_X=include_original_X, scoring=self.scoring)
 
 
             # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
@@ -512,7 +516,7 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -530,6 +534,7 @@ class Predictor(object):
         self.perform_feature_scaling = perform_feature_scaling
         self.ensembler = ensembler
         self.calibrate_final_model = calibrate_final_model
+        self.scoring = scoring
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -568,18 +573,19 @@ class Predictor(object):
         else:
             estimator_names = self._get_estimator_names()
 
+
         if self.type_of_estimator == 'classifier':
             if len(set(y)) > 2:
                 scoring = accuracy_score
             else:
-                scoring = utils_scoring.brier_score_loss_wrapper
+                scoring = utils_scoring.ClassificationScorer(self.scoring)
             self._scorer = scoring
         else:
-            scoring = utils_scoring.rmse_scoring
+            scoring = utils_scoring.RegressionScorer(self.scoring)
             self._scorer = scoring
 
 
-        self.perform_grid_search_by_model_names(estimator_names, scoring, X_df, y)
+        self.perform_grid_search_by_model_names(estimator_names, self._scorer, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
         # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
@@ -610,6 +616,9 @@ class Predictor(object):
 
         # Calibrate the probability predictions from our final model
         if self.calibrate_final_model is True and X_test is not None and y_test is not None:
+            print('Now calibrating the final model so the probability predictions line up with the observed probabilities in the X_test and y_test datasets you passed in.')
+            print('Note: the validation scores printed above are truly validation scores: they were scored before the model was calibrated to this data.')
+            print('However, now that we are calibrating on the X_test and y_test data you gave us, it is no longer accurate to call this data validation data, since the model is being calibrated to it. As such, you must now report a validation score on a different dataset, or report the validation score used above before the model was calibrated to X_test and y_test. ')
 
             trained_model = self.trained_pipeline.named_steps['final_model'].model
 
@@ -701,7 +710,7 @@ class Predictor(object):
                     # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                     # Set the score on this partition to some very negative number, so that we do not choose this estimator.
                     error_score=-1000000000,
-                    scoring=scoring,
+                    scoring=scoring.score,
                     # ,pre_dispatch='1*n_jobs'
                 )
 
@@ -962,18 +971,19 @@ class Predictor(object):
 
         if self._scorer is not None:
             if self.type_of_estimator == 'regressor':
-                return self._scorer(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring, verbose=verbose, name=self.name)
+                return self._scorer.score(self.trained_pipeline, X_test, y_test, self.took_log_of_y, advanced_scoring=advanced_scoring, verbose=verbose, name=self.name)
 
             elif self.type_of_estimator == 'classifier':
+                # TODO: can probably refactor accuracy score now that we've turned scoring into it's own class
                 if self._scorer == accuracy_score:
                     predictions = self.trained_pipeline.predict(X_test)
-                    return self._scorer(y_test, predictions)
+                    return self._scorer.score(y_test, predictions)
                 elif advanced_scoring:
-                    score, probas = self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
+                    score, probas = self._scorer.score(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
                     utils_scoring.advanced_scoring_classifiers(probas, y_test, name=self.name)
                     return score
                 else:
-                    return self._scorer(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
+                    return self._scorer.score(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
         else:
             return self.trained_pipeline.score(X_test, y_test)
 

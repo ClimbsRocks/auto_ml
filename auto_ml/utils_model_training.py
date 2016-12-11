@@ -1,10 +1,10 @@
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 try:
-    from auto_ml.utils_scoring import brier_score_loss_wrapper, rmse_scoring
+    from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
     from auto_ml.utils_models import get_model_from_name, get_name_from_model
 except ImportError:
-    from ..auto_ml.utils_scoring import brier_score_loss_wrapper, rmse_scoring
+    from ..auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
     from ..auto_ml.utils_models import get_model_from_name, get_name_from_model
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
@@ -30,9 +30,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
         if self.type_of_estimator == 'classifier':
-            self._scorer = brier_score_loss_wrapper
+            self._scorer = ClassificationScorer()
         else:
-            self._scorer = rmse_scoring
+            self._scorer = RegressionScorer()
 
 
     def fit(self, X, y):
@@ -84,9 +84,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if self._scorer is not None:
             if self.type_of_estimator == 'regressor':
-                return self._scorer(self, X, y)
+                return self._scorer.score(self, X, y)
             elif self.type_of_estimator == 'classifier':
-                return self._scorer(self, X, y)
+                return self._scorer.score(self, X, y)
 
 
         else:
