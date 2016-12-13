@@ -24,6 +24,19 @@ def test_binary_classification():
 
 
 
+# def test_multilabel_classification():
+#     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+#     ml_predictor = utils.train_basic_multilabel_classifier(df_twitter_train)
+
+#     test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment, verbose=0)
+#     # Right now we're getting a score of -.205
+#     # Make sure our score is good, but not unreasonably good
+#     print('test_score')
+#     print(test_score)
+#     assert 0.67 < test_score < 0.75
+
+
+
 
 def test_regression():
     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
