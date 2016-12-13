@@ -20,7 +20,7 @@ except ImportError:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None):
 
         self.model = model
         self.model_name = model_name
@@ -30,9 +30,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
         if self.type_of_estimator == 'classifier':
-            self._scorer = ClassificationScorer()
+            self._scorer = scoring_method
         else:
-            self._scorer = RegressionScorer()
+            self._scorer = scoring_method
 
 
     def fit(self, X, y):

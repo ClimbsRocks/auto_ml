@@ -177,7 +177,7 @@ class Predictor(object):
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer)))
             # final_model = utils_models.get_model_from_name(model_name)
             # pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
 
@@ -575,8 +575,8 @@ class Predictor(object):
 
 
         if self.type_of_estimator == 'classifier':
-            if len(set(y)) > 2:
-                scoring = accuracy_score
+            if len(set(y)) > 2 and self.scoring is None:
+                self.scoring = 'accuracy_score'
             else:
                 scoring = utils_scoring.ClassificationScorer(self.scoring)
             self._scorer = scoring
