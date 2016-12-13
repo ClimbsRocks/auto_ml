@@ -1,8 +1,12 @@
-import pandas as pd
 import datetime
-from sklearn.base import BaseEstimator, TransformerMixin
 import dateutil
+
+import pandas as pd
+from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import TfidfVectorizer
+
+import warnings
+
 
 
 # The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
@@ -147,6 +151,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                             print('\nThis column causes errors when we try to parse it as a numerical column.')
                             print('If it is in fact a date column, please add this to the column_descriptions hash:')
                             print('{' + key + ': date}')
+                            warnings.warn('UnmarkedDateColumn: Please mark the ' + key + ' column as being a date column in your column_descriptions dictionary.')
                             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n')
                         raise(e)
