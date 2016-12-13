@@ -11,6 +11,13 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
     print('It is a measure of how close the PROBABILITY predictions are.')
     if name != None:
         print(name)
+
+    # Sometimes we will be given "flattened" probabilities (only the probability of our positive label), while other times we might be given "nested" probabilities (probabilities of both positive and negative, in a list, for each item).
+    try:
+        probas = [proba[1] for proba in probas]
+    except:
+        pass
+
     print(brier_score_loss(actuals, probas))
 
     print('\nHere is the trained estimator\'s overall accuracy (when it predicts a label, how frequently is that the correct label?)')
@@ -174,6 +181,8 @@ class RegressionScorer(object):
         else:
             self.scoring_func = scoring_name_function_map[scoring_method]
 
+        self.scoring_method = scoring_method
+
 
     def score(self, estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
         if isinstance(estimator, GradientBoostingRegressor):
@@ -205,32 +214,35 @@ class ClassificationScorer(object):
         if scoring_method is None:
             scoring_method = 'brier_score_loss'
 
-
         if callable(scoring_method):
             self.scoring_func = scoring_method
         else:
             self.scoring_func = scoring_name_function_map[scoring_method]
 
+        self.scoring_method = scoring_method
+
 
     def score(self, estimator, X, y, advanced_scoring=False):
         if isinstance(estimator, GradientBoostingClassifier):
             X = X.toarray()
-        clean_ys = []
-        # try:
-        for val in y:
-            val = int(val)
-            clean_ys.append(val)
-        y = clean_ys
+        # clean_ys = []
+        # # try:
+        # for val in y:
+        #     val = int(val)
+        #     clean_ys.append(val)
+        # y = clean_ys
         # except:
         #     pass
         predictions = estimator.predict_proba(X)
 
-        probas = [row[1] for row in predictions]
+        if self.scoring_method == 'brier_score_loss':
+            probas = [row[1] for row in predictions]
+            predictions = probas
         # score = brier_score_loss(y, probas)
 
-        score = self.scoring_func(y, probas)
+        score = self.scoring_func(y, predictions)
 
         if advanced_scoring:
-            return (-1 * score, probas)
+            return (-1 * score, predictions)
         else:
             return -1 * score
