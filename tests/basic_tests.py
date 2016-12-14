@@ -7,13 +7,18 @@ import os
 import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 
+from auto_ml import Predictor
+
 from nose.tools import assert_equal, assert_not_equal, with_setup
 
 import dill
-
+import numpy as np
 import utils_testing as utils
 
 def test_binary_classification():
+    np.random.seed(0)
+
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
 
@@ -24,21 +29,50 @@ def test_binary_classification():
 
 
 
-# def test_multilabel_classification():
-#     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
-#     ml_predictor = utils.train_basic_multilabel_classifier(df_twitter_train)
+def test_multilabel_classification():
+    np.random.seed(0)
 
-#     test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment, verbose=0)
-#     # Right now we're getting a score of -.205
-#     # Make sure our score is good, but not unreasonably good
-#     print('test_score')
-#     print(test_score)
-#     assert 0.67 < test_score < 0.75
+    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+    ml_predictor = utils.train_basic_multilabel_classifier(df_twitter_train)
+
+    test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment, verbose=0)
+    # Right now we're getting a score of -.205
+    # Make sure our score is good, but not unreasonably good
+    print('test_score')
+    print(test_score)
+    assert 0.67 < test_score < 0.75
+
+
+def test_nlp_multilabel_classification():
+    np.random.seed(0)
+
+    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+
+    column_descriptions = {
+        'airline_sentiment': 'output'
+        , 'airline': 'categorical'
+        , 'text': 'nlp'
+        , 'tweet_location': 'categorical'
+        , 'user_timezone': 'categorical'
+        , 'tweet_created': 'date'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+    ml_predictor.train(df_twitter_train)
+
+    test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment, verbose=0)
+    # Right now we're getting a score of -.205
+    # Make sure our score is good, but not unreasonably good
+    print('test_score')
+    print(test_score)
+    assert 0.67 < test_score < 0.75
 
 
 
 
 def test_regression():
+    np.random.seed(0)
+
     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
     ml_predictor = utils.train_basic_regressor(df_boston_train)
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV, verbose=0)
@@ -49,6 +83,8 @@ def test_regression():
 
 
 def test_saving_trained_pipeline_regression():
+    np.random.seed(0)
+
     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
     ml_predictor = utils.train_basic_regressor(df_boston_train)
     file_name = ml_predictor.save()
@@ -62,6 +98,8 @@ def test_saving_trained_pipeline_regression():
 
 
 def test_saving_trained_pipeline_binary_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
     file_name = ml_predictor.save()
@@ -74,6 +112,8 @@ def test_saving_trained_pipeline_binary_classification():
     assert -0.215 < test_score < -0.17
 
 def test_getting_single_predictions_regression():
+    np.random.seed(0)
+
     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
     ml_predictor = utils.train_basic_regressor(df_boston_train)
     file_name = ml_predictor.save()
@@ -131,6 +171,8 @@ def test_getting_single_predictions_regression():
 
 
 def test_getting_single_predictions_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
     file_name = ml_predictor.save()
