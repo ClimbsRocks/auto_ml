@@ -83,7 +83,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         for key in X_df.columns:
             # col_desc = self.column_descriptions.get(key, False)
             if key in self.text_columns:
-                    self.text_columns[key].fit(X_df[key].astype(str))
+                    self.text_columns[key].fit(X_df[key].values.astype(str))
 
         return self
 
@@ -174,7 +174,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                     col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
 
-                    nlp_matrix = self.text_columns[key].transform(X[key].values)
+                    nlp_matrix = self.text_columns[key].transform(X[key].values.astype(str))
                     nlp_matrix = nlp_matrix.toarray()
 
                     text_df = pd.DataFrame(nlp_matrix)
