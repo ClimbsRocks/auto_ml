@@ -40,7 +40,7 @@ def test_multilabel_classification():
     # Make sure our score is good, but not unreasonably good
     print('test_score')
     print(test_score)
-    assert 0.67 < test_score < 0.75
+    assert 0.67 < test_score < 0.79
 
 
 def test_nlp_multilabel_classification():
