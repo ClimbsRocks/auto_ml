@@ -9,12 +9,15 @@ sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 
 import dill
 from nose.tools import assert_equal, assert_not_equal, with_setup
+import numpy as np
 from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
 
 
 def test_basic_ensemble_classifier():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.make_titanic_ensemble(df_titanic_train)
 
@@ -26,6 +29,8 @@ def test_basic_ensemble_classifier():
 
 
 def test_saving_basic_ensemble_classifier():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.make_titanic_ensemble(df_titanic_train)
 
@@ -50,6 +55,8 @@ def test_saving_basic_ensemble_classifier():
 
 
 def test_get_basic_ensemble_predictions_one_at_a_time_classifier():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.make_titanic_ensemble(df_titanic_train)
     file_name = ml_predictor.save()
@@ -108,44 +115,50 @@ def test_get_basic_ensemble_predictions_one_at_a_time_classifier():
 
 # All these tests hang on scikit-learn's GSCV multiprocessing bug
 
-# def test_ml_ensemble_classifier():
-#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-#     ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
+def test_ml_ensemble_classifier():
+    np.random.seed(0)
 
-#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived, verbose=0)
-#     # Very rough ensembles don't do as well on this problem as a standard GradientBoostingClassifier does
-#     # Right now we're getting a score of -.22
-#     # Make sure our score is good, but not unreasonably good
-#     print('test_score')
-#     print(test_score)
-#     assert -0.225 < test_score < -0.17
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+    ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
 
-
-# def test_saving_ml_ensemble_classifier():
-#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-#     ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
-
-#     file_name = ml_predictor.save()
-
-#     with open(file_name, 'rb') as read_file:
-#         saved_ml_pipeline = dill.load(read_file)
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived, verbose=0)
+    # Very rough ensembles don't do as well on this problem as a standard GradientBoostingClassifier does
+    # Right now we're getting a score of -.22
+    # Make sure our score is good, but not unreasonably good
+    print('test_score')
+    print(test_score)
+    assert -0.225 < test_score < -0.17
 
 
-#     probas = saved_ml_pipeline.predict_proba(df_titanic_test)
-#     probas = [proba[1] for proba in probas]
-#     # print(probas)
+def test_saving_ml_ensemble_classifier():
+    np.random.seed(0)
 
-#     test_score = utils.calculate_brier_score_loss(df_titanic_test.survived, probas)
-#     print('test_score')
-#     print(test_score)
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+    ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
 
-#     # Very rough ensembles don't do as well on this problem as a standard GradientBoostingClassifier does
-#     # Right now we're getting a score of -.22
-#     # Make sure our score is good, but not unreasonably good
-#     assert -0.225 < test_score < -0.17
+    file_name = ml_predictor.save()
+
+    with open(file_name, 'rb') as read_file:
+        saved_ml_pipeline = dill.load(read_file)
+
+
+    probas = saved_ml_pipeline.predict_proba(df_titanic_test)
+    probas = [proba[1] for proba in probas]
+    # print(probas)
+
+    test_score = utils.calculate_brier_score_loss(df_titanic_test.survived, probas)
+    print('test_score')
+    print(test_score)
+
+    # Very rough ensembles don't do as well on this problem as a standard GradientBoostingClassifier does
+    # Right now we're getting a score of -.22
+    # Make sure our score is good, but not unreasonably good
+    assert -0.225 < test_score < -0.17
 
 
 # def test_get_ml_ensemble_predictions_one_at_a_time_classifier():
+#     np.random.seed(0)
+
 #     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 #     ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
 #     file_name = ml_predictor.save()
