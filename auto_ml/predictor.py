@@ -18,6 +18,7 @@ warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.options.mode.chained_assignment = None  # default='warn'
 
 # from sklearn.model_selection import
+import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
@@ -642,7 +643,16 @@ class Predictor(object):
 
             X_test = self.trained_transformer_pipeline.transform(X_test)
 
-            calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
+            try:
+                calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
+            except TypeError as e:
+                if scipy.sparse.issparse(X_test):
+                    X_test = X_test.toarray()
+
+                    calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
+                else:
+                    raise(e)
+
 
             # Now insert the calibrated model back into our final_model step
             self.trained_pipeline.named_steps['final_model'].model = calibrated_classifier
