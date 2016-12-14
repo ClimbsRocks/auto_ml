@@ -8,12 +8,15 @@ sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from auto_ml import Predictor
 
 import dill
+import numpy as np
 from nose.tools import assert_equal, assert_not_equal, with_setup
 from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
 
 def test_optimize_final_model_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -35,6 +38,8 @@ def test_optimize_final_model_classification():
 
 
 def test_perform_feature_selection_true_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -55,6 +60,8 @@ def test_perform_feature_selection_true_classification():
     assert -0.225 < test_score < -0.17
 
 def test_perform_feature_selection_false_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -76,6 +83,8 @@ def test_perform_feature_selection_false_classification():
 
 
 def test_perform_feature_scaling_true_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -96,6 +105,8 @@ def test_perform_feature_scaling_true_classification():
     assert -0.215 < test_score < -0.17
 
 def test_perform_feature_scaling_false_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -117,6 +128,8 @@ def test_perform_feature_scaling_false_classification():
 
 
 def test_optimize_entire_pipeline_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -138,6 +151,8 @@ def test_optimize_entire_pipeline_classification():
 
 
 def test_X_test_and_y_test_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -159,6 +174,8 @@ def test_X_test_and_y_test_classification():
 
 
 def test_compute_power_1_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -179,6 +196,8 @@ def test_compute_power_1_classification():
     assert -0.215 < test_score < -0.17
 
 def test_all_algos_classification():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -200,6 +219,8 @@ def test_all_algos_classification():
 
 # If the user passes in X_test and y_test, we will use those to determine the best model, rather than CV scores
 def test_select_from_multiple_classification_models_using_X_test_and_y_test():
+    np.random.seed(0)
+
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
@@ -222,6 +243,8 @@ def test_select_from_multiple_classification_models_using_X_test_and_y_test():
 
 # Right now this just takes forever to run. Will have to look into optimizing
 # def test_compute_power_10():
+    # np.random.seed(0)
+
 #     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
 #     # This test tries something like 2,000 different combinations of hyperparameters for the pipeline

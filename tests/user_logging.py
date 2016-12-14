@@ -7,9 +7,12 @@ sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 from auto_ml import Predictor
 
 import utils_testing as utils
+import numpy as np
 
 
 def test_unmarked_date_column():
+    np.random.seed(0)
+
     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
 
     column_descriptions = {
