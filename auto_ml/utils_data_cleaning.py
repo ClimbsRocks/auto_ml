@@ -83,7 +83,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         for key in X_df.columns:
             # col_desc = self.column_descriptions.get(key, False)
             if key in self.text_columns:
-                    self.text_columns[key].fit(X_df[key])
+                    self.text_columns[key].fit(X_df[key].astype(str))
 
         return self
 
