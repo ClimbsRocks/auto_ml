@@ -83,7 +83,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         for key in X_df.columns:
             # col_desc = self.column_descriptions.get(key, False)
             if key in self.text_columns:
-                    self.text_columns[key].fit(X_df[key].values.astype(str))
+                    self.text_columns[key].fit(X_df[key].values.astype(str, raise_on_error=False))
 
         return self
 
@@ -174,7 +174,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                     col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
 
-                    nlp_matrix = self.text_columns[key].transform(X[key].values.astype(str))
+                    nlp_matrix = self.text_columns[key].transform(X[key].values.astype(str, raise_on_error=False))
                     nlp_matrix = nlp_matrix.toarray()
 
                     text_df = pd.DataFrame(nlp_matrix)
@@ -228,8 +228,8 @@ def add_date_features_df(df, date_col):
     df.is_copy = False
 
     df[date_col] = pd.to_datetime(df[date_col])
-    df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int)
-    df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int)
+    df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, raise_on_error=False)
+    df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, raise_on_error=False)
 
     df[date_col + '_minutes_into_day'] = df[date_col].apply(lambda x: x.hour * 60 + x.minute)
 
