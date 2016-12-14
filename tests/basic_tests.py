@@ -61,11 +61,10 @@ def test_nlp_multilabel_classification():
     ml_predictor.train(df_twitter_train)
 
     test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment, verbose=0)
-    # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print('test_score')
     print(test_score)
-    assert 0.67 < test_score < 0.75
+    assert 0.67 < test_score < 0.79
 
 
 
