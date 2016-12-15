@@ -146,9 +146,6 @@ def get_twitter_sentiment_multilabel_classification_dataset():
 
         df_twitter.to_csv(file_name, index=False)
 
-    print('df_twitter.shape')
-    print(df_twitter.shape)
-    print(df_twitter.describe())
     # Grab only 10% of the dataset- runs much faster this way
     df_twitter = df_twitter.sample(frac=0.1)
 
