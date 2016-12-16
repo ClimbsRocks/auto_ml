@@ -10,7 +10,7 @@ install:
   - pip install --only-binary=numpy,scipy numpy scipy
   - pip install -r requirements.txt
 # Command to run tests
-script: nosetests -v --with-coverage --cover-package auto_ml tests
+script: nosetests -v --processes=2 --process-timeout=30 --with-coverage --cover-package auto_ml tests
 
 after_success:
   coveralls
