@@ -1,4 +1,6 @@
 from collections import OrderedDict
+import multiprocessing
+import pathos
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 
 import math
@@ -233,6 +235,7 @@ class ClassificationScorer(object):
         # y = clean_ys
         # except:
         #     pass
+
         predictions = estimator.predict_proba(X)
 
         if self.scoring_method == 'brier_score_loss':

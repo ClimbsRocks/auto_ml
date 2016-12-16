@@ -196,6 +196,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     print(key)
                     print('And here is the value for this column passed into column_descriptions:')
                     print(col_desc)
+                    warnings.warn('UnknownValueInColumnDescriptions: Please make sure all the values you pass into column_descriptions are valid.')
 
         # Historically we've deleted columns here. However, we're moving this to DataFrameVectorizer as part of a broader effort to reduce duplicate computation
         # if len(cols_to_drop) > 0:
