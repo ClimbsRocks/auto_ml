@@ -9,7 +9,7 @@ import numpy as np
 
 def advanced_scoring_classifiers(probas, actuals, name=None):
 
-    print('Here is our brier-score-loss, which is the value we optimized for while training, and is the value returned from .score()')
+    print('Here is our brier-score-loss, which is the default value we optimized for while training, and is the value returned from .score() unless you requested a custom scoring metric')
     print('It is a measure of how close the PROBABILITY predictions are.')
     if name != None:
         print(name)
@@ -20,7 +20,7 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
     except:
         pass
 
-    print(brier_score_loss(actuals, probas))
+    print(format(brier_score_loss(actuals, probas), '.4f'))
 
     print('\nHere is the trained estimator\'s overall accuracy (when it predicts a label, how frequently is that the correct label?)')
     predicted_labels = []
@@ -29,7 +29,7 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
             predicted_labels.append(1)
         else:
             predicted_labels.append(0)
-    print(accuracy_score(y_true=actuals, y_pred=predicted_labels))
+    print(format(accuracy_score(y_true=actuals, y_pred=predicted_labels) * 100, '.1f') + '%')
 
     print('Here is the accuracy of our trained estimator at each level of predicted probabilities')
 
@@ -163,6 +163,7 @@ scoring_name_function_map = {
     , 'r-squared': r2_score
     , 'mean_absolute_error': mean_absolute_error
     , 'accuracy': accuracy_score
+    , 'accuracy_score': accuracy_score
     , 'log_loss': log_loss
     , 'roc_auc': roc_auc_score
     , 'brier_score_loss': brier_score_loss
@@ -242,6 +243,9 @@ class ClassificationScorer(object):
             probas = [row[1] for row in predictions]
             predictions = probas
         # score = brier_score_loss(y, probas)
+
+        # if self.scoring_method in ['accuracy_score', 'accuracy']:
+        #     predictions = [1 if x[1] >= 0.5 else 0 for x in predictions]
 
         score = self.scoring_func(y, predictions)
 

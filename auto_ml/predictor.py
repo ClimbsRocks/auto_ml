@@ -766,6 +766,8 @@ class Predictor(object):
             else:
                 if self.verbose:
                     print('\n\n********************************************************************************************')
+                    if self.name is not None:
+                        print(self.name)
                     print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
                     print('Started at:')
                     start_time = datetime.datetime.now().replace(microsecond=0)
