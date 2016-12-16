@@ -1,5 +1,6 @@
 import datetime
 import math
+import multiprocessing
 import os
 import random
 import sys
@@ -116,7 +117,7 @@ class Predictor(object):
             elif value in expected_vals:
                 pass
             else:
-                raise ValueError('We are not sure how to process this column of data: ' + str(value) + '. Please pass in "output", "categorical", "ignore", or "date".')
+                raise ValueError('We are not sure how to process this column of data: ' + str(value) + '. Please pass in "output", "categorical", "ignore", "nlp", or "date".')
         if found_output_column is False:
             print('Here is the column_descriptions that was passed in:')
             print(self.column_descriptions)
@@ -211,7 +212,7 @@ class Predictor(object):
 
 
         # Only optimize our feature selection methods this deeply if the user really, really wants to. This is super computationally expensive.
-        if self.compute_power >= 9:
+        if self.compute_power >= 10:
             # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
             gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll', 'RFECV'] # , 'RandomizedSparse'
 
