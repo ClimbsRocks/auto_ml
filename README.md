@@ -5,7 +5,7 @@
 [![Documentation Status](http://readthedocs.org/projects/auto-ml/badge/?version=latest)](http://auto-ml.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/auto_ml.svg)](https://badge.fury.io/py/auto_ml)
 [![Coverage Status](https://coveralls.io/repos/github/ClimbsRocks/auto_ml/badge.svg?branch=master&cacheBuster=1)](https://coveralls.io/github/ClimbsRocks/auto_ml?branch=master)
-[![MIT License][license-badge]](https://github.com/ClimbsRocks/auto_ml/blob/master/LICENSE)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)]()
 <!-- Stars badge?! -->
 
 ## Installation
