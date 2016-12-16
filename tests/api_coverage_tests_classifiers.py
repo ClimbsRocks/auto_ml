@@ -10,6 +10,7 @@ from auto_ml import Predictor
 import dill
 import numpy as np
 from nose.tools import assert_equal, assert_not_equal, with_setup
+from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
@@ -264,6 +265,74 @@ def test_select_from_multiple_classification_models_using_X_test_and_y_test():
     print(test_score)
 
     assert -0.215 < test_score < -0.17
+
+
+def test_binary_classification_predict_on_Predictor_instance():
+    np.random.seed(0)
+
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+    ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
+
+    #
+    predictions = ml_predictor.predict(df_titanic_test)
+    test_score = accuracy_score(predictions, df_titanic_test.survived)
+    # Right now we're getting a score of -.205
+    # Make sure our score is good, but not unreasonably good
+    print(test_score)
+    assert .65 < test_score < .75
+
+
+
+def test_multilabel_classification_predict_on_Predictor_instance():
+    np.random.seed(0)
+
+    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+    ml_predictor = utils.train_basic_multilabel_classifier(df_twitter_train)
+
+    predictions = ml_predictor.predict(df_twitter_test)
+    test_score = accuracy_score(predictions, df_twitter_test.airline_sentiment)
+    # Right now we're getting a score of -.205
+    # Make sure our score is good, but not unreasonably good
+    print('test_score')
+    print(test_score)
+    assert 0.67 < test_score < 0.79
+
+
+def test_binary_classification_predict_proba_on_Predictor_instance():
+    np.random.seed(0)
+
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+    ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
+
+    #
+    predictions = ml_predictor.predict_proba(df_titanic_test)
+    predictions = [pred[1] for pred in predictions]
+    test_score = utils.calculate_brier_score_loss(df_titanic_test.survived, predictions)
+    # Right now we're getting a score of -.205
+    # Make sure our score is good, but not unreasonably good
+    print(test_score)
+    assert -0.215 < test_score < -0.17
+
+
+
+# I'm not sure what a reasonable value here would be
+# def test_multilabel_classification_predict_proba_on_Predictor_instance():
+#     np.random.seed(0)
+
+#     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+#     ml_predictor = utils.train_basic_multilabel_classifier(df_twitter_train)
+
+#     predictions = ml_predictor.predict_proba(df_twitter_test)
+#     test_score = accuracy_score(predictions, df_twitter_test.airline_sentiment)
+#     # Right now we're getting a score of -.205
+#     # Make sure our score is good, but not unreasonably good
+#     print('test_score')
+#     print(test_score)
+#     assert 0.67 < test_score < 0.79
+
+
 
 
 # Right now this just takes forever to run. Will have to look into optimizing
