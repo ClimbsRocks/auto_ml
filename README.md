@@ -4,7 +4,9 @@
 [![Build Status](https://travis-ci.org/ClimbsRocks/auto_ml.svg?branch=master)](https://travis-ci.org/ClimbsRocks/auto_ml)
 [![Documentation Status](http://readthedocs.org/projects/auto-ml/badge/?version=latest)](http://auto-ml.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/auto_ml.svg)](https://badge.fury.io/py/auto_ml)
-[![Coverage Status](https://coveralls.io/repos/github/ClimbsRocks/auto_ml/badge.svg?branch=master)](https://coveralls.io/github/ClimbsRocks/auto_ml?branch=master)
+[![Coverage Status](https://coveralls.io/repos/github/ClimbsRocks/auto_ml/badge.svg?branch=master&cacheBuster=1)](https://coveralls.io/github/ClimbsRocks/auto_ml?branch=master)
+[![MIT License][license-badge]](https://github.com/ClimbsRocks/auto_ml/blob/master/LICENSE)
+<!-- Stars badge?! -->
 
 ## Installation
 
@@ -87,19 +89,20 @@ Automates the whole machine learning process, making it super easy to use for bo
 A quick overview of buzzwords, this project automates:
 
 - Analytics (pass in data, and auto_ml will tell you the relationship of each variable to what it is you're trying to predict).
-- Feature Engineering (particularly around dates, and soon, NLP).
-- Robust Scaling (turning all values into their scaled versions between the range of 0 and 1, in a way that is robust to outliers, and works with sparse matrices).
+- Feature Engineering (particularly around dates, and NLP).
+- Robust Scaling (turning all values into their scaled versions between the range of 0 and 1, in a way that is robust to outliers, and works with sparse data).
 - Feature Selection (picking only the features that actually prove useful).
-- Data formatting (turning a DataFrame or a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems).
-- Model Selection (which model works best for your problem).
+- Data formatting (turning a DataFrame or a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems, etc).
+- Model Selection (which model works best for your problem- we try roughly a dozen apiece for classification and regression problems, including favorites like XGBoost if it's installed on your machine).
 - Hyperparameter Optimization (what hyperparameters work best for that model).
-- Ensembling Subpredictors (automatically training up models to predict smaller problems within the meta problem).
-- Ensembling Weak Estimators (automatically training up weak models on the larger problem itself, to inform the meta-estimator's decision).
-- Big Data (feed it lots of data).
+- Ensembling (Train up a bunch of different estimators, then train a final estimator to intelligently aggregate them together. Also useful if you're just trying to compare many different models and see what works best.)
+- Big Data (feed it lots of data- it's fairly efficient with resources).
 - Unicorns (you could conceivably train it to predict what is a unicorn and what is not).
 - Ice Cream (mmm, tasty...).
 - Hugs (this makes it much easier to do your job, hopefully leaving you more time to hug those those you care about).
 
+
+<!--
 
 #### Passing in your own feature engineering function
 
@@ -111,3 +114,13 @@ The advantage of including it in the pipeline is that it will then be applied to
 
 Limitations:
 You cannot alter the length or ordering of the X dataset, since you will not have a chance to modify the y dataset. If you want to perform filtering, perform it before you pass in the data to train on.
+
+ -->
+
+
+### Running the tests
+
+If you've cloned the source code and are making any changes (highly encouraged!), or just want to make sure everything works in your environment, run
+`nosetests -v tests`.
+
+The tests are pretty comprehensive, though as with everything with auto_ml, I happily welcome your contributions here!
