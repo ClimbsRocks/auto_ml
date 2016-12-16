@@ -10,6 +10,7 @@ sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 import dill
 from nose.tools import assert_equal, assert_not_equal, with_setup
 import numpy as np
+import random
 from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
@@ -34,10 +35,11 @@ def test_saving_basic_ensemble_classifier():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.make_titanic_ensemble(df_titanic_train)
 
-    file_name = ml_predictor.save()
+    file_name = ml_predictor.save(str(random.random()))
 
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
+    os.remove(file_name)
 
 
     probas = saved_ml_pipeline.predict_proba(df_titanic_test)
@@ -59,10 +61,11 @@ def test_get_basic_ensemble_predictions_one_at_a_time_classifier():
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.make_titanic_ensemble(df_titanic_train)
-    file_name = ml_predictor.save()
+    file_name = ml_predictor.save(str(random.random()))
 
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
+    os.remove(file_name)
 
     df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
 
@@ -136,10 +139,11 @@ def test_saving_ml_ensemble_classifier():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
 
-    file_name = ml_predictor.save()
+    file_name = ml_predictor.save(str(random.random()))
 
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
+    os.remove(file_name)
 
 
     probas = saved_ml_pipeline.predict_proba(df_titanic_test)
@@ -161,10 +165,11 @@ def test_saving_ml_ensemble_classifier():
 
 #     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 #     ml_predictor = utils.make_titanic_ensemble(df_titanic_train, method='ml')
-#     file_name = ml_predictor.save()
+#     file_name = ml_predictor.save(str(random.random()))
 
 #     with open(file_name, 'rb') as read_file:
 #         saved_ml_pipeline = dill.load(read_file)
+    # os.remove(file_name)
 
 #     df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
 
