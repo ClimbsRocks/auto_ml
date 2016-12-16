@@ -195,6 +195,30 @@ def test_compute_power_1_regression():
 
     assert -3.2 < test_score < -2.8
 
+
+# This test passes, but takes a long time to run. deprecating it for now until we rethink what we really want compute_power to accomplish
+# def test_compute_power_9_regression():
+#     np.random.seed(0)
+
+#     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+#     column_descriptions = {
+#         'MEDV': 'output'
+#         , 'CHAS': 'categorical'
+#     }
+
+#     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+#     ml_predictor.train(df_boston_train, compute_power=9)
+
+#     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+#     print('test_score')
+#     print(test_score)
+
+#     assert -3.2 < test_score < -2.8
+
+
 def test_all_algos_regression():
     # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
     np.random.seed(0)
