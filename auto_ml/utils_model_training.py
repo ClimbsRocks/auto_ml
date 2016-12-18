@@ -97,22 +97,31 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         # If the user passed in categorical features, we will effectively one-hot-encode them ourselves here
         # Note that this assumes we're using the "=" as the separater in DictVectorizer/DataFrameVectorizer
         date_col_names = []
+        categorical_col_names = []
         for key, value in self.column_descriptions.items():
             if value == 'categorical' and 'day_part' not in key:
                 try:
                     # This covers the case that the user passes in a value in column_descriptions that is not present in their prediction data
                     column_vals = X[key].unique()
                     for val in column_vals:
-                        prediction_features.add(key + '=' + val)
+                        prediction_features.add(key + '=' + str(val))
+
+                    categorical_col_names.append(key)
                 except:
                     print('\nFound a column in your column_descriptions that is not present in your prediction data:')
                     print(key)
-                    pass
+
             elif 'day_part' in key:
                 # We have found a date column. Make sure this date column is in our prediction data
                 # It is outside the scope of this function to make sure that the same date parts are available in both our training and testing data
                 raw_date_col_name = key[:key.index('day_part') - 1]
                 date_col_names.append(raw_date_col_name)
+
+            elif value == 'output':
+                prediction_features.remove(key)
+
+        # Now that we've added in all the one-hot-encoded categorical columns (name=val1, name=val2), remove the base name from our prediction data
+        prediction_features = prediction_features - set(categorical_col_names)
 
         # Get only the unique raw_date_col_names
         date_col_names = set(date_col_names)
