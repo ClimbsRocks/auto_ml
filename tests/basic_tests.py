@@ -20,7 +20,6 @@ import utils_testing as utils
 def test_binary_classification():
     np.random.seed(0)
 
-
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
 
