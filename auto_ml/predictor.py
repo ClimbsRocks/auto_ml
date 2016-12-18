@@ -518,7 +518,7 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None, verify_features=False):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -615,6 +615,19 @@ class Predictor(object):
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
         self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
+        # verify_features is not enabled by default. It adds a significant amount to the file size of the saved pipelines.
+        # If you are interested in submitting a PR to reduce the saved file size, there are definitely some optimizations you can make!
+        if verify_features == True:
+            # Save the features we used for training to our FinalModelATC instance.
+            # This lets us provide useful information to the user when they call .predict(data, verbose=True)
+            trained_feature_names = self._get_trained_feature_names()
+            # print('trained_feature_names')
+            # print(trained_feature_names)
+            self.trained_pipeline.set_params(final_model__training_features=trained_feature_names)
+            # We will need to know which columns are categorical/ignored/nlp when verifying features
+            self.trained_pipeline.set_params(final_model__column_descriptions=self.column_descriptions)
+            # self.trained_pipeline.named_steps['final_model']['training_features'] = trained_feature_names
+
 
         # Calibrate the probability predictions from our final model
         if self.calibrate_final_model is True and X_test is not None and y_test is not None:
@@ -667,6 +680,9 @@ class Predictor(object):
         del X_df
 
 
+    # This is broken out into it's own function for each estimator on purpose
+    # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
+    # This also lets us test on X_test and y_test for each model
     def perform_grid_search_by_model_names(self, estimator_names, scoring, X_df, y):
 
         for model_name in estimator_names:
