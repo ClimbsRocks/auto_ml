@@ -1,5 +1,7 @@
+import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
+import warnings
 try:
     from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
     from auto_ml.utils_models import get_model_from_name, get_name_from_model
@@ -20,13 +22,15 @@ except ImportError:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None):
 
         self.model = model
         self.model_name = model_name
         self.ml_for_analytics = ml_for_analytics
         self.type_of_estimator = type_of_estimator
         self.name = name
+        self.training_features = training_features
+        self.column_descriptions = column_descriptions
 
 
         if self.type_of_estimator == 'classifier':
@@ -76,8 +80,107 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         return self
 
+    def verify_features(self, X):
 
-    def score(self, X, y):
+        if self.column_descriptions is None:
+            print('This feature is not enabled by default. Depending on the shape of the training data, it can add hundreds of KB to the saved file size.')
+            print('Please pass in `ml_predictor.train(data, verify_features=True)` when training a model, and we will enable this function, at the cost of a potentially larger file size.')
+            warnings.warn('Please pass verify_features=True when invoking .train() on the ml_predictor instance.')
+            return None
+
+        print('\n\nNow verifying consistency between training features and prediction features')
+        if isinstance(X, dict):
+            prediction_features = set(X.keys())
+        elif isinstance(X, pd.DataFrame):
+            prediction_features = set(X.columns)
+
+        # If the user passed in categorical features, we will effectively one-hot-encode them ourselves here
+        # Note that this assumes we're using the "=" as the separater in DictVectorizer/DataFrameVectorizer
+        date_col_names = []
+        for key, value in self.column_descriptions.items():
+            if value == 'categorical' and 'day_part' not in key:
+                try:
+                    # This covers the case that the user passes in a value in column_descriptions that is not present in their prediction data
+                    column_vals = X[key].unique()
+                    for val in column_vals:
+                        prediction_features.add(key + '=' + val)
+                except:
+                    print('\nFound a column in your column_descriptions that is not present in your prediction data:')
+                    print(key)
+                    pass
+            elif 'day_part' in key:
+                # We have found a date column. Make sure this date column is in our prediction data
+                # It is outside the scope of this function to make sure that the same date parts are available in both our training and testing data
+                raw_date_col_name = key[:key.index('day_part') - 1]
+                date_col_names.append(raw_date_col_name)
+
+        # Get only the unique raw_date_col_names
+        date_col_names = set(date_col_names)
+
+        training_features = set(self.training_features)
+
+        # Remove all of the transformed date column feature names from our training data
+        features_to_remove = []
+        for feature in training_features:
+            for raw_date_col_name in date_col_names:
+                if raw_date_col_name in feature:
+                    features_to_remove.append(feature)
+        training_features = training_features - set(features_to_remove)
+
+        # Make sure the raw_date_col_name is in our training data after we have removed all the transformed feature names
+        training_features = training_features | date_col_names
+
+        # MVP means ignoring text features
+        print_nlp_warning = False
+        nlp_example = None
+        for feature in training_features:
+            if 'nlp_' in feature:
+                print_nlp_warning = True
+                nlp_example = feature
+                training_features.remove(feature)
+
+        if print_nlp_warning == True:
+            print('\n\nWe found an NLP column in the training data')
+            print('verify_features() currently does not support checking all of the values within an NLP column, so if the text of your NLP column has dramatically changed, you will have to check that yourself.')
+            print('Here is one example of an NLP feature in the training data:')
+            print(nlp_example)
+
+        training_not_prediction = training_features - prediction_features
+        if len(training_not_prediction) > 0:
+
+            print('\n\nHere are the features this model was trained on that were not present in this prediction data:')
+            print(sorted(list(training_not_prediction)))
+        else:
+            print('All of the features this model was trained on are included in the prediction data')
+
+        prediction_not_training = prediction_features - training_features
+        if len(prediction_not_training) > 0:
+
+            # Separate out those values we were told to ignore by column_descriptions
+            ignored_features = []
+            for feature in prediction_not_training:
+                if self.column_descriptions.get(feature, 'False') == 'ignore':
+                    ignored_features.append(feature)
+            prediction_not_training = prediction_not_training - set(ignored_features)
+
+            print('\n\nHere are the features available in the prediction data that were not part of the training data:')
+            print(sorted(list(prediction_not_training)))
+
+            if len(ignored_features) > 0:
+                print('\n\nAdditionally, we found features in the prediction data that we were told to ignore in the training data')
+                print(sorted(list(ignored_features)))
+
+        else:
+            print('All of the features in the prediction data were in this model\'s training data')
+
+        print('\n\n')
+        return {
+            'training_not_prediction': training_not_prediction
+            , 'prediction_not_training': prediction_not_training
+        }
+
+
+    def score(self, X, y, verbose=False):
         # At the time of writing this, GradientBoosting does not support sparse matrices for predictions
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
@@ -93,7 +196,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return self.model.score(X, y)
 
 
-    def predict_proba(self, X):
+    def predict_proba(self, X, verbose=False):
 
         # if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
         #     ones = [[1] for x in range(X.shape[0])]
@@ -137,7 +240,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             return predictions
 
-    def predict(self, X):
+    def predict(self, X, verbose=False):
 
         # if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
         #     ones = [[1] for x in range(X.shape[0])]
