@@ -230,9 +230,13 @@ def add_date_features_df(df, date_col):
 
     df[date_col] = pd.to_datetime(df[date_col])
     df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, raise_on_error=False)
-    df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, raise_on_error=False)
 
-    df[date_col + '_minutes_into_day'] = df[date_col].apply(lambda x: x.hour * 60 + x.minute)
+    try:
+        df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, raise_on_error=False)
+
+        df[date_col + '_minutes_into_day'] = df[date_col].apply(lambda x: x.hour * 60 + x.minute)
+    except AttributeError:
+        pass
 
     df[date_col + '_is_weekend'] = df[date_col].apply(lambda x: x.weekday() in (5,6))
     df[date_col + '_day_part'] = df[date_col + '_minutes_into_day'].apply(minutes_into_day_parts)
@@ -261,9 +265,13 @@ def add_date_features_dict(row, date_col):
 
 
     date_feature_dict[date_col + '_day_of_week'] = date_val.weekday()
-    date_feature_dict[date_col + '_hour'] = date_val.hour
+    # nesting this inside a try/except block because the date might be a datetime.date, not a datetime.datetime
+    try:
+        date_feature_dict[date_col + '_hour'] = date_val.hour
 
-    date_feature_dict[date_col + '_minutes_into_day'] = date_val.hour * 60 + date_val.minute
+        date_feature_dict[date_col + '_minutes_into_day'] = date_val.hour * 60 + date_val.minute
+    except AttributeError:
+        pass
 
     date_feature_dict[date_col + '_is_weekend'] = date_val.weekday() in (5,6)
 
