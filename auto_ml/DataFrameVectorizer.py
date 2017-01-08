@@ -102,7 +102,11 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical':
                     # If this is a categorical column, or the dtype continues to be object, iterate through each row to get all the possible values that we are one-hot-encoding.
                     for val in X[col_name]:
-                        feature_name = col_name + self.separator + str(val)
+                        try:
+                            feature_name = col_name + self.separator + str(val)
+                        except UnicodeEncodeError:
+                            str_val = val.encode('ascii', 'ignore').decode('ascii')
+                            feature_name = col_name + self.separator + str_val
                         if feature_name not in vocab:
                             feature_names.append(feature_name)
                             vocab[feature_name] = len(vocab)
