@@ -6,6 +6,9 @@ from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifi
 import math
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
+import pandas as pd
+
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
 def advanced_scoring_classifiers(probas, actuals, name=None):
 
@@ -197,7 +200,21 @@ class RegressionScorer(object):
             for idx, val in enumerate(predictions):
                 predictions[idx] = math.exp(val)
 
-        score = self.scoring_func(y, predictions)
+        try:
+            score = self.scoring_func(y, predictions)
+        except ValueError:
+
+            bad_val_indices = []
+            for idx, val in enumerate(y):
+                if str(val) in bad_vals_as_strings:
+                    bad_val_indices.append(idx)
+
+            predictions = [val for idx, val in enumerate(predictions) if idx not in bad_val_indices]
+            y = [val for idx, val in enumerate(y) if idx not in bad_val_indices]
+
+            print('Found ' + str(len(bad_val_indices)) + 'null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
+            score = self.scoring_func(y, predictions)
+
         # if scoring == 'rmse':
         #     score = mean_squared_error(y, predictions)**0.5
         # elif scoring == 'median_absolute_error':
@@ -247,7 +264,20 @@ class ClassificationScorer(object):
         # if self.scoring_method in ['accuracy_score', 'accuracy']:
         #     predictions = [1 if x[1] >= 0.5 else 0 for x in predictions]
 
-        score = self.scoring_func(y, predictions)
+        try:
+            score = self.scoring_func(y, predictions)
+        except ValueError:
+            bad_val_indices = []
+            for idx, val in enumerate(y):
+                if str(val) in bad_vals_as_strings:
+                    bad_val_indices.append(idx)
+
+            predictions = [val for idx, val in enumerate(predictions) if idx not in bad_val_indices]
+            y = [val for idx, val in enumerate(y) if idx not in bad_val_indices]
+
+            print('Found ' + str(len(bad_val_indices)) + 'null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
+            score = self.scoring_func(y, predictions)
+
 
         if advanced_scoring:
             return (-1 * score, predictions)
