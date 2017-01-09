@@ -118,7 +118,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 date_col_names.append(raw_date_col_name)
 
             elif value == 'output':
-                prediction_features.remove(key)
+                try:
+                    prediction_features.remove(key)
+                except KeyError:
+                    pass
 
         # Now that we've added in all the one-hot-encoded categorical columns (name=val1, name=val2), remove the base name from our prediction data
         prediction_features = prediction_features - set(categorical_col_names)
