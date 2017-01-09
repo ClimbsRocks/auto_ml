@@ -80,7 +80,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         return self
 
-    def verify_features(self, X):
+    def remove_categorical_values(self, features):
+        clean_features = set([])
+        for feature in features:
+            if '=' not in feature:
+                clean_features.add(feature)
+            else:
+                clean_features.add(feature[:feature.index('=')])
+
+        return clean_features
+
+    def verify_features(self, X, raw_features_only=False):
 
         if self.column_descriptions is None:
             print('This feature is not enabled by default. Depending on the shape of the training data, it can add hundreds of KB to the saved file size.')
@@ -158,6 +168,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print(nlp_example)
 
         training_not_prediction = training_features - prediction_features
+
+        if raw_features_only == True:
+            training_not_prediction = self.remove_categorical_values(training_not_prediction)
+
         if len(training_not_prediction) > 0:
 
             print('\n\nHere are the features this model was trained on that were not present in this prediction data:')
@@ -166,6 +180,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('All of the features this model was trained on are included in the prediction data')
 
         prediction_not_training = prediction_features - training_features
+        if raw_features_only == True:
+            prediction_not_training = self.remove_categorical_values(prediction_not_training)
+
         if len(prediction_not_training) > 0:
 
             # Separate out those values we were told to ignore by column_descriptions
