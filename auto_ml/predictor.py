@@ -969,9 +969,9 @@ class Predictor(object):
 
 
     def predict(self, prediction_data):
-        prediction_data = prediction_data.copy()
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
+        prediction_data = prediction_data.copy()
 
         # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
         # For some reason, turning it into a list here does not work.
@@ -985,9 +985,9 @@ class Predictor(object):
 
 
     def predict_proba(self, prediction_data):
-        prediction_data = prediction_data.copy()
         if isinstance(prediction_data, list):
             prediction_data = pd.DataFrame(prediction_data)
+        prediction_data = prediction_data.copy()
 
         return self.trained_pipeline.predict_proba(prediction_data)
 

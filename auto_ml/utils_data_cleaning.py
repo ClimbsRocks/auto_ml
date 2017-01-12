@@ -88,10 +88,12 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
-        X = X.copy()
+
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)
+
+        X = X.copy()
 
         # All of these are values we will not want to keep for training this particular estimator.
         # Note that we have already split out the output column and saved it into it's own variable
