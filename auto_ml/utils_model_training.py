@@ -22,7 +22,7 @@ except ImportError:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, rows_for_consistency_testing=None, consistency_id=None):
 
         self.model = model
         self.model_name = model_name
@@ -31,6 +31,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.name = name
         self.training_features = training_features
         self.column_descriptions = column_descriptions
+        self.rows_for_consistency_testing = rows_for_consistency_testing
+        self.consistency_id = consistency_id
 
 
         if self.type_of_estimator == 'classifier':
@@ -223,6 +225,36 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         else:
             return self.model.score(X, y)
+
+
+
+    def verify_consistent_feature_values(rows):
+
+        results = []
+
+        for row in rows:
+            saved_vals = [x for x in self.rows_for_consistency_testing if x[self.consistency_id] == row[self.consistency_id]]
+
+            inconsistencies = {}
+
+            for k, v in row.items():
+                try:
+                    assert saved_vals[k] == v
+                except AssertionError:
+                    inconsistencies[k + '_prod_val'] = v
+                    inconsistencies[k + '_training_val'] = saved_vals[k]
+
+            for k, v in saved_vals.items():
+                try:
+                    assert row[k] == v
+                except AssertionError:
+                    inconsistencies[k + '_training_val'] = v
+                    inconsistencies[k + '_prod_val'] = row[k]
+
+            results.append(inconsistencies)
+
+        return results
+
 
 
     def predict_proba(self, X, verbose=False):

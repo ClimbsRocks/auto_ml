@@ -1046,3 +1046,16 @@ class Predictor(object):
         return os.path.join(os.getcwd(), file_name)
 
 
+    # rows should be a list of dictionaries
+    def save_rows_for_consistency_testing(self, rows, consistency_id='id'):
+
+        self.trained_pipeline.named_steps['final_model']['rows_for_consistency_testing'] = rows
+        self.trained_pipeline.named_steps['final_model']['consistency_id'] = consistency_id
+
+        print('Thanks for passing in this data. When you check consistency with produdction data, we will match the rows up by ' + consistency_id)
+
+        print('To check prod features (assuming that your loaded pipeline is called "saved_ml_pipeline"')
+        print('`saved_ml_pipeline.named_steps["final_model"].verify_consistent_feature_values(prod_data_rows)`')
+        print('`prod_data_rows` should be a list of dictionaries')
+
+
