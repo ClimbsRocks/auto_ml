@@ -134,3 +134,23 @@ def safely_drop_columns(df, cols_to_drop):
     df = df.drop(safe_cols_to_drop, axis=1)
     return df
 
+
+def drop_duplicate_columns(df):
+    cols = list(df.columns)
+    for idx, item in enumerate(df.columns):
+        if item in df.columns[:idx]:
+            print('#####################################################')
+            print('We found a duplicate column, and will be removing it')
+            print('If you intended to send in two different pieces of information, please make sure they have different column names')
+            print('Here is the duplicate column:')
+            print(item)
+            print('#####################################################')
+            cols[idx] = "toDROP"
+    df.columns = cols
+
+    try:
+        df = df.drop("toDROP", axis=1)
+    except:
+        pass
+    return df
+

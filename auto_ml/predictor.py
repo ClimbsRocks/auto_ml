@@ -252,6 +252,9 @@ class Predictor(object):
 
     def _prepare_for_training(self, X_df):
 
+        # Having duplicate columns can really screw things up later. Remove them here, with user logging to tell them what we're doing
+        X_df = utils.drop_duplicate_columns(X_df)
+
         # If we're writing training results to file, create the new empty file name here
         if self.write_gs_param_results_to_file:
             self.gs_param_file_name = 'most_recent_pipeline_grid_search_result.csv'

@@ -124,6 +124,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             return dict_copy
 
         else:
+            X.reset_index(drop=True, inplace=True)
             for key in X.columns:
                 col_desc = self.column_descriptions.get(key)
                 if col_desc == 'categorical':
