@@ -4,6 +4,22 @@ from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, 
 
 from sklearn.cluster import MiniBatchKMeans
 
+keras_installed = False
+try:
+    from keras.constraints import maxnorm
+    from keras.layers import Dense, Dropout
+    from keras.models import Sequential
+    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+    # import keras
+    keras_installed = True
+except:
+    pass
+
+try:
+    from auto_ml import utils
+except ImportError:
+    from ..auto_ml import utils
+
 xgb_installed = False
 try:
     import xgboost as xgb
@@ -33,7 +49,6 @@ def get_model_from_name(model_name):
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
-        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1),
         'LinearRegression': LinearRegression(n_jobs=-2),
         'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
         'Ridge': Ridge(),
@@ -57,6 +72,11 @@ def get_model_from_name(model_name):
     if xgb_installed:
         model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, subsample=1.0, learning_rate=0.1, n_estimators=200, nthread=-1)
         model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
+
+    if keras_installed:
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=utils.make_deep_learning_classifier, nb_epoch=10, batch_size=10, verbose=10)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=utils.make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1)
+
 
     return model_map[model_name]
 
@@ -112,13 +132,17 @@ def get_name_from_model(model):
     if isinstance(model, MiniBatchKMeans):
         return 'MiniBatchKMeans'
     # Putting these at the end. By this point, we've already determined it is not any of our other models
-    if isinstance(model, xgb.XGBClassifier):
-        return 'XGBClassifier'
-    if isinstance(model, xgb.XGBRegressor):
-        return 'XGBRegressor'
+    if xgb_installed:
+        if isinstance(model, xgb.XGBClassifier):
+            return 'XGBClassifier'
+        if isinstance(model, xgb.XGBRegressor):
+            return 'XGBRegressor'
 
-    # if isinstance(model, KerasRegressor):
-    #     return 'KerasRegressor'
+    if keras_installed:
+        if isinstance(model, KerasRegressor):
+            return 'DeepLearningRegressor'
+        if isinstance(model, KerasClassifier):
+            return 'DeepLearningClassifier'
 
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):

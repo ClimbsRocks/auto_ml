@@ -8,6 +8,22 @@ try:
 except ImportError:
     from ..auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
     from ..auto_ml.utils_models import get_model_from_name, get_name_from_model
+
+keras_installed = False
+try:
+    from keras.constraints import maxnorm
+    from keras.layers import Dense, Dropout
+    from keras.models import Sequential
+    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+    keras_installed = True
+except:
+    pass
+
+try:
+    from auto_ml import utils
+except ImportError:
+    from ..auto_ml import utils
+
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
@@ -52,24 +68,35 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         X_fit = X
 
 
-        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression', ]:
+        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression']:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
 
-        #     num_cols = X_fit.shape[1]
-        #     kwargs = {
-        #         'num_cols':num_cols
-        #         , 'nb_epoch': 20
-        #         , 'batch_size': 10
-        #         , 'verbose': 1
-        #     }
-        #     model_params = self.model.get_params()
-        #     del model_params['build_fn']
-        #     for k, v in model_params.items():
-        #         if k not in kwargs:
-        #             kwargs[k] = v
-        #     if self.type_of_estimator == 'regressor':
-        #         self.model = KerasRegressor(build_fn=make_deep_learning_model, **kwargs)
+            if self.model_name[:12] == 'DeepLearning':
+                if keras_installed:
+
+                    # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
+                    num_cols = X_fit.shape[1]
+                    kwargs = {
+                        'num_cols':num_cols
+                        , 'nb_epoch': 3
+                        , 'batch_size': 100
+                        , 'verbose': 2
+                    }
+
+                    model_params = self.model.get_params()
+                    del model_params['build_fn']
+                    for k, v in model_params.items():
+                        if k not in kwargs:
+                            kwargs[k] = v
+
+
+                    if self.type_of_estimator == 'regressor':
+                        self.model = KerasRegressor(build_fn=utils.make_deep_learning_model, **kwargs)
+                    elif self.type_of_estimator == 'classifier':
+                        self.model = KerasClassifier(build_fn=utils.make_deep_learning_classifier, **kwargs)
+                else:
+                    print('WARNING: We did not detect that Keras was available.')
 
         try:
             self.model.fit(X_fit, y)
@@ -232,7 +259,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         #     # Trying to force XGBoost to play nice with sparse matrices
         #     X = scipy.sparse.hstack((X, ones))
 
-        if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
 
         try:
