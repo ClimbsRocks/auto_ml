@@ -22,11 +22,14 @@ def clean_val(val):
     else:
         try:
             float_val = float(val)
-        except:
+        except ValueError:
             # This will throw a ValueError if it fails
             # remove any commas in the string, and try to turn into a float again
-            cleaned_string = val.replace(',', '')
-            float_val = float(cleaned_string)
+            try:
+                cleaned_string = val.replace(',', '')
+                float_val = float(cleaned_string)
+            except TypeError:
+                return None
         return float_val
 
 # Same as above, except this version returns float('nan') when it fails
@@ -37,10 +40,17 @@ def clean_val_nan_version(val):
     else:
         try:
             float_val = float(val)
-        except:
+        except ValueError:
             # This will throw a ValueError if it fails
             # remove any commas in the string, and try to turn into a float again
-            cleaned_string = val.replace(',', '')
+            try:
+                cleaned_string = val.replace(',', '')
+            except TypeError:
+                print('*************************************')
+                print('We expected this value to be numeric, but were unable to convert it to a float:')
+                print(val)
+                print('*************************************')
+                return float('nan')
             try:
                 float_val = float(cleaned_string)
             except:
