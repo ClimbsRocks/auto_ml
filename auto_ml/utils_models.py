@@ -1,3 +1,5 @@
+import dill
+
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
@@ -314,5 +316,20 @@ def get_search_params(model_name):
     }
 
     return grid_search_params[model_name]
+
+
+def load_keras_model(file_name):
+    from keras.models import load_model
+
+    with open(file_name, 'rb') as read_file:
+        base_pipeline = dill.load(read_file)
+
+    keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+
+    keras_model = load_model(keras_file_name)
+
+    base_pipeline.named_steps['final_model'].model = keras_model
+
+    return base_pipeline
 
 
