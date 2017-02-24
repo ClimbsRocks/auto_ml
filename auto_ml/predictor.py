@@ -1021,30 +1021,54 @@ class Predictor(object):
 
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
-        with open(file_name, 'wb') as open_file_name:
-            dill.dump(self.trained_pipeline, open_file_name)
 
-        if verbose:
-            print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
-            print('It is saved in the directory: ')
-            print(os.getcwd())
-            print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
-            print('`with open("' + file_name + '", "rb") as read_file:`')
-            print('`    trained_ml_pipeline = dill.load(read_file)`')
-            print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
+        if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+            keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
 
-            print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
-            print('This version of Python is:')
-            print(sys.version_info)
+            keras_wrapper = self.trained_pipeline.named_steps['final_model'].model
+            self.trained_pipeline.named_steps['final_model'].model.model.save(keras_file_name)
 
-            print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
-            print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
-            # print('\nThese are the most important features that were fed into the model:')
+            # Now that we've saved the keras model, set that spot in the pipeline to None, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
+            self.trained_pipeline.named_steps['final_model'].model = None
+            with open(file_name, 'wb') as open_file_name:
+                dill.dump(self.trained_pipeline, open_file_name)
 
-            # if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            #     self._print_ml_analytics_results_linear_model()
-            # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
-            #     self._print_ml_analytics_results_random_forest()
+            self.trained_pipeline.named_steps['final_model'].model = keras_wrapper
+            if verbose:
+                print('Saved the Keras model to it\'s own file:')
+                print(keras_file_name)
+                print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:')
+                print('from auto_ml.utils_models import load_keras_model')
+                print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
+                print('It is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
+                print(file_name)
+                print(keras_file_name)
+
+        else:
+            with open(file_name, 'wb') as open_file_name:
+                dill.dump(self.trained_pipeline, open_file_name)
+
+            if verbose:
+                print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
+                print('It is saved in the directory: ')
+                print(os.getcwd())
+                print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
+                print('`with open("' + file_name + '", "rb") as read_file:`')
+                print('`    trained_ml_pipeline = dill.load(read_file)`')
+                print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
+
+                print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
+                print('This version of Python is:')
+                print(sys.version_info)
+
+                print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
+                print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
+                # print('\nThese are the most important features that were fed into the model:')
+
+                # if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+                #     self._print_ml_analytics_results_linear_model()
+                # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
+                #     self._print_ml_analytics_results_random_forest()
 
         return os.path.join(os.getcwd(), file_name)
 
