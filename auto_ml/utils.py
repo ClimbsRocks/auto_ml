@@ -65,6 +65,12 @@ def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, w
 
 # TODO: add in layers as an input. then do something like for layer_num in layer_input...
 def make_deep_learning_classifier(num_cols):
+
+    print('\n\nCreating a deep learning model with the following shape')
+    print('Each item in this list represents a layer, with your data\'s input layer coming before this graph starts')
+    print('And each number represents the number of nodes in that layer')
+    print(num_cols)
+
     model = Sequential()
     model.add(Dense(num_cols, input_dim=num_cols, init='normal', activation='relu'))
     model.add(Dense(1, init='normal', activation='sigmoid'))

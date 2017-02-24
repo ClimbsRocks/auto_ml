@@ -1035,12 +1035,12 @@ class Predictor(object):
 
             self.trained_pipeline.named_steps['final_model'].model = keras_wrapper
             if verbose:
-                print('Saved the Keras model to it\'s own file:')
+                print('\n\nSaved the Keras model to it\'s own file:')
                 print(keras_file_name)
-                print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:')
+                print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
                 print('from auto_ml.utils_models import load_keras_model')
                 print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
-                print('It is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
+                print('\nIt is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
                 print(file_name)
                 print(keras_file_name)
 

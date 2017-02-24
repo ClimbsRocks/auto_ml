@@ -79,7 +79,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     num_cols = X_fit.shape[1]
                     kwargs = {
                         'num_cols':num_cols
-                        , 'nb_epoch': 3
+                        , 'nb_epoch': 5
                         , 'batch_size': 100
                         , 'verbose': 2
                     }
