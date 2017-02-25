@@ -132,7 +132,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer
-    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, trained_pipeline=None):
+    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, trained_pipeline=None, final_model=None):
 
         pipeline_list = []
 
@@ -176,7 +176,12 @@ class Predictor(object):
                 pipeline_list.append(('feature_selection', utils_feature_selection.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
 
         if trained_pipeline is not None:
-            pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
+
+            # Handling the case where we have run gscv on just the final model itself, and we now need to integrate it back into the rest of the pipeline
+            if final_model is not None:
+                pipeline_list.append(('final_model', final_model))
+            else:
+                pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer)))
@@ -319,7 +324,7 @@ class Predictor(object):
         return X_df, y
 
 
-    def _consolidate_feature_selection_steps(self, trained_pipeline):
+    def _consolidate_feature_selection_steps(self, trained_pipeline, final_model=None):
         # First, restrict our DictVectorizer or DataFrameVectorizer
         # This goes through and has DV only output the items that have passed our support mask
         # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
@@ -337,7 +342,7 @@ class Predictor(object):
 
         # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
         # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
-        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=trained_pipeline)
+        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=trained_pipeline, final_model=final_model)
 
         return trained_pipeline_without_feature_selection
 
@@ -401,7 +406,6 @@ class Predictor(object):
             data_selection_func = training_params.pop('data_selection_func', None)
             if callable(data_selection_func):
                 try:
-                    # TODO: figure out how to see if this function is expecting to take in the name argument or not
                     this_rounds_data = data_selection_func(data, name)
                 except TypeError:
                     this_rounds_data = data_selection_func(data)
@@ -617,8 +621,24 @@ class Predictor(object):
                 self.trained_pipeline = best_trained_gs
 
         # TODO TODO: combine our GSCV final model and our feature transformation pipeline right here
+        # if self.continue_after_single_gscv == False:
+        #     print('Modifying self.trained_pipeline to make sure we have both our transformation pipeline, as well as our trained final model')
+        #     # self.transformation_pipeline.steps.append(self.trained_pipeline)
+        #     # self.transformation_pipeline.named_steps['final_model'] = self.trained_pipeline
+        #     # print('self.transformation_pipeline after setting final_model to our gscv results')
+        #     # print(self.transformation_pipeline)
+        #     self.transformation_pipeline.steps.append(self.trained_pipeline)
+        #     print('self.transformation_pipeline after adding gscv result to .steps')
+        #     print(self.transformation_pipeline)
+        #     self.trained_pipeline = self.transformation_pipeline
+            # self.trained_pipeline =
+
+
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-        self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+        if self.continue_after_single_gscv == False:
+            self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
+        else:
+            self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
         # verify_features is not enabled by default. It adds a significant amount to the file size of the saved pipelines.
         # If you are interested in submitting a PR to reduce the saved file size, there are definitely some optimizations you can make!
@@ -701,7 +721,9 @@ class Predictor(object):
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
                 raw_search_params = utils_models.get_search_params(model_name)
                 for param_name, param_list in raw_search_params.items():
-                    self.grid_search_params['final_model__model__' + param_name] = param_list
+                    # TODO TODO: remove the 'final_model__' prefix here
+                    # self.grid_search_params['final_model__model__' + param_name] = param_list
+                    self.grid_search_params['model__' + param_name] = param_list
 
             if self.verbose:
                 grid_search_verbose = 5
@@ -727,13 +749,27 @@ class Predictor(object):
                 self.grid_search_params['final_model__model'] = list(final_model_models)
                 self.fit_grid_search = True
                 self.continue_after_single_gscv = True
+                ppl_to_fit_gscv_on = ppl
+                X_to_fit_gscv_on = X_df
+
+            else:
+                ppl_to_fit_gscv_on = ppl.named_steps['final_model']
+                # We want to remove the final_model step from the pipeline, since we will be breaking it out into a pure feature transformation pipeline we fit and transform a single time, and the final model which we will actually want to run grid search on
+                ppl.steps.pop()
+                X_to_fit_gscv_on = ppl.fit_transform(X_df, y)
+
+                self.transformation_pipeline = ppl
+
+                # TODO TODO: see if we need to remove final_model__model from gscv params
+                del self.grid_search_params['final_model__model']
+
 
             if self.fit_grid_search == True:
 
                 gs = GridSearchCV(
                     # Fit on the pipeline.
-                    # TODO: pass in ppl.named_steps['final_model'] instead of ppl
-                    ppl,
+                    # TODO TODO: pass in ppl.named_steps['final_model'] instead of ppl
+                    ppl_to_fit_gscv_on,
                     cv=2,
                     param_grid=self.grid_search_params,
                     # Train across all cores.
@@ -754,11 +790,11 @@ class Predictor(object):
                     else:
                         print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
-                # TODO: fit the rest of the pipeline first
+                # TODO TODO: fit the rest of the pipeline first
                     # then, transform all the data a single time in the trained feature_transformation pipeline.
                     # pass in that transformed data here, rather than the raw data we pass in currently.
                     # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
-                gs.fit(X_df, y)
+                gs.fit(X_to_fit_gscv_on, y)
 
                 self.trained_pipeline = gs.best_estimator_
 
@@ -832,7 +868,7 @@ class Predictor(object):
                     # If we don't have pipeline_results (if we did not fit GSCV), then pass
                     pass
 
-            # TODO: is this necessary? Is this block of code even used? It's not indented at the level I'd expect at first glance
+            # TODO TODO: is this necessary? Is this block of code even used? It's not indented at the level I'd expect at first glance
             try:
                 self.grid_search_pipelines.append(pipeline_results)
             except Exception as e:
