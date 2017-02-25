@@ -46,7 +46,7 @@ if xgb_installed:
 
 
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
-def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
+def make_deep_learning_model(hidden_layers=[250], optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
     model = Sequential()
     # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
     model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
@@ -63,18 +63,28 @@ def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, w
 
     return model
 
+
 # TODO: add in layers as an input. then do something like for layer_num in layer_input...
-def make_deep_learning_classifier(num_cols):
+
+
+def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
+    model = Sequential()
+
+    if hidden_layers is None:
+        hidden_layers = [250]
 
     print('\n\nCreating a deep learning model with the following shape')
     print('Each item in this list represents a layer, with your data\'s input layer coming before this graph starts')
     print('And each number represents the number of nodes in that layer')
-    print(num_cols)
 
-    model = Sequential()
-    model.add(Dense(num_cols, input_dim=num_cols, init='normal', activation='relu'))
+    print(hidden_layers)
+
+    model.add(Dense(hidden_layers[0], input_dim=hidden_layers[0], init='normal', W_constraint=maxnorm(weight_constraint)))
+    for layer_size in hidden_layers[1:]:
+        model.add(Dense(input_dim=layer_size, init='normal', W_constraint=maxnorm(weight_constraint)))
+
     model.add(Dense(1, init='normal', activation='sigmoid'))
-    model.compile(loss='binary_crossentropy', optimizer='adam', metrics=['accuracy', 'binary_crossentropy', 'poisson'])
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'binary_crossentropy', 'poisson'])
     return model
 
 
