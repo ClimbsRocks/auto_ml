@@ -590,6 +590,7 @@ class Predictor(object):
             self._scorer = scoring
 
 
+        # TODO TODO: make sure we get both the feature transformation pipeline, and the GSCV results. Right now we're just saving the gscv results
         self.perform_grid_search_by_model_names(estimator_names, self._scorer, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
@@ -615,6 +616,7 @@ class Predictor(object):
                 # In that case, the thing at the end of the best_result_list will be the trained pipeline we're interested in
                 self.trained_pipeline = best_trained_gs
 
+        # TODO TODO: combine our GSCV final model and our feature transformation pipeline right here
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
         self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
@@ -730,6 +732,7 @@ class Predictor(object):
 
                 gs = GridSearchCV(
                     # Fit on the pipeline.
+                    # TODO: pass in ppl.named_steps['final_model'] instead of ppl
                     ppl,
                     cv=2,
                     param_grid=self.grid_search_params,
@@ -751,6 +754,10 @@ class Predictor(object):
                     else:
                         print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
+                # TODO: fit the rest of the pipeline first
+                    # then, transform all the data a single time in the trained feature_transformation pipeline.
+                    # pass in that transformed data here, rather than the raw data we pass in currently.
+                    # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
                 gs.fit(X_df, y)
 
                 self.trained_pipeline = gs.best_estimator_
@@ -825,6 +832,7 @@ class Predictor(object):
                     # If we don't have pipeline_results (if we did not fit GSCV), then pass
                     pass
 
+            # TODO: is this necessary? Is this block of code even used? It's not indented at the level I'd expect at first glance
             try:
                 self.grid_search_pipelines.append(pipeline_results)
             except Exception as e:

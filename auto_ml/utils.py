@@ -46,7 +46,10 @@ if xgb_installed:
 
 
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
-def make_deep_learning_model(hidden_layers=[250], optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
+def make_deep_learning_model(hidden_layers=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
+    if hidden_layers is None:
+        hidden_layers = [250]
+
     model = Sequential()
     # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
     model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
@@ -64,10 +67,9 @@ def make_deep_learning_model(hidden_layers=[250], optimizer='adam', dropout_rate
     return model
 
 
-# TODO: add in layers as an input. then do something like for layer_num in layer_input...
-
-
-def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
+# TODO: eventually take in other parameters to tune
+# TODO: eventually take in final_activation and hidden_layer_activations
+def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, activation='sigmoid'):
     model = Sequential()
 
     if hidden_layers is None:
@@ -83,7 +85,7 @@ def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_
     for layer_size in hidden_layers[1:]:
         model.add(Dense(input_dim=layer_size, init='normal', W_constraint=maxnorm(weight_constraint)))
 
-    model.add(Dense(1, init='normal', activation='sigmoid'))
+    model.add(Dense(1, init='normal', activation=activation))
     model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'binary_crossentropy', 'poisson'])
     return model
 
