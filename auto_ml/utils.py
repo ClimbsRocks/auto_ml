@@ -75,11 +75,11 @@ def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_
     if hidden_layers is None:
         hidden_layers = [250]
 
-    print('\n\nCreating a deep learning model with the following shape')
-    print('Each item in this list represents a layer, with your data\'s input layer coming before this graph starts')
-    print('And each number represents the number of nodes in that layer')
+    # print('\n\nCreating a deep learning model with the following shape')
+    # print('Each item in this list represents a layer, with your data\'s input layer coming before this graph starts')
+    # print('And each number represents the number of nodes in that layer')
 
-    print(hidden_layers)
+    # print(hidden_layers)
 
     model.add(Dense(hidden_layers[0], input_dim=hidden_layers[0], init='normal', W_constraint=maxnorm(weight_constraint)))
     for layer_size in hidden_layers[1:]:
