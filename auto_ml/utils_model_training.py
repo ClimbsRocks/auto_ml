@@ -78,7 +78,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
                     num_cols = X_fit.shape[1]
                     kwargs = {
-                        'num_cols':num_cols
+                        'hidden_layers': [num_cols]
                         , 'nb_epoch': 5
                         , 'batch_size': 100
                         , 'verbose': 2
@@ -103,7 +103,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         except TypeError as e:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
-            self.model.fit()
+            self.model.fit(X_fit, y)
 
         return self
 
