@@ -157,12 +157,12 @@ def get_search_params(model_name):
         # },
         'DeepLearningClassifier': {
             'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-            , 'nb_epoch': [2, 4, 6, 10, 20]
-            , 'batch_size': [10, 25, 50, 100, 200, 1000]
+            # , 'nb_epoch': [2, 4, 6, 10, 20]
+            # , 'batch_size': [10, 25, 50, 100, 200, 1000]
             # , 'lr': [0.001, 0.01, 0.1, 0.3]
             # , 'momentum': [0.0, 0.3, 0.6, 0.8, 0.9]
             # , 'init_mode': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
-            # , 'activation': ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
+            , 'activation': ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
             , 'weight_constraint': [1, 3, 5]
             , 'dropout_rate': [0.0, 0.3, 0.6, 0.8, 0.9]
             # , 'neurons'
