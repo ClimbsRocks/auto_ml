@@ -76,8 +76,8 @@ def get_model_from_name(model_name):
         model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
 
     if keras_installed:
-        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=utils.make_deep_learning_classifier, nb_epoch=10, batch_size=10, verbose=10)
-        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=utils.make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1)
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=utils.make_deep_learning_classifier, nb_epoch=6, batch_size=50, verbose=0)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=utils.make_deep_learning_model, nb_epoch=6, batch_size=50, verbose=1)
 
 
     return model_map[model_name]
@@ -163,8 +163,8 @@ def get_search_params(model_name):
             # , 'momentum': [0.0, 0.3, 0.6, 0.8, 0.9]
             # , 'init_mode': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
             , 'activation': ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
-            , 'weight_constraint': [1, 3, 5]
-            , 'dropout_rate': [0.0, 0.3, 0.6, 0.8, 0.9]
+            # , 'weight_constraint': [1, 3, 5]
+            # , 'dropout_rate': [0.0, 0.3, 0.6, 0.8, 0.9]
             # , 'neurons'
         },
         'XGBClassifier': {

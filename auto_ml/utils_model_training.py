@@ -79,9 +79,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     num_cols = X_fit.shape[1]
                     kwargs = {
                         'hidden_layers': [num_cols]
-                        , 'nb_epoch': 5
-                        , 'batch_size': 100
-                        , 'verbose': 2
+                        # , 'nb_epoch': 5
+                        # , 'batch_size': 100
+                        # , 'verbose': 0
                     }
 
                     model_params = self.model.get_params()
