@@ -750,13 +750,13 @@ class Predictor(object):
                 self.fit_grid_search = True
                 self.continue_after_single_gscv = True
                 ppl_to_fit_gscv_on = ppl
-                X_to_fit_gscv_on = X_df
 
             else:
                 ppl_to_fit_gscv_on = ppl.named_steps['final_model']
                 # We want to remove the final_model step from the pipeline, since we will be breaking it out into a pure feature transformation pipeline we fit and transform a single time, and the final model which we will actually want to run grid search on
                 ppl.steps.pop()
-                X_to_fit_gscv_on = ppl.fit_transform(X_df, y)
+                # We are intentionally overwriting X_df here to try to save some memory space
+                X_df = ppl.fit_transform(X_df, y)
 
                 self.transformation_pipeline = ppl
 
@@ -794,7 +794,7 @@ class Predictor(object):
                     # then, transform all the data a single time in the trained feature_transformation pipeline.
                     # pass in that transformed data here, rather than the raw data we pass in currently.
                     # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
-                gs.fit(X_to_fit_gscv_on, y)
+                gs.fit(X_df, y)
 
                 self.trained_pipeline = gs.best_estimator_
 
