@@ -69,11 +69,18 @@ def make_deep_learning_model(hidden_layers=None, optimizer='adam', dropout_rate=
 
 # TODO: eventually take in other parameters to tune
 # TODO: eventually take in final_activation and hidden_layer_activations
-def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, activation='sigmoid'):
-    model = Sequential()
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid'):
 
     if hidden_layers is None:
-        hidden_layers = [250]
+        hidden_layers = [1]
+
+    # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
+    scaled_layers = []
+    for layer in hidden_layers:
+        scaled_layers.append(int(num_cols * layer))
+
+
+
 
     # print('\n\nCreating a deep learning model with the following shape')
     # print('Each item in this list represents a layer, with your data\'s input layer coming before this graph starts')
@@ -81,11 +88,14 @@ def make_deep_learning_classifier(hidden_layers=None, optimizer='adam', dropout_
 
     # print(hidden_layers)
 
-    model.add(Dense(hidden_layers[0], input_dim=hidden_layers[0], init='normal', W_constraint=maxnorm(weight_constraint)))
-    for layer_size in hidden_layers[1:]:
-        model.add(Dense(input_dim=layer_size, init='normal', W_constraint=maxnorm(weight_constraint)))
+    model = Sequential()
 
-    model.add(Dense(1, init='normal', activation=activation))
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
+
+    for layer_size in scaled_layers[1:]:
+        model.add(Dense(layer_size, init='normal', activation='relu'))
+
+    model.add(Dense(1, init='normal', activation=final_activation))
     model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'binary_crossentropy', 'poisson'])
     return model
 
