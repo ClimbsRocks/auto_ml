@@ -67,7 +67,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         X_fit = X
 
-
         if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression']:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
@@ -77,24 +76,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                     # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
                     num_cols = X_fit.shape[1]
-                    kwargs = {
-                        'hidden_layers': [num_cols]
-                        # , 'nb_epoch': 5
-                        # , 'batch_size': 100
-                        # , 'verbose': 0
-                    }
 
                     model_params = self.model.get_params()
                     del model_params['build_fn']
-                    for k, v in model_params.items():
-                        if k not in kwargs:
-                            kwargs[k] = v
-
 
                     if self.type_of_estimator == 'regressor':
-                        self.model = KerasRegressor(build_fn=utils.make_deep_learning_model, **kwargs)
+                        self.model = KerasRegressor(build_fn=utils.make_deep_learning_model, num_cols=num_cols, **model_params)
                     elif self.type_of_estimator == 'classifier':
-                        self.model = KerasClassifier(build_fn=utils.make_deep_learning_classifier, **kwargs)
+                        self.model = KerasClassifier(build_fn=utils.make_deep_learning_classifier, num_cols=num_cols, **model_params)
                 else:
                     print('WARNING: We did not detect that Keras was available.')
 

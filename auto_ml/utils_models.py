@@ -71,13 +71,14 @@ def get_model_from_name(model_name):
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
     }
+
     if xgb_installed:
         model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, subsample=1.0, learning_rate=0.1, n_estimators=200, nthread=-1)
         model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
 
     if keras_installed:
-        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=utils.make_deep_learning_classifier, nb_epoch=6, batch_size=50, verbose=0)
-        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=utils.make_deep_learning_model, nb_epoch=6, batch_size=50, verbose=1)
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=utils.make_deep_learning_classifier, nb_epoch=50, batch_size=50, verbose=2)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=utils.make_deep_learning_model, nb_epoch=50, batch_size=50, verbose=2)
 
 
     return model_map[model_name]
@@ -156,16 +157,31 @@ def get_search_params(model_name):
         #     , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         # },
         'DeepLearningClassifier': {
-            'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+            'hidden_layers': [
+                [1],
+                [0.5],
+                [2],
+                [1, 1],
+                [0.5, 0.5],
+                [2, 2],
+                [1, 1, 1],
+                [1, 0.5, 0.5],
+                [0.5, 1, 1],
+                [1, 0.5, 0.25],
+                [1, 2, 1],
+                [1, 1, 1, 1],
+                [1, 0.66, 0.33, 0.1],
+                [1, 2, 2, 1]
+            ]
+            , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
             # , 'nb_epoch': [2, 4, 6, 10, 20]
             # , 'batch_size': [10, 25, 50, 100, 200, 1000]
             # , 'lr': [0.001, 0.01, 0.1, 0.3]
             # , 'momentum': [0.0, 0.3, 0.6, 0.8, 0.9]
             # , 'init_mode': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
-            , 'activation': ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
+            # , 'activation': ['softmax', 'softplus', 'softsign', 'relu', 'tanh', 'sigmoid', 'hard_sigmoid', 'linear']
             # , 'weight_constraint': [1, 3, 5]
-            # , 'dropout_rate': [0.0, 0.3, 0.6, 0.8, 0.9]
-            # , 'neurons'
+            , 'dropout_rate': [0.0, 0.3, 0.6, 0.8, 0.9]
         },
         'XGBClassifier': {
             'max_depth': [1, 5, 10, 15],
