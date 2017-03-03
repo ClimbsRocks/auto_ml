@@ -17,46 +17,51 @@ if xgb_installed:
     import xgboost as xgb
 
 
-def get_model_from_name(model_name):
+def get_model_from_name(model_name, training_params=None):
+
+    # We allow the user to pass in a set of training_params that are fed directly into the model
+    if training_params is None:
+        training_params = {}
+
     model_map = {
         # Classifiers
-        'LogisticRegression': LogisticRegression(n_jobs=-2),
-        'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
-        'RidgeClassifier': RidgeClassifier(),
-        'GradientBoostingClassifier': GradientBoostingClassifier(),
-        'ExtraTreesClassifier': ExtraTreesClassifier(n_jobs=-1),
-        'AdaBoostClassifier': AdaBoostClassifier(n_estimators=10),
+        'LogisticRegression': LogisticRegression(n_jobs=-2, **training_params),
+        'RandomForestClassifier': RandomForestClassifier(n_jobs=-2, **training_params),
+        'RidgeClassifier': RidgeClassifier(**training_params),
+        'GradientBoostingClassifier': GradientBoostingClassifier(**training_params),
+        'ExtraTreesClassifier': ExtraTreesClassifier(n_jobs=-1, **training_params),
+        'AdaBoostClassifier': AdaBoostClassifier(n_estimators=10, **training_params),
 
 
-        'SGDClassifier': SGDClassifier(n_jobs=-1),
-        'Perceptron': Perceptron(n_jobs=-1),
-        'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
+        'SGDClassifier': SGDClassifier(n_jobs=-1, **training_params),
+        'Perceptron': Perceptron(n_jobs=-1, **training_params),
+        'PassiveAggressiveClassifier': PassiveAggressiveClassifier(**training_params),
 
         # Regressors
-        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1),
-        'LinearRegression': LinearRegression(n_jobs=-2),
-        'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
-        'Ridge': Ridge(),
-        'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-        'AdaBoostRegressor': AdaBoostRegressor(n_estimators=10),
-        'RANSACRegressor': RANSACRegressor(),
-        'GradientBoostingRegressor': GradientBoostingRegressor(presort=False),
+        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, **training_params, verbose=1),
+        'LinearRegression': LinearRegression(n_jobs=-2, **training_params),
+        'RandomForestRegressor': RandomForestRegressor(n_jobs=-2, **training_params),
+        'Ridge': Ridge(**training_params),
+        'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1, **training_params),
+        'AdaBoostRegressor': AdaBoostRegressor(n_estimators=10, **training_params),
+        'RANSACRegressor': RANSACRegressor(**training_params),
+        'GradientBoostingRegressor': GradientBoostingRegressor(presort=False, **training_params),
 
-        'Lasso': Lasso(),
-        'ElasticNet': ElasticNet(),
-        'LassoLars': LassoLars(),
-        'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
-        'BayesianRidge': BayesianRidge(),
-        'ARDRegression': ARDRegression(),
-        'SGDRegressor': SGDRegressor(shuffle=False),
-        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False),
+        'Lasso': Lasso(**training_params),
+        'ElasticNet': ElasticNet(**training_params),
+        'LassoLars': LassoLars(**training_params),
+        'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(**training_params),
+        'BayesianRidge': BayesianRidge(**training_params),
+        'ARDRegression': ARDRegression(**training_params),
+        'SGDRegressor': SGDRegressor(shuffle=False, **training_params),
+        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False, **training_params),
 
         # Clustering
-        'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
+        'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8, **training_params)
     }
     if xgb_installed:
-        model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, subsample=1.0, learning_rate=0.1, n_estimators=200, nthread=-1)
-        model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
+        model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, subsample=1.0, learning_rate=0.1, n_estimators=200, nthread=-1, **training_params)
+        model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200, **training_params)
 
     return model_map[model_name]
 
