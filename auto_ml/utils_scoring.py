@@ -13,7 +13,7 @@ bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf
 def advanced_scoring_classifiers(probas, actuals, name=None):
     # pandas Series don't play nice here. Make sure our actuals list is indeed a list
     actuals = list(actuals)
-    predictions = list(predictions)
+    predictions = list(probas)
 
     print('Here is our brier-score-loss, which is the default value we optimized for while training, and is the value returned from .score() unless you requested a custom scoring metric')
     print('It is a measure of how close the PROBABILITY predictions are.')
