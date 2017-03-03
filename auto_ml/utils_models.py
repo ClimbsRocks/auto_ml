@@ -19,10 +19,6 @@ if xgb_installed:
 
 def get_model_from_name(model_name, training_params=None):
 
-    # We allow the user to pass in a set of training_params that are fed directly into the model
-    if training_params is None:
-        training_params = {}
-
     all_model_params = {
         'LogisticRegression': {'n_jobs': -2},
         'RandomForestClassifier': {'n_jobs': -2},
@@ -47,8 +43,13 @@ def get_model_from_name(model_name, training_params=None):
     if model_params is None:
         model_params = {}
 
-    # Overwrite our stock params with what the user passes in (i.e., if the user wants 10,000 trees, we will let them do it)
-    model_params.update(training_params)
+    if training_params is not None:
+        print('Now using the model training_params that you passed in:')
+        print(training_params)
+        # Overwrite our stock params with what the user passes in (i.e., if the user wants 10,000 trees, we will let them do it)
+        model_params.update(training_params)
+        print('After overwriting our defaults with your values, here are the final params that will be used to initialize the model:')
+        print(model_params)
 
 
     model_map = {
