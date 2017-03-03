@@ -26,7 +26,7 @@ def get_titanic_binary_classification_dataset(basic=True):
         df_titanic = pd.read_csv(dataset_url)
         # Do not write the index that pandas automatically creates
         df_titanic.to_csv(os.path.join('tests', 'titanic.csv'), index=False)
-    # print(df_titanic)
+
     df_titanic = df_titanic.drop(['boat', 'body'], axis=1)
 
     if basic == True:

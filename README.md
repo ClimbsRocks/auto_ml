@@ -1,5 +1,5 @@
 # auto_ml
-> Get a trained and optimized machine learning predictor at the push of a button (and, admittedly, an extended coffee break while your computer does the heavy lifting and you get to claim "compiling" https://xkcd.com/303/).
+> Automated machine learning for production and analytics
 
 [![Build Status](https://travis-ci.org/ClimbsRocks/auto_ml.svg?branch=master)](https://travis-ci.org/ClimbsRocks/auto_ml)
 [![Documentation Status](http://readthedocs.org/projects/auto-ml/badge/?version=latest)](http://auto-ml.readthedocs.io/en/latest/?badge=latest)
@@ -12,13 +12,12 @@
 
 - `pip install auto_ml`
 
-OR
-
-- `git clone https://github.com/ClimbsRocks/auto_ml`
-- `pip install -r requirements.txt`
+## Getting started
 
 
-## Getting Started
+## Show off some more features!
+
+auto_ml is designed for production. Here's an example that includes serializing and loading the trained model, then getting predictions on single dictionaries, roughly the process you'd likely follow to deploy the trained model.
 
 ```python
 import dill
