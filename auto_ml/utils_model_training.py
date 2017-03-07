@@ -2,12 +2,10 @@ import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 import warnings
-try:
-    from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
-    from auto_ml.utils_models import get_model_from_name, get_name_from_model
-except ImportError:
-    from ..auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
-    from ..auto_ml.utils_models import get_model_from_name, get_name_from_model
+
+from auto_ml import utils
+from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
+from auto_ml.utils_models import get_model_from_name, get_name_from_model
 
 keras_installed = False
 try:
@@ -19,21 +17,11 @@ try:
 except:
     pass
 
-try:
-    from auto_ml import utils
-except ImportError:
-    from ..auto_ml import utils
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
 # It also gives us more granular control over things like turning the input for GradientBoosting into dense matrices, or appending a set of dummy 1's to the end of sparse matrices getting predictions from XGBoost.
-# TODO: make sure we can actually get the params from GridSearchCV.
-    # Might have to do something tricky, like have a hold-all function that does nothing but get the params from GridSearchCV inside __init__
-        # So, self.model might just be a dictionary or something
-        # Or, a function that takes in anything as kwargs, and sets them on a dictionary, then returns that dictionary
-    # And then that function does nothing but return those params
-    # And we create a model using that inside fit
 
 class FinalModelATC(BaseEstimator, TransformerMixin):
 

@@ -11,6 +11,9 @@ import pandas as pd
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
 def advanced_scoring_classifiers(probas, actuals, name=None):
+    # pandas Series don't play nice here. Make sure our actuals list is indeed a list
+    actuals = list(actuals)
+    predictions = list(probas)
 
     print('Here is our brier-score-loss, which is the default value we optimized for while training, and is the value returned from .score() unless you requested a custom scoring metric')
     print('It is a measure of how close the PROBABILITY predictions are.')
@@ -83,6 +86,9 @@ def calculate_and_print_differences(predictions, actuals, name=None):
 
 
 def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
+    # pandas Series don't play nice here. Make sure our actuals list is indeed a list
+    actuals = list(actuals)
+    predictions = list(predictions)
 
     print('\n\n***********************************************')
     if name != None:
@@ -123,7 +129,7 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
     print(r2_score(actuals, predictions))
 
     # 5. pos and neg differences
-    calculate_and_print_differences(predictions, actuals, name=name)
+    calculate_and_print_differences(predictions=predictions, actuals=actuals, name=name)
     # 6.
 
     actuals_preds = list(zip(actuals, predictions))

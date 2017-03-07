@@ -22,25 +22,42 @@ def clean_val(val):
     else:
         try:
             float_val = float(val)
-        except:
+        except ValueError:
             # This will throw a ValueError if it fails
             # remove any commas in the string, and try to turn into a float again
-            cleaned_string = val.replace(',', '')
-            float_val = float(cleaned_string)
+            try:
+                cleaned_string = val.replace(',', '')
+                float_val = float(cleaned_string)
+            except TypeError:
+                return None
         return float_val
 
 # Same as above, except this version returns float('nan') when it fails
 # This plays more nicely with df.apply, and assumes we will be handling nans appropriately when doing DataFrameVectorizer later.
 def clean_val_nan_version(val):
-    if str(val) in bad_vals_as_strings:
+    try:
+        str_val = str(val)
+    except UnicodeEncodeError as e:
+        print('Here is the value that causes the UnicodeEncodeError to be thrown:')
+        print(val)
+        raise(e)
+
+    if str_val in bad_vals_as_strings:
         return float('nan')
     else:
         try:
             float_val = float(val)
-        except:
+        except ValueError:
             # This will throw a ValueError if it fails
             # remove any commas in the string, and try to turn into a float again
-            cleaned_string = val.replace(',', '')
+            try:
+                cleaned_string = val.replace(',', '')
+            except TypeError:
+                print('*************************************')
+                print('We expected this value to be numeric, but were unable to convert it to a float:')
+                print(val)
+                print('*************************************')
+                return float('nan')
             try:
                 float_val = float(cleaned_string)
             except:
@@ -158,6 +175,17 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n')
                         raise(e)
+                    except UnicodeEncodeError as e:
+                        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                        print('We have found a column that is not marked as a categorical column that has unicode values in it')
+                        print('Here is the column name:')
+                        print(key)
+                        print('The actual value that caused the issue is logged right above the exclamation points')
+                        print('Please either mark this column as categorical, or clean up the values in this column')
+                        raise(e)
+                        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                        print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
 
 

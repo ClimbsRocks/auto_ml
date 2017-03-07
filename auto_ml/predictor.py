@@ -18,7 +18,6 @@ import pathos
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.options.mode.chained_assignment = None  # default='warn'
 
-# from sklearn.model_selection import
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.decomposition import TruncatedSVD
@@ -29,29 +28,15 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
 
-# This is ugly, but allows auto_ml to work whether it's installed using pip, or the whole project is installed using git clone https://github.com/ClimbsRocks/auto_ml
-try:
-# from auto_ml import date_feature_engineering
-    from auto_ml import DataFrameVectorizer
-    from auto_ml import utils
-    from auto_ml import utils_data_cleaning
-    from auto_ml import utils_ensemble
-    from auto_ml import utils_feature_selection
-    from auto_ml import utils_model_training
-    from auto_ml import utils_models
-    from auto_ml import utils_scaling
-    from auto_ml import utils_scoring
-except ImportError:
-    from .. auto_ml import date_feature_engineering
-    from .. auto_ml import DataFrameVectorizer
-    from .. auto_ml import utils
-    from .. auto_ml import utils_data_cleaning
-    from .. auto_ml import utils_ensemble
-    from .. auto_ml import utils_feature_selection
-    from .. auto_ml import utils_model_training
-    from .. auto_ml import utils_models
-    from .. auto_ml import utils_scaling
-    from .. auto_ml import utils_scoring
+from auto_ml import DataFrameVectorizer
+from auto_ml import utils
+from auto_ml import utils_data_cleaning
+from auto_ml import utils_ensemble
+from auto_ml import utils_feature_selection
+from auto_ml import utils_model_training
+from auto_ml import utils_models
+from auto_ml import utils_scaling
+from auto_ml import utils_scoring
 
 
 # XGBoost can be a pain to install. It's also a super powerful and effective package.
