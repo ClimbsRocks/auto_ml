@@ -17,30 +17,64 @@ if xgb_installed:
     import xgboost as xgb
 
 
-def get_model_from_name(model_name):
+def get_model_from_name(model_name, training_params=None):
+
+    all_model_params = {
+        'LogisticRegression': {'n_jobs': -2},
+        'RandomForestClassifier': {'n_jobs': -2},
+        'ExtraTreesClassifier': {'n_jobs': -1},
+        'AdaBoostClassifier': {'n_estimators': 10},
+        'SGDClassifier': {'n_jobs': -1},
+        'Perceptron': {'n_jobs': -1},
+        'LinearRegression': {'n_jobs': -2},
+
+        'RandomForestRegressor': {'n_jobs': -2},
+        'ExtraTreesRegressor': {'n_jobs': -1},
+        'MiniBatchKMeans': {'n_clusters': 8},
+        'GradientBoostingRegressor': {'presort': False},
+        'SGDRegressor': {'shuffle': False},
+        'PassiveAggressiveRegressor': {'shuffle': False},
+        'AdaBoostRegressor': {'n_estimators': 10},
+        'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
+        'XGBClassifier': {'nthread':-1, 'n_estimators': 200}
+    }
+
+    model_params = all_model_params.get(model_name, None)
+    if model_params is None:
+        model_params = {}
+
+    if training_params is not None:
+        print('Now using the model training_params that you passed in:')
+        print(training_params)
+        # Overwrite our stock params with what the user passes in (i.e., if the user wants 10,000 trees, we will let them do it)
+        model_params.update(training_params)
+        print('After overwriting our defaults with your values, here are the final params that will be used to initialize the model:')
+        print(model_params)
+
+
     model_map = {
         # Classifiers
-        'LogisticRegression': LogisticRegression(n_jobs=-2),
-        'RandomForestClassifier': RandomForestClassifier(n_jobs=-2),
+        'LogisticRegression': LogisticRegression(),
+        'RandomForestClassifier': RandomForestClassifier(),
         'RidgeClassifier': RidgeClassifier(),
         'GradientBoostingClassifier': GradientBoostingClassifier(),
-        'ExtraTreesClassifier': ExtraTreesClassifier(n_jobs=-1),
-        'AdaBoostClassifier': AdaBoostClassifier(n_estimators=10),
+        'ExtraTreesClassifier': ExtraTreesClassifier(),
+        'AdaBoostClassifier': AdaBoostClassifier(),
 
 
-        'SGDClassifier': SGDClassifier(n_jobs=-1),
-        'Perceptron': Perceptron(n_jobs=-1),
+        'SGDClassifier': SGDClassifier(),
+        'Perceptron': Perceptron(),
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
-        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, verbose=1),
-        'LinearRegression': LinearRegression(n_jobs=-2),
-        'RandomForestRegressor': RandomForestRegressor(n_jobs=-2),
+        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, **training_params, verbose=1),
+        'LinearRegression': LinearRegression(),
+        'RandomForestRegressor': RandomForestRegressor(),
         'Ridge': Ridge(),
-        'ExtraTreesRegressor': ExtraTreesRegressor(n_jobs=-1),
-        'AdaBoostRegressor': AdaBoostRegressor(n_estimators=10),
+        'ExtraTreesRegressor': ExtraTreesRegressor(),
+        'AdaBoostRegressor': AdaBoostRegressor(),
         'RANSACRegressor': RANSACRegressor(),
-        'GradientBoostingRegressor': GradientBoostingRegressor(presort=False),
+        'GradientBoostingRegressor': GradientBoostingRegressor(),
 
         'Lasso': Lasso(),
         'ElasticNet': ElasticNet(),
@@ -48,17 +82,20 @@ def get_model_from_name(model_name):
         'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
         'BayesianRidge': BayesianRidge(),
         'ARDRegression': ARDRegression(),
-        'SGDRegressor': SGDRegressor(shuffle=False),
-        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(shuffle=False),
+        'SGDRegressor': SGDRegressor(),
+        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(),
 
         # Clustering
-        'MiniBatchKMeans': MiniBatchKMeans(n_clusters=8)
+        'MiniBatchKMeans': MiniBatchKMeans()
     }
     if xgb_installed:
-        model_map['XGBClassifier'] = xgb.XGBClassifier(colsample_bytree=0.8, min_child_weight=5, subsample=1.0, learning_rate=0.1, n_estimators=200, nthread=-1)
-        model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
+        model_map['XGBClassifier'] = xgb.XGBClassifier()
+        model_map['XGBRegressor'] = xgb.XGBRegressor()
 
-    return model_map[model_name]
+    model_without_params = model_map[model_name]
+    model_with_params = model_without_params.set_params(**model_params)
+
+    return model_with_params
 
 def get_name_from_model(model):
     if isinstance(model, LogisticRegression):

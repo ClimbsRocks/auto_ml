@@ -163,7 +163,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
-            final_model = utils_models.get_model_from_name(model_name)
+            final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer)))
             # final_model = utils_models.get_model_from_name(model_name)
             # pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
@@ -506,7 +506,7 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None, verify_features=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -525,6 +525,8 @@ class Predictor(object):
         self.ensembler = ensembler
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
+        self.training_params = training_params
+        self.user_gs_params = grid_search_params
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -679,12 +681,23 @@ class Predictor(object):
 
             self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
+
             # self.grid_search_params['final_model__model_name'] = [model_name]
 
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
                 raw_search_params = utils_models.get_search_params(model_name)
                 for param_name, param_list in raw_search_params.items():
                     self.grid_search_params['final_model__model__' + param_name] = param_list
+
+            if self.user_gs_params is not None:
+                # If the user gave us GSCV params, overwrite our defaults with what they provided
+                print('Using the grid_search_params you passed in:')
+                print(self.user_gs_params)
+                self.grid_search_params.update(self.user_gs_params)
+                print('Here is our final list of grid_search_params:')
+                print(self.grid_search_params)
+                print('Please note that if you want to set the grid search params for the final model specifically, they need to be prefixed with: "final_model__model__"')
+
 
             if self.verbose:
                 grid_search_verbose = 5
