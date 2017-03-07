@@ -101,7 +101,7 @@ def test_nans_in_output_column():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, optimize_final_model=True)
+    ml_predictor.train(df_titanic_train)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
