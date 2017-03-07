@@ -7,11 +7,6 @@ import math
 import os
 import random
 
-from keras.constraints import maxnorm
-from keras.layers import Dense, Dropout
-from keras.models import Sequential
-from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
 # from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
@@ -43,6 +38,17 @@ except ImportError:
 
 if xgb_installed:
     import xgboost as xgb
+
+keras_installed = False
+try:
+    from keras.constraints import maxnorm
+    from keras.layers import Dense, Dropout
+    from keras.models import Sequential
+    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+    keras_installed = True
+
+except ImportError:
+    pass
 
 
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
