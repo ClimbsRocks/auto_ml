@@ -1,8 +1,7 @@
 from sklearn.base import BaseEstimator, TransformerMixin
-try:
-    from auto_ml import utils
-except ImportError:
-    from ..auto_ml import utils
+
+from auto_ml import utils
+
 
 # Used in CustomSparseScaler
 def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
