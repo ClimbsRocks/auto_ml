@@ -8,6 +8,7 @@ python:
 
 # Command to install dependencies
 install:
+  - echo $PWD
   # These first three sections taken directly from https://github.com/ArdalanM/pyLightGBM/blob/master/.travis.yml on 3-10-17
   # Installing LightGBM on travis is proving challenging, so I will defer to someone who's gotten it working successfully.
   - sudo apt-get update
@@ -42,6 +43,8 @@ install:
   - pip install coveralls
   - pip install --only-binary=numpy,scipy numpy scipy
   - pip install -r requirements.txt
+  - pip install dill scikit-learn scipy python-dateutil pandas pathos
+  - echo $PWD
   # - git clone --recursive https://github.com/Microsoft/LightGBM ; cd LightGBM
   # - mkdir build ; cd build
   # - cmake ..
