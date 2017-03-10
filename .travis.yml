@@ -14,18 +14,18 @@ install:
   - sudo apt-get update
   # We do this conditionally because it saves us some downloading if the
   # version is the same.
-  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-      wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-    else
-      wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-    fi
-  - bash miniconda.sh -b -p $HOME/miniconda
-  - export PATH="$HOME/miniconda/bin:$PATH"
-  - hash -r
-  - conda config --set always_yes yes --set changeps1 no
-  - conda update -q conda
-  # Useful for debugging any issues with conda
-  - conda info -a
+  # - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+  #     wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
+  #   else
+  #     wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
+  #   fi
+  # - bash miniconda.sh -b -p $HOME/miniconda
+  # - export PATH="$HOME/miniconda/bin:$PATH"
+  # - hash -r
+  # - conda config --set always_yes yes --set changeps1 no
+  # - conda update -q conda
+  # # Useful for debugging any issues with conda
+  # - conda info -a
 
   #  Install LightGBM
   - sudo apt-get install -y libopenmpi-dev openmpi-bin build-essential
@@ -33,10 +33,12 @@ install:
   - cd $HOME/LightGBM && mkdir build && cd build && cmake .. && make -j
   - export LIGHTGBM_EXEC="$HOME/LightGBM/lightgbm"
   - echo -e "LighGBM executable:\n$(echo $LIGHTGBM_EXEC)"
+  -
   - cd $TRAVIS_BUILD_DIR
 
-  - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
-  - source activate test-environment
+  # Commenting out the virtualenv part for now to see if that's messing with our installs
+  # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
+  # - source activate test-environment
 
   # This begins the section I wrote specifically for auto_ml
   - pip install --upgrade pip
@@ -45,6 +47,10 @@ install:
   - pip install -r requirements.txt
   - pip install dill scikit-learn scipy python-dateutil pandas pathos
   - echo $PWD
+  - echo $PYTHONPATH
+  - PYTHONPATH=$LIGHTGBM_EXEC:$PYTHONPATH
+  - PYTHONPATH=$PWD:$PYTHONPATH
+  - echo $PYTHONPATH
   # - git clone --recursive https://github.com/Microsoft/LightGBM ; cd LightGBM
   # - mkdir build ; cd build
   # - cmake ..
