@@ -8,62 +8,29 @@ python:
 
 # Command to install dependencies
 install:
-  - echo $PWD
   - TEST_DIR=$PWD
-  # These first three sections taken directly from https://github.com/ArdalanM/pyLightGBM/blob/master/.travis.yml on 3-10-17
-  # Installing LightGBM on travis is proving challenging, so I will defer to someone who's gotten it working successfully.
   - sudo apt-get update
-  # We do this conditionally because it saves us some downloading if the
-  # version is the same.
-  # - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-  #     wget https://repo.continuum.io/miniconda/Miniconda2-latest-Linux-x86_64.sh -O miniconda.sh;
-  #   else
-  #     wget https://repo.continuum.io/miniconda/Miniconda3-latest-Linux-x86_64.sh -O miniconda.sh;
-  #   fi
-  # - bash miniconda.sh -b -p $HOME/miniconda
-  # - export PATH="$HOME/miniconda/bin:$PATH"
-  # - hash -r
-  # - conda config --set always_yes yes --set changeps1 no
-  # - conda update -q conda
-  # # Useful for debugging any issues with conda
-  # - conda info -a
 
   #  Install LightGBM
   - sudo apt-get install -y libopenmpi-dev openmpi-bin build-essential
   - git clone --recursive https://github.com/Microsoft/LightGBM LightGBM
   - cd LightGBM && mkdir build && cd build && cmake .. && make -j
-  - echo $PWD
+  # Exit out of the build dir up a level to where python-package is
   - cd ..
-  - echo $PWD
-  # It looks like we need scipy installed to get the python version of lightgbm.
+
+  # We need scipy installed to get the python version of lightgbm.
   - pip install --upgrade pip
   - pip install --only-binary=numpy,scipy numpy scipy
-  # - pip install dill scikit-learn scipy python-dateutil pandas pathos
+
+  # Install the python part of LightGBM now that we have scipy
   - cd python-package
   - python setup.py install
-  - cd $HOME
-  - echo $PWD
+  # Move back to the directory we want to run our tests in, out of the LightGBM build directories
   - cd $TEST_DIR
-  # - export LIGHTGBM_EXEC="LightGBM/lightgbm"
-  # - echo -e "LighGBM executable:\n$(echo $LIGHTGBM_EXEC)"
-  # - cd $TRAVIS_BUILD_DIR
 
-  # Commenting out the virtualenv part for now to see if that's messing with our installs
-  # - conda create -q -n test-environment python=$TRAVIS_PYTHON_VERSION
-  # - source activate test-environment
-
-  # This begins the section I wrote specifically for auto_ml
   - pip install coveralls
   - pip install -r requirements.txt
-  - echo $PWD
-  # - echo $PYTHONPATH
-  # - PYTHONPATH=$LIGHTGBM_EXEC:$PYTHONPATH
-  # - PYTHONPATH=$PWD:$PYTHONPATH
-  # - echo $PYTHONPATH
-  # - git clone --recursive https://github.com/Microsoft/LightGBM ; cd LightGBM
-  # - mkdir build ; cd build
-  # - cmake ..
-  # - make -j
+
 # Command to run tests
 script: nosetests -v --with-coverage --cover-package auto_ml tests
 
