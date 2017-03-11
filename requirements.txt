@@ -1,3 +1,4 @@
+dill
 scikit-learn
 scipy
 python-dateutil

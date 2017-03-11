@@ -774,7 +774,7 @@ class Predictor(object):
                     if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                         self._print_ml_analytics_results_linear_model()
 
-                    elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
+                    elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
                         self._print_ml_analytics_results_random_forest()
 
                     break
@@ -800,7 +800,7 @@ class Predictor(object):
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_linear_model()
-            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
+            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMClassifier', 'LGBMRegressor']:
                 self._print_ml_analytics_results_random_forest()
 
             if (self.X_test) is not None and (self.y_test) is not None:
@@ -885,7 +885,12 @@ class Predictor(object):
         else:
             trained_feature_names = self._get_trained_feature_names()
 
-            trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+            try:
+                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+            except:
+                # There's either a typo or a very odd design decision in LightGBM that removes the s on importanceS
+                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importance_
+
 
             feature_infos = zip(trained_feature_names, trained_feature_importances)
 

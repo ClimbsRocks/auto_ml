@@ -17,3 +17,4 @@ venv/*
 xgboost/*
 *.dill
 .coverage*
+LightGBM/
