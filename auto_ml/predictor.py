@@ -922,19 +922,24 @@ class Predictor(object):
 
 
     def _print_ml_analytics_results_random_forest(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        try:
+            final_model_obj = self.trained_pipeline.named_steps['final_model']
+        except:
+            final_model_obj = self.trained_pipeline
+
+        print('\n\nHere are the results from our ' + final_model_obj.model_name)
         if self.name is not None:
             print(self.name)
         print('predicting ' + self.output_column)
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
-        if self.trained_pipeline.named_steps['final_model'].model_name in ['XGBRegressor', 'XGBClassifier']:
-            self._get_xgb_feat_importances(self.trained_pipeline.named_steps['final_model'].model)
+        if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
+            self._get_xgb_feat_importances(final_model_obj.model)
 
         else:
             trained_feature_names = self._get_trained_feature_names()
 
-            trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+            trained_feature_importances = final_model_obj.model.feature_importances_
 
             feature_infos = zip(trained_feature_names, trained_feature_importances)
 
@@ -948,22 +953,30 @@ class Predictor(object):
 
     def _get_trained_feature_names(self):
 
-        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        try:
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        except AttributeError:
+            trained_feature_names = self.transformation_pipeline.named_steps['dv'].get_feature_names()
+
 
         return trained_feature_names
 
 
     def _print_ml_analytics_results_linear_model(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        try:
+            final_model_obj = self.trained_pipeline.named_steps['final_model']
+        except:
+            final_model_obj = self.trained_pipeline
+        print('\n\nHere are the results from our ' + final_model_obj.model_name)
 
         trained_feature_names = self._get_trained_feature_names()
 
         if self.type_of_estimator == 'classifier':
-            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+            trained_coefficients = final_model_obj.model.coef_[0]
         else:
-            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
+            trained_coefficients = final_model_obj.model.coef_
 
-        # feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+        # feature_ranges = final_model_obj.feature_ranges
 
         # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []
