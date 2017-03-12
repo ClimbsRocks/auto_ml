@@ -66,12 +66,19 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
                 feature_importances = self.estimator.feature_importances_
 
+                # Two ways of doing feature selection
+
+                # 1. Any feature with a feature importance of at least 1/100th of our max feature
                 max_feature_importance = max(feature_importances)
                 threshold_by_relative_importance = 0.01 * max_feature_importance
 
+                # 2. 1/4 the number of rows (so 100 rows means 25 columns)
                 sorted_importances = sorted(feature_importances, reverse=True)
                 max_cols = int(num_rows * 0.25)
-                threshold_by_max_cols = sorted_importances[max_cols]
+                try:
+                    threshold_by_max_cols = sorted_importances[max_cols]
+                except IndexError:
+                    threshold_by_max_cols = sorted_importances[-1]
 
                 threshold = max(threshold_by_relative_importance, threshold_by_max_cols)
                 self.support_mask = [True if x > threshold else False for x in feature_importances]
