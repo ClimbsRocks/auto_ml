@@ -320,10 +320,10 @@ class Predictor(object):
         # If we do not have feature selection in the pipeline, just return the pipeline as is
         try:
             feature_selection = trained_pipeline.named_steps['feature_selection']
+            feature_selection_mask = feature_selection.support_mask
+            dv.restrict(feature_selection_mask)
         except KeyError:
-            return trained_pipeline
-        feature_selection_mask = feature_selection.support_mask
-        dv.restrict(feature_selection_mask)
+            pass
 
         # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
         # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
@@ -1082,7 +1082,15 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
-        if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+        # NOTE: Right now we are not supporting deep learning as part of an ensemble.
+        is_deep_learning = False
+        try:
+            if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+                is_deep_learning = True
+        except:
+            pass
+
+        if is_deep_learning == True:
             keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
 
             keras_wrapper = self.trained_pipeline.named_steps['final_model'].model
