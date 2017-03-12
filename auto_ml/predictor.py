@@ -620,8 +620,11 @@ class Predictor(object):
 
 
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-        if self.continue_after_single_gscv == False:
-            self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
+        if self.continue_after_single_gscv == True:
+            if self.transformation_pipeline is None:
+                self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+            else:
+                self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
         else:
             self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
@@ -725,9 +728,13 @@ class Predictor(object):
                 if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
                     self.fit_grid_search = True
 
-            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models. Just add them to the GSCV params, and run GSCV, and we should be set.
-            self.continue_after_single_gscv = False
 
+            self.continue_after_single_gscv = False
+            self.transformation_pipeline = None
+            # This is also where we built in the logic for fitting the feature transformation pipeline separately from grid searching hyperparameters on the final model.
+            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models.
+            # Just add them to the GSCV params, and run GSCV, and we should be set.
+            # Obviously, as part of this, say that we want to continue after a single round of GSCV
             if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
 
                 final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
@@ -736,17 +743,28 @@ class Predictor(object):
                 self.continue_after_single_gscv = True
                 ppl_to_fit_gscv_on = ppl
 
-            else:
+            elif self.fit_grid_search == True:
+                # Here is where we are handling Keras!
+
+                # At this point, only optimize the final model. That's all we want to run GSCV on- just optimizing the final model.
                 ppl_to_fit_gscv_on = ppl.named_steps['final_model']
-                # We want to remove the final_model step from the pipeline, since we will be breaking it out into a pure feature transformation pipeline we fit and transform a single time, and the final model which we will actually want to run grid search on
+                # We want to remove the final_model step from the pipeline.
+                # We will be breaking the pipeline into two parts:
+                    # One that is a pure feature transformation pipeline we fit and transform a single time
+                    # And one that is the final model we run the grid search on to optimize hyperparameters
                 ppl.steps.pop()
                 # We are intentionally overwriting X_df here to try to save some memory space
                 X_df = ppl.fit_transform(X_df, y)
 
                 self.transformation_pipeline = ppl
 
+                self.continue_after_single_gscv = True
+
                 # TODO TODO: see if we need to remove final_model__model from gscv params
                 del self.grid_search_params['final_model__model']
+
+            else:
+                ppl_to_fit_gscv_on = ppl
 
 
             if self.fit_grid_search == True:
