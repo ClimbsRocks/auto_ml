@@ -397,23 +397,27 @@ def load_keras_model(file_name):
 
 
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
-def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
     if hidden_layers is None:
-        hidden_layers = [250]
+        hidden_layers = [1]
+
+    # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
+    scaled_layers = []
+    for layer in hidden_layers:
+        scaled_layers.append(int(num_cols * layer))
+
 
     model = Sequential()
-    # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
-    model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-    model.add(Dropout(dropout_rate))
-    model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-    model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
+
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
+
+    for layer_size in scaled_layers[1:]:
+        model.add(Dense(layer_size, init='normal', activation='relu'))
     # For regressors, we want an output layer with a single node
-    # For classifiers, we'll want to add in some other processing here (like a softmax activation function)
     model.add(Dense(1, init='normal'))
 
     # The final step is to compile the model
-    # TODO: see if we can pass in our own custom loss function here
-    model.compile(loss='mean_squared_error', optimizer=optimizer)
+    model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
 
     return model
 
@@ -431,14 +435,6 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
         scaled_layers.append(int(num_cols * layer))
 
 
-
-
-    # print('\n\nCreating a deep learning model with the following shape')
-    # print('Each item in this list represents a layer, with your data\'s input layer coming before this graph starts')
-    # print('And each number represents the number of nodes in that layer')
-
-    # print(hidden_layers)
-
     model = Sequential()
 
     model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
@@ -447,5 +443,5 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
         model.add(Dense(layer_size, init='normal', activation='relu'))
 
     model.add(Dense(1, init='normal', activation=final_activation))
-    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'binary_crossentropy', 'poisson'])
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson', 'precision', 'recall', 'fbeta_score'])
     return model
