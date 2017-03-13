@@ -8,7 +8,8 @@ install:
   - pip install --upgrade pip
   - pip install coveralls
   - pip install --only-binary=numpy,scipy numpy scipy
-  - sudo apt-get install libstdc++6
+  - strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX
+  # - sudo apt-get install libstdc++6
   - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
   -
   - sudo apt-get update
