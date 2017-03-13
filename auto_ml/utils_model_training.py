@@ -1,14 +1,18 @@
+import os
+
 import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 import warnings
 
-from auto_ml import utils
+from auto_ml import utils, utils_models
 from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
 from auto_ml.utils_models import get_model_from_name, get_name_from_model
 
 keras_installed = False
 try:
+    # Suppress some level of logs
+    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '0'
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.models import Sequential
@@ -69,11 +73,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     del model_params['build_fn']
 
                     if self.type_of_estimator == 'regressor':
-                        self.model = KerasRegressor(build_fn=utils.make_deep_learning_model, num_cols=num_cols, **model_params)
+                        self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, **model_params)
                     elif self.type_of_estimator == 'classifier':
-                        self.model = KerasClassifier(build_fn=utils.make_deep_learning_classifier, num_cols=num_cols, **model_params)
+                        self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, **model_params)
                 else:
                     print('WARNING: We did not detect that Keras was available.')
+                    raise TypeError('A DeepLearning model was requested, but Keras was not available to import')
 
         try:
             self.model.fit(X_fit, y)
