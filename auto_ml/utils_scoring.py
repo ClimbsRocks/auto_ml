@@ -263,7 +263,8 @@ class ClassificationScorer(object):
         predictions = estimator.predict_proba(X)
 
         if self.scoring_method == 'brier_score_loss':
-            probas = [row[1] for row in predictions]
+            # At the moment, Microsoft's LightGBM returns probabilities > 1 and < 0, which can break some scoring functions. So we have to take the max of 1 and the pred, and the min of 0 and the pred.
+            probas = [max(min(row[1], 1), 0) for row in predictions]
             predictions = probas
         # score = brier_score_loss(y, probas)
 

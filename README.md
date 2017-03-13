@@ -14,6 +14,23 @@
 
 ## Getting started
 
+```python
+from auto_ml import Predictor
+from auto_ml.utils import get_boston_dataset
+
+df_train, df_test = get_boston_dataset()
+
+column_descriptions = {
+    'MEDV': 'output'
+    , 'CHAS': 'categorical'
+}
+
+ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+ml_predictor.train(df_train)
+
+ml_predictor.score(df_test, df_test.MEDV)
+```
 
 ## Show off some more features!
 
@@ -21,18 +38,11 @@ auto_ml is designed for production. Here's an example that includes serializing 
 
 ```python
 import dill
-import pandas as pd
-from sklearn.datasets import load_boston
-from sklearn.model_selection import train_test_split
-
 from auto_ml import Predictor
+from auto_ml.utils import get_boston_dataset
 
 # Load data
-boston = load_boston()
-df_boston = pd.DataFrame(boston.data)
-df_boston.columns = boston.feature_names
-df_boston['MEDV'] = boston['target']
-df_boston_train, df_boston_test = train_test_split(df_boston, test_size=0.2, random_state=42)
+df_train, df_test = get_boston_dataset()
 
 # Tell auto_ml which column is 'output'
 # Also note columns that aren't purely numerical
@@ -44,10 +54,10 @@ column_descriptions = {
 
 ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-ml_predictor.train(df_boston_train)
+ml_predictor.train(df_train)
 
 # Score the model on test data
-test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+test_score = ml_predictor.score(df_test, df_test.MEDV)
 
 # auto_ml is specifically tuned for running in production
 # It can get predictions on an individual row (passed in as a dictionary)
@@ -63,7 +73,7 @@ with open (file_name, 'rb') as read_file:
 # A pandas DataFrame
 # A list of dictionaries
 # A single dictionary (optimized for speed in production evironments)
-predictions = trained_model.predict(df_boston_test)
+predictions = trained_model.predict(df_test)
 print(predictions)
 ```
 
@@ -94,7 +104,7 @@ A quick overview of buzzwords, this project automates:
 - Data formatting (turning a DataFrame or a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems, etc).
 - Model Selection (which model works best for your problem- we try roughly a dozen apiece for classification and regression problems, including favorites like XGBoost if it's installed on your machine).
 - Hyperparameter Optimization (what hyperparameters work best for that model).
-- Ensembling (Train up a bunch of different estimators, then train a final estimator to intelligently aggregate them together. Also useful if you're just trying to compare many different models and see what works best.)
+<!-- - Ensembling (Train up a bunch of different estimators, then train a final estimator to intelligently aggregate them together. Also useful if you're just trying to compare many different models and see what works best.) -->
 - Big Data (feed it lots of data- it's fairly efficient with resources).
 - Unicorns (you could conceivably train it to predict what is a unicorn and what is not).
 - Ice Cream (mmm, tasty...).
