@@ -12,7 +12,7 @@ from auto_ml.utils_models import get_model_from_name, get_name_from_model
 keras_installed = False
 try:
     # Suppress some level of logs
-    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '0'
+    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.models import Sequential

@@ -10,7 +10,7 @@ from sklearn.cluster import MiniBatchKMeans
 keras_installed = False
 try:
     # Suppress some level of logs
-    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = 0
+    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.models import Sequential
