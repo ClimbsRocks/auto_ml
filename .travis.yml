@@ -10,8 +10,7 @@ install:
   - pip install --only-binary=numpy,scipy numpy scipy
   - strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX
   # - sudo apt-get install libstdc++6
-  - sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-  -
+  - yes "" | sudo add-apt-repository ppa:ubuntu-toolchain-r/test
   - sudo apt-get update
   - sudo apt-get install gcc-4.9 g++-4.9
   - sudo apt-get install libstdc++6
