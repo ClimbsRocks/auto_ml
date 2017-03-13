@@ -9,7 +9,8 @@ install:
   - pip install coveralls
   - pip install --only-binary=numpy,scipy numpy scipy
   - pip install -r requirements.txt
-  - pip install tensorflow keras
+  - pip install tensorflow
+  - pip install keras
 # Command to run tests
 script: nosetests -v --with-coverage --cover-package auto_ml tests
 
