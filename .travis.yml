@@ -8,19 +8,19 @@ install:
   - pip install --upgrade pip
   - pip install coveralls
   - pip install --only-binary=numpy,scipy numpy scipy
-  - sudo apt-get install libstdc++6
-  - strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX
-  - yes "" | sudo add-apt-repository ppa:ubuntu-toolchain-r/test
-  - sudo apt-get update
-  - sudo apt-get install gcc-4.9 g++-4.9
-  - sudo apt-get install libstdc++6
+  # - sudo apt-get install libstdc++6
+  # - strings /usr/lib/x86_64-linux-gnu/libstdc++.so.6 | grep GLIBCXX
+  # - yes "" | sudo add-apt-repository ppa:ubuntu-toolchain-r/test
+  # - sudo apt-get update
+  # - sudo apt-get install gcc-4.9 g++-4.9
+  # - sudo apt-get install libstdc++6
   # - pip install -r requirements.txt
-  - pip install tensorflow
-  # - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-  #     pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.0a0-cp27-none-linux_x86_64.whl;
-  #   elif [[ "$TRAVIS_PYTHON_VERSION" == "3.5" ]]; then
-  #     pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.0a0-cp35-cp35m-linux_x86_64.whl;
-  #   fi
+  # - pip install tensorflow
+  - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
+      pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.1-cp27-none-linux_x86_64.whl;
+    elif [[ "$TRAVIS_PYTHON_VERSION" == "3.5" ]]; then
+      pip install https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.1-cp35-cp35m-linux_x86_64.whl;
+    fi
   - pip install keras
 # Command to run tests
 script: python keras_import.py
