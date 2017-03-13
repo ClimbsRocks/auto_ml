@@ -31,7 +31,7 @@ def test_optimize_final_model_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, optimize_final_model=True, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, optimize_final_model=True, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -55,7 +55,7 @@ def test_perform_feature_selection_true_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=True, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, perform_feature_selection=True, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -77,7 +77,7 @@ def test_perform_feature_selection_false_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=False, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, perform_feature_selection=False, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -99,7 +99,7 @@ def test_perform_feature_scaling_true_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_scaling=True, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, perform_feature_scaling=True, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -120,7 +120,7 @@ def test_perform_feature_scaling_false_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -142,7 +142,7 @@ def test_optimize_entire_pipeline_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, optimize_entire_pipeline=True, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, optimize_entire_pipeline=True, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -165,7 +165,7 @@ def test_X_test_and_y_test_regression():
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
     print(df_boston_test)
-    ml_predictor.train(df_boston_train, X_test=df_boston_test, y_test=df_boston_test.MEDV, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, X_test=df_boston_test, y_test=df_boston_test.MEDV, model_names=['DeepLearningRegressor'])
     print(df_boston_test)
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
@@ -188,7 +188,7 @@ def test_compute_power_1_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, compute_power=1, model_names=['LGBMRegressor'])
+    ml_predictor.train(df_boston_train, compute_power=1, model_names=['DeepLearningRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -211,7 +211,7 @@ def test_compute_power_1_regression():
 
 #     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_boston_train, compute_power=9, model_names=['LGBMRegressor'])
+#     ml_predictor.train(df_boston_train, compute_power=9, model_names=['DeepLearningRegressor'])
 
 #     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -234,7 +234,7 @@ def test_compute_power_1_regression():
 
 #     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'LGBMRegressor', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor'])
+#     ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'DeepLearningRegressor', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor'])
 
 #     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -256,7 +256,7 @@ def test_select_from_multiple_regression_models_using_X_test_and_y_test():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'LGBMRegressor', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor'], X_test=df_boston_test, y_test=df_boston_test.MEDV)
+    ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'DeepLearningRegressor', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor'], X_test=df_boston_test, y_test=df_boston_test.MEDV)
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
@@ -288,7 +288,7 @@ def test_select_from_multiple_regression_models_using_X_test_and_y_test():
 
 #     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_titanic_train, compute_power=10, model_names=['LGBMRegressor'])
+#     ml_predictor.train(df_titanic_train, compute_power=10, model_names=['DeepLearningRegressor'])
 
 #     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 

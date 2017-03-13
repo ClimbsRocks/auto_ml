@@ -29,7 +29,7 @@ def test_optimize_final_model_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, optimize_final_model=True, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, optimize_final_model=True, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -37,7 +37,7 @@ def test_optimize_final_model_classification():
     print(test_score)
 
     # Small sample sizes mean there's a fair bit of noise here
-    assert -0.226 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 def test_perform_feature_selection_true_classification():
@@ -53,14 +53,14 @@ def test_perform_feature_selection_true_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_selection=True, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, perform_feature_selection=True, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.225 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 def test_perform_feature_selection_false_classification():
     np.random.seed(0)
@@ -75,14 +75,14 @@ def test_perform_feature_selection_false_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_selection=False, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, perform_feature_selection=False, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 def test_perform_feature_scaling_true_classification():
@@ -98,14 +98,14 @@ def test_perform_feature_scaling_true_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_scaling=True, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=True, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 def test_perform_feature_scaling_false_classification():
     np.random.seed(0)
@@ -120,14 +120,14 @@ def test_perform_feature_scaling_false_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 def test_optimize_entire_pipeline_classification():
@@ -143,14 +143,14 @@ def test_optimize_entire_pipeline_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 def test_X_test_and_y_test_classification():
@@ -166,14 +166,14 @@ def test_X_test_and_y_test_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, X_test=df_titanic_test, y_test=df_titanic_test.survived, model_names=['LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, X_test=df_titanic_test, y_test=df_titanic_test.survived, model_names=['DeepLearningClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 # def test_compute_power_1_classification():
@@ -189,14 +189,14 @@ def test_X_test_and_y_test_classification():
 
 #     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_titanic_train, compute_power=1, model_names=['LGBMClassifier'])
+#     ml_predictor.train(df_titanic_train, compute_power=1, model_names=['DeepLearningClassifier'])
 
 #     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
 #     print('test_score')
 #     print(test_score)
 
-#     assert -0.215 < test_score < -0.17
+#     assert -0.24 < test_score < -0.17
 
 
 # This test passes, but takes a long time to run. deprecating it for now until we rethink what we really want compute_power to accomplish
@@ -213,14 +213,14 @@ def test_X_test_and_y_test_classification():
 
 #     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_titanic_train, compute_power=9, model_names=['LGBMClassifier'])
+#     ml_predictor.train(df_titanic_train, compute_power=9, model_names=['DeepLearningClassifier'])
 
 #     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
 #     print('test_score')
 #     print(test_score)
 
-#     assert -0.215 < test_score < -0.17
+#     assert -0.24 < test_score < -0.17
 
 
 
@@ -238,14 +238,14 @@ def test_X_test_and_y_test_classification():
 
 #     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_titanic_train, model_names=['LGBMClassifier', 'LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'])
+#     ml_predictor.train(df_titanic_train, model_names=['DeepLearningClassifier', 'LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'])
 
 #     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
 #     print('test_score')
 #     print(test_score)
 
-#     assert -0.215 < test_score < -0.17
+#     assert -0.24 < test_score < -0.17
 
 # If the user passes in X_test and y_test, we will use those to determine the best model, rather than CV scores
 def test_select_from_multiple_classification_models_using_X_test_and_y_test():
@@ -261,14 +261,14 @@ def test_select_from_multiple_classification_models_using_X_test_and_y_test():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names=['LGBMClassifier', 'LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'], X_test=df_titanic_test, y_test=df_titanic_test.survived)
+    ml_predictor.train(df_titanic_train, model_names=['DeepLearningClassifier', 'LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'], X_test=df_titanic_test, y_test=df_titanic_test.survived)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 def test_binary_classification_predict_on_Predictor_instance():
@@ -317,7 +317,7 @@ def test_binary_classification_predict_proba_on_Predictor_instance():
     # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert -0.215 < test_score < -0.17
+    assert -0.24 < test_score < -0.17
 
 
 
@@ -358,14 +358,14 @@ def test_binary_classification_predict_proba_on_Predictor_instance():
 
 #     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-#     ml_predictor.train(df_titanic_train, compute_power=10, model_names=['LGBMClassifier'])
+#     ml_predictor.train(df_titanic_train, compute_power=10, model_names=['DeepLearningClassifier'])
 
 #     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
 #     print('test_score')
 #     print(test_score)
 
-#     assert -0.215 < test_score < -0.17
+#     assert -0.24 < test_score < -0.17
 
 
 # TODO: run tests for each of the different models
