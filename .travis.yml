@@ -16,7 +16,8 @@ install:
     fi
   - pip install keras
 # Command to run tests
-script: nosetests -v --with-coverage --cover-package auto_ml tests
+script: python keras_import.py
+# script: nosetests -v --with-coverage --cover-package auto_ml tests
 
 after_success:
   coveralls
