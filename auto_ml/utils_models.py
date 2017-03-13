@@ -1,5 +1,6 @@
 import dill
 import os
+import sys
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 
@@ -12,6 +13,8 @@ try:
     # Suppress some level of logs
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    import tensorflow as tf
+    tf.logging.set_verbosity(tf.logging.ERROR)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.models import Sequential
@@ -81,8 +84,12 @@ def get_model_from_name(model_name):
         model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
 
     if keras_installed:
-        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier, nb_epoch=100, batch_size=50, verbose=2)
-        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=100, batch_size=50, verbose=2)
+        nb_epoch = 1000
+        if 'is_test_suite' in sys.argv:
+            nb_epoch = 10
+
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier, nb_epoch=nb_epoch, batch_size=50, verbose=2)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=nb_epoch, batch_size=50, verbose=2)
 
 
     return model_map[model_name]
@@ -362,7 +369,16 @@ def get_search_params(model_name):
 
     }
 
-    return grid_search_params[model_name]
+    # Some of these are super expensive to compute. So if we're running this in a test suite, let's make sure the structure works, but reduce the compute time
+    params = grid_search_params[model_name]
+    if 'is_test_suite' in sys.argv:
+        simplified_params = {}
+        for k, v in params.items():
+            # Grab the first two items for each thing we want to test
+            simplified_params[k] = v[:2]
+        params = simplified_params
+
+    return params
 
 
 def load_keras_model(file_name):
