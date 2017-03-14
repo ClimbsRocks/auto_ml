@@ -14,7 +14,7 @@ try:
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
     import tensorflow as tf
-    tf.logging.set_verbosity(tf.logging.ERROR)
+    tf.logging.set_verbosity(tf.logging.INFO)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.models import Sequential
@@ -84,7 +84,7 @@ def get_model_from_name(model_name):
         model_map['XGBRegressor'] = xgb.XGBRegressor(nthread=-1, n_estimators=200)
 
     if keras_installed:
-        nb_epoch = 1000
+        nb_epoch = 250
         if 'is_test_suite' in sys.argv:
             nb_epoch = 10
 
@@ -164,23 +164,33 @@ def get_search_params(model_name):
         'DeepLearningRegressor': {
             'hidden_layers': [
                 [1],
-                [0.5],
-                [2],
-                [1, 1],
-                [0.5, 0.5],
-                [2, 2],
+                [1, 0.1],
                 [1, 1, 1],
-                [1, 0.5, 0.5],
-                [0.5, 1, 1],
-                [1, 0.5, 0.25],
-                [1, 2, 1],
+                [1, 0.5, 0.1],
+                [2],
+                [5],
+                [1, 0.5, 0.25, 0.1, 0.05],
                 [1, 1, 1, 1],
-                [1, 0.66, 0.33, 0.1],
-                [1, 2, 2, 1]
+                [1, 1]
+
+                # [1],
+                # [0.5],
+                # [2],
+                # [1, 1],
+                # [0.5, 0.5],
+                # [2, 2],
+                # [1, 1, 1],
+                # [1, 0.5, 0.5],
+                # [0.5, 1, 1],
+                # [1, 0.5, 0.25],
+                # [1, 2, 1],
+                # [1, 1, 1, 1],
+                # [1, 0.66, 0.33, 0.1],
+                # [1, 2, 2, 1]
             ]
-            , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
-            # , 'weight_constraint': [0, 1, 3, 5]
-            , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+            # , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
+            # # , 'weight_constraint': [0, 1, 3, 5]
+            # , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         },
         'DeepLearningClassifier': {
             'hidden_layers': [
@@ -399,7 +409,7 @@ def load_keras_model(file_name):
 # TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
 def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
     if hidden_layers is None:
-        hidden_layers = [1]
+        hidden_layers = [1, 1, 1]
 
     # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
     scaled_layers = []
@@ -427,7 +437,7 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
 def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid'):
 
     if hidden_layers is None:
-        hidden_layers = [1]
+        hidden_layers = [1, 1, 1]
 
     # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
     scaled_layers = []
