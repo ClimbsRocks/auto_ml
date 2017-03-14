@@ -82,11 +82,23 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     raise TypeError('A DeepLearning model was requested, but Keras was not available to import')
 
         try:
-            self.model.fit(X_fit, y)
+            if self.model_name[:12] == 'DeepLearning':
+
+                print('Using early stopping')
+                from keras.callbacks import EarlyStopping
+                early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
+                self.model.fit(X_fit, y, callbacks=[early_stopping])
+
+            else:
+                self.model.fit(X_fit, y)
+
         except TypeError as e:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
             self.model.fit(X_fit, y)
+
+        except KeyboardInterrupt as e:
+            pass
 
         return self
 
