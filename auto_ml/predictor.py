@@ -324,7 +324,7 @@ class Predictor(object):
             dv.restrict(feature_selection_mask)
         except KeyError:
             pass
-            # passing now so that we can still use this with adding the final_model back in after GSCV
+            # passing so that we can still use this with adding the final_model back in after GSCV
 
         # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
         # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
@@ -623,8 +623,11 @@ class Predictor(object):
 
 
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-        if self.continue_after_single_gscv == False:
-            self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
+        if self.continue_after_single_gscv == True:
+            if self.transformation_pipeline is None:
+                self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+            else:
+                self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
         else:
             self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
@@ -739,9 +742,13 @@ class Predictor(object):
                 if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
                     self.fit_grid_search = True
 
-            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models. Just add them to the GSCV params, and run GSCV, and we should be set.
-            self.continue_after_single_gscv = False
 
+            self.continue_after_single_gscv = False
+            self.transformation_pipeline = None
+            # This is also where we built in the logic for fitting the feature transformation pipeline separately from grid searching hyperparameters on the final model.
+            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models.
+            # Just add them to the GSCV params, and run GSCV, and we should be set.
+            # Obviously, as part of this, say that we want to continue after a single round of GSCV
             if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
 
                 final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
@@ -750,17 +757,28 @@ class Predictor(object):
                 self.continue_after_single_gscv = True
                 ppl_to_fit_gscv_on = ppl
 
-            else:
+            elif self.fit_grid_search == True:
+                # Here is where we are handling Keras!
+
+                # At this point, only optimize the final model. That's all we want to run GSCV on- just optimizing the final model.
                 ppl_to_fit_gscv_on = ppl.named_steps['final_model']
-                # We want to remove the final_model step from the pipeline, since we will be breaking it out into a pure feature transformation pipeline we fit and transform a single time, and the final model which we will actually want to run grid search on
+                # We want to remove the final_model step from the pipeline.
+                # We will be breaking the pipeline into two parts:
+                    # One that is a pure feature transformation pipeline we fit and transform a single time
+                    # And one that is the final model we run the grid search on to optimize hyperparameters
                 ppl.steps.pop()
                 # We are intentionally overwriting X_df here to try to save some memory space
                 X_df = ppl.fit_transform(X_df, y)
 
                 self.transformation_pipeline = ppl
 
+                self.continue_after_single_gscv = True
+
                 # TODO TODO: see if we need to remove final_model__model from gscv params
                 del self.grid_search_params['final_model__model']
+
+            else:
+                ppl_to_fit_gscv_on = ppl
 
 
             if self.fit_grid_search == True:
@@ -918,24 +936,24 @@ class Predictor(object):
 
 
     def _print_ml_analytics_results_random_forest(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        try:
+            final_model_obj = self.trained_pipeline.named_steps['final_model']
+        except:
+            final_model_obj = self.trained_pipeline
+
+        print('\n\nHere are the results from our ' + final_model_obj.model_name)
         if self.name is not None:
             print(self.name)
         print('predicting ' + self.output_column)
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
-        if self.trained_pipeline.named_steps['final_model'].model_name in ['XGBRegressor', 'XGBClassifier']:
-            self._get_xgb_feat_importances(self.trained_pipeline.named_steps['final_model'].model)
+        if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
+            self._get_xgb_feat_importances(final_model_obj.model)
 
         else:
             trained_feature_names = self._get_trained_feature_names()
 
-            try:
-                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
-            except:
-                # There's either a typo or a very odd design decision in LightGBM that removes the s on importanceS
-                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importance_
-
+            trained_feature_importances = final_model_obj.model.feature_importances_
 
             feature_infos = zip(trained_feature_names, trained_feature_importances)
 
@@ -949,22 +967,30 @@ class Predictor(object):
 
     def _get_trained_feature_names(self):
 
-        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        try:
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        except AttributeError:
+            trained_feature_names = self.transformation_pipeline.named_steps['dv'].get_feature_names()
+
 
         return trained_feature_names
 
 
     def _print_ml_analytics_results_linear_model(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        try:
+            final_model_obj = self.trained_pipeline.named_steps['final_model']
+        except:
+            final_model_obj = self.trained_pipeline
+        print('\n\nHere are the results from our ' + final_model_obj.model_name)
 
         trained_feature_names = self._get_trained_feature_names()
 
         if self.type_of_estimator == 'classifier':
-            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+            trained_coefficients = final_model_obj.model.coef_[0]
         else:
-            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
+            trained_coefficients = final_model_obj.model.coef_
 
-        # feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+        # feature_ranges = final_model_obj.feature_ranges
 
         # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []
@@ -1070,7 +1096,15 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
-        if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+        # NOTE: Right now we are not supporting deep learning as part of an ensemble.
+        is_deep_learning = False
+        try:
+            if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+                is_deep_learning = True
+        except:
+            pass
+
+        if is_deep_learning == True:
             keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
 
             keras_wrapper = self.trained_pipeline.named_steps['final_model'].model

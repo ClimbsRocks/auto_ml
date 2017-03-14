@@ -1,4 +1,6 @@
 import dill
+import os
+import sys
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 
@@ -8,6 +10,11 @@ from sklearn.cluster import MiniBatchKMeans
 
 keras_installed = False
 try:
+    # Suppress some level of logs
+    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    import tensorflow as tf
+    tf.logging.set_verbosity(tf.logging.INFO)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.models import Sequential
@@ -125,8 +132,12 @@ def get_model_from_name(model_name, training_params=None):
         model_map['LGBMClassifier'] = lgb.LGBMClassifier()
 
     if keras_installed:
-        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=utils.make_deep_learning_classifier, nb_epoch=50, batch_size=50, verbose=2)
-        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=utils.make_deep_learning_model, nb_epoch=50, batch_size=50, verbose=2)
+        nb_epoch = 250
+        if 'is_test_suite' in sys.argv:
+            nb_epoch = 10
+
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier, nb_epoch=nb_epoch, batch_size=50, verbose=2)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=nb_epoch, batch_size=50, verbose=2)
 
     model_without_params = model_map[model_name]
     model_with_params = model_without_params.set_params(**model_params)
@@ -206,12 +217,37 @@ def get_name_from_model(model):
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):
     grid_search_params = {
-        # 'DeepLearningRegressor': {
-        #     # 'shape': ['triangle_left', 'triangle_right', 'triangle_cuddles', 'long', 'long_and_wide', 'standard']
-        #     'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
-        #     , 'weight_constraint': [0, 1, 3, 5]
-        #     , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-        # },
+        'DeepLearningRegressor': {
+            'hidden_layers': [
+                [1],
+                [1, 0.1],
+                [1, 1, 1],
+                [1, 0.5, 0.1],
+                [2],
+                [5],
+                [1, 0.5, 0.25, 0.1, 0.05],
+                [1, 1, 1, 1],
+                [1, 1]
+
+                # [1],
+                # [0.5],
+                # [2],
+                # [1, 1],
+                # [0.5, 0.5],
+                # [2, 2],
+                # [1, 1, 1],
+                # [1, 0.5, 0.5],
+                # [0.5, 1, 1],
+                # [1, 0.5, 0.25],
+                # [1, 2, 1],
+                # [1, 1, 1, 1],
+                # [1, 0.66, 0.33, 0.1],
+                # [1, 2, 2, 1]
+            ]
+            # , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
+            # # , 'weight_constraint': [0, 1, 3, 5]
+            # , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+        },
         'DeepLearningClassifier': {
             'hidden_layers': [
                 [1],
@@ -423,7 +459,16 @@ def get_search_params(model_name):
 
     }
 
-    return grid_search_params[model_name]
+    # Some of these are super expensive to compute. So if we're running this in a test suite, let's make sure the structure works, but reduce the compute time
+    params = grid_search_params[model_name]
+    if 'is_test_suite' in sys.argv:
+        simplified_params = {}
+        for k, v in params.items():
+            # Grab the first two items for each thing we want to test
+            simplified_params[k] = v[:2]
+        params = simplified_params
+
+    return params
 
 
 def load_keras_model(file_name):
@@ -441,3 +486,52 @@ def load_keras_model(file_name):
     return base_pipeline
 
 
+# TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
+    if hidden_layers is None:
+        hidden_layers = [1, 1, 1]
+
+    # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
+    scaled_layers = []
+    for layer in hidden_layers:
+        scaled_layers.append(int(num_cols * layer))
+
+
+    model = Sequential()
+
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
+
+    for layer_size in scaled_layers[1:]:
+        model.add(Dense(layer_size, init='normal', activation='relu'))
+    # For regressors, we want an output layer with a single node
+    model.add(Dense(1, init='normal'))
+
+    # The final step is to compile the model
+    model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
+
+    return model
+
+
+# TODO: eventually take in other parameters to tune
+# TODO: eventually take in final_activation and hidden_layer_activations
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid'):
+
+    if hidden_layers is None:
+        hidden_layers = [1, 1, 1]
+
+    # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
+    scaled_layers = []
+    for layer in hidden_layers:
+        scaled_layers.append(int(num_cols * layer))
+
+
+    model = Sequential()
+
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
+
+    for layer_size in scaled_layers[1:]:
+        model.add(Dense(layer_size, init='normal', activation='relu'))
+
+    model.add(Dense(1, init='normal', activation=final_activation))
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson', 'precision', 'recall', 'fbeta_score'])
+    return model
