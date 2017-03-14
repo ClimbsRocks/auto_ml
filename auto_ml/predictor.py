@@ -633,7 +633,7 @@ class Predictor(object):
 
         # verify_features is not enabled by default. It adds a significant amount to the file size of the saved pipelines.
         # If you are interested in submitting a PR to reduce the saved file size, there are definitely some optimizations you can make!
-        if verify_features == True and self.continue_after_single_gscv != False:
+        if verify_features == True:
             # Save the features we used for training to our FinalModelATC instance.
             # This lets us provide useful information to the user when they call .predict(data, verbose=True)
             trained_feature_names = self._get_trained_feature_names()
