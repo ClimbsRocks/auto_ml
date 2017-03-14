@@ -218,7 +218,7 @@ class RegressionScorer(object):
             predictions = [val for idx, val in enumerate(predictions) if idx not in bad_val_indices]
             y = [val for idx, val in enumerate(y) if idx not in bad_val_indices]
 
-            print('Found ' + str(len(bad_val_indices)) + 'null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
+            print('Found ' + str(len(bad_val_indices)) + ' null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
             score = self.scoring_func(y, predictions)
 
         # if scoring == 'rmse':
