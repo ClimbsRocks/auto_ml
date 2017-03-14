@@ -84,7 +84,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         try:
             if self.model_name[:12] == 'DeepLearning':
 
-                print('Using early stopping')
+                print('Stopping training early if we have not seen an improvement in training accuracy in 25 epochs')
                 from keras.callbacks import EarlyStopping
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
