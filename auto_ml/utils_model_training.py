@@ -280,6 +280,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     tupled_predictions.append([1,0])
             predictions = tupled_predictions
 
+
+        # This handles an annoying edge case with libraries like Keras that, for a binary classification problem, with return a single predicted probability in a list, rather than the probability of both classes in a list
+        if len(predictions[0]) == 1:
+            tupled_predictions = []
+            for prediction in predictions:
+                tupled_predictions.append([1 - prediction[0], prediction[0]])
+            predictions = tupled_predictions
+
         if X.shape[0] == 1:
             return predictions[0]
         else:
