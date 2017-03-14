@@ -335,10 +335,11 @@ class Predictor(object):
         # If we do not have feature selection in the pipeline, just return the pipeline as is
         try:
             feature_selection = trained_pipeline.named_steps['feature_selection']
+            feature_selection_mask = feature_selection.support_mask
+            dv.restrict(feature_selection_mask)
         except KeyError:
-            return trained_pipeline
-        feature_selection_mask = feature_selection.support_mask
-        dv.restrict(feature_selection_mask)
+            pass
+            # passing now so that we can still use this with adding the final_model back in after GSCV
 
         # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
         # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
@@ -642,7 +643,7 @@ class Predictor(object):
 
         # verify_features is not enabled by default. It adds a significant amount to the file size of the saved pipelines.
         # If you are interested in submitting a PR to reduce the saved file size, there are definitely some optimizations you can make!
-        if verify_features == True:
+        if verify_features == True and self.continue_after_single_gscv != False:
             # Save the features we used for training to our FinalModelATC instance.
             # This lets us provide useful information to the user when they call .predict(data, verbose=True)
             trained_feature_names = self._get_trained_feature_names()
@@ -868,7 +869,7 @@ class Predictor(object):
                     # If we don't have pipeline_results (if we did not fit GSCV), then pass
                     pass
 
-            # TODO TODO: is this necessary? Is this block of code even used? It's not indented at the level I'd expect at first glance
+            # For each model we train, append their results to grid_search_pipelines
             try:
                 self.grid_search_pipelines.append(pipeline_results)
             except Exception as e:
