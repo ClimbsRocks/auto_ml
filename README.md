@@ -88,6 +88,10 @@ Available options are
 - `XGBClassifier` and `XGBRegressor`
 - `LGBMClassifer` and `LGBMRegressor`
 
+These projects all have prediction time in the 1 millisecond range for a single prediction, and are able to be serialized to disk and loaded into a new environment after training.
+
+Depending on your machine, they can occasionally be difficult to install, so they are not included in auto_ml's default installation. You are responsible for installing them yourself.
+
 
 ## Classification
 
