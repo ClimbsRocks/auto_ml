@@ -22,9 +22,6 @@ auto_ml
   :param user_input_func: A function that you can define that will be called as the first step in the pipeline. The function will be passed the entire X dataset, must not alter the order or length of the X dataset, and must return the entire X dataset. You can perform any feature engineering you would like in this function. See below for more details.
   :type user_input_func: function
 
-  :param compute_power: The higher the number, the more options for hyperparameters we'll try to train, which could lead to a more accurate model, but will definitely lead to more compute time.
-  :type compute_power: int, from 1 - 10
-
   :param ml_for_analytics: Whether or not to print out results for which coefficients the trained model found useful. If ``True``, you will see results that an analyst might find interesting printed to the shell.
   :type ml_for_analytics: Boolean
 

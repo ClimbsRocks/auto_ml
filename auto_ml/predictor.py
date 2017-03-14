@@ -139,7 +139,7 @@ class Predictor(object):
         else:
             pipeline_list.append(('basic_transform', utils_data_cleaning.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
-        if self.perform_feature_scaling is True or (self.compute_power >= 7 and self.perform_feature_scaling is not False):
+        if self.perform_feature_scaling is True:
             if trained_pipeline is not None:
                 pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
             else:
@@ -152,7 +152,7 @@ class Predictor(object):
             pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions)))
 
 
-        if self.perform_feature_selection == True or (self.compute_power >= 9 and self.perform_feature_selection is None):
+        if self.perform_feature_selection == True:
             if trained_pipeline is not None:
                 # This is the step we are trying to remove from the trained_pipeline, since it has already been combined with dv using dv.restrict
                 pass
@@ -181,8 +181,8 @@ class Predictor(object):
 
         gs_params = {}
 
-        if self.compute_power >= 6:
-            gs_params['scaler__truncate_large_values'] = [True, False]
+        # if self.compute_power >= 6:
+        #     gs_params['scaler__truncate_large_values'] = [True, False]
 
         if user_defined_model_names is not None:
             model_names = user_defined_model_names
@@ -197,14 +197,14 @@ class Predictor(object):
         # gs_params['final_model__model_name'] = model_names
         gs_params['final_model__model'] = final_model__models
 
-        if self.compute_power >= 7:
-            gs_params['scaler__perform_feature_scaling'] = [True, False]
+        # if self.compute_power >= 7:
+        #     gs_params['scaler__perform_feature_scaling'] = [True, False]
 
 
-        # Only optimize our feature selection methods this deeply if the user really, really wants to. This is super computationally expensive.
-        if self.compute_power >= 10:
-            # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
-            gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll', 'RFECV'] # , 'RandomizedSparse'
+        # # Only optimize our feature selection methods this deeply if the user really, really wants to. This is super computationally expensive.
+        # if self.compute_power >= 10:
+        #     # We've also built in support for 'RandomizedSparse' feature selection methods, but they don't always support sparse matrices, so we are ignoring them by default.
+        #     gs_params['feature_selection__feature_selection_model'] = ['SelectFromModel', 'GenericUnivariateSelect', 'KeepAll', 'RFECV'] # , 'RandomizedSparse'
 
         return gs_params
 
@@ -215,7 +215,8 @@ class Predictor(object):
                 base_estimators = ['XGBRegressor']
             else:
                 base_estimators = ['GradientBoostingRegressor']
-            if self.compute_power < 7:
+
+            if self.compare_all_models != True:
                 return base_estimators
             else:
                 base_estimators.append('RANSACRegressor')
@@ -230,7 +231,7 @@ class Predictor(object):
                 base_estimators = ['XGBClassifier']
             else:
                 base_estimators = ['GradientBoostingClassifier']
-            if self.compute_power < 7:
+            if self.compare_all_models != True:
                 return base_estimators
             else:
                 base_estimators.append('LogisticRegression')
@@ -511,13 +512,13 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
         self.optimize_entire_pipeline = optimize_entire_pipeline
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
-        self.compute_power = compute_power
+        # self.compute_power = compute_power
         self.ml_for_analytics = ml_for_analytics
         self.only_analytics = only_analytics
         self.X_test = X_test
@@ -531,6 +532,7 @@ class Predictor(object):
         self.scoring = scoring
         self.training_params = training_params
         self.user_gs_params = grid_search_params
+        self.compare_all_models = compare_all_models
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -543,7 +545,7 @@ class Predictor(object):
             X_df = raw_training_data
 
         # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
-        if perform_feature_selection is None and self.compute_power < 9:
+        if perform_feature_selection is None:
             if len(X_df.columns) < 50 or len(X_df) < 100000:
                 perform_feature_selection = False
             else:
@@ -709,7 +711,7 @@ class Predictor(object):
 
             # self.grid_search_params['final_model__model_name'] = [model_name]
 
-            if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
+            if self.optimize_final_model is True:
                 raw_search_params = utils_models.get_search_params(model_name)
                 for param_name, param_list in raw_search_params.items():
                     # TODO TODO: remove the 'final_model__' prefix here
@@ -952,7 +954,10 @@ class Predictor(object):
         else:
             trained_feature_names = self._get_trained_feature_names()
 
-            trained_feature_importances = final_model_obj.model.feature_importances_
+            try:
+                trained_feature_importances = final_model_obj.model.feature_importances_
+            except AttributeError as e:
+                trained_feature_importances = final_model_obj.model.feature_importance_
 
             feature_infos = zip(trained_feature_names, trained_feature_importances)
 
