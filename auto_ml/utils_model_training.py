@@ -1,10 +1,26 @@
+import os
+
 import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 import warnings
 
+from auto_ml import utils, utils_models
 from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
 from auto_ml.utils_models import get_model_from_name, get_name_from_model
+
+keras_installed = False
+try:
+    # Suppress some level of logs
+    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+    from keras.constraints import maxnorm
+    from keras.layers import Dense, Dropout
+    from keras.models import Sequential
+    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+    keras_installed = True
+except:
+    pass
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -44,32 +60,45 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         X_fit = X
 
-
-        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression', ]:
+        if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression']:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
 
-        #     num_cols = X_fit.shape[1]
-        #     kwargs = {
-        #         'num_cols':num_cols
-        #         , 'nb_epoch': 20
-        #         , 'batch_size': 10
-        #         , 'verbose': 1
-        #     }
-        #     model_params = self.model.get_params()
-        #     del model_params['build_fn']
-        #     for k, v in model_params.items():
-        #         if k not in kwargs:
-        #             kwargs[k] = v
-        #     if self.type_of_estimator == 'regressor':
-        #         self.model = KerasRegressor(build_fn=make_deep_learning_model, **kwargs)
+            if self.model_name[:12] == 'DeepLearning':
+                if keras_installed:
+
+                    # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
+                    num_cols = X_fit.shape[1]
+
+                    model_params = self.model.get_params()
+                    del model_params['build_fn']
+
+                    if self.type_of_estimator == 'regressor':
+                        self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, **model_params)
+                    elif self.type_of_estimator == 'classifier':
+                        self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, **model_params)
+                else:
+                    print('WARNING: We did not detect that Keras was available.')
+                    raise TypeError('A DeepLearning model was requested, but Keras was not available to import')
 
         try:
-            self.model.fit(X_fit, y)
+            if self.model_name[:12] == 'DeepLearning':
+
+                print('Using early stopping')
+                from keras.callbacks import EarlyStopping
+                early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
+                self.model.fit(X_fit, y, callbacks=[early_stopping])
+
+            else:
+                self.model.fit(X_fit, y)
+
         except TypeError as e:
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
-            self.model.fit()
+            self.model.fit(X_fit, y)
+
+        except KeyboardInterrupt as e:
+            pass
 
         return self
 
@@ -225,7 +254,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         #     # Trying to force XGBoost to play nice with sparse matrices
         #     X = scipy.sparse.hstack((X, ones))
 
-        if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
 
         try:
@@ -255,6 +284,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     tupled_predictions.append([0,1])
                 else:
                     tupled_predictions.append([1,0])
+            predictions = tupled_predictions
+
+
+        # This handles an annoying edge case with libraries like Keras that, for a binary classification problem, with return a single predicted probability in a list, rather than the probability of both classes in a list
+        if len(predictions[0]) == 1:
+            tupled_predictions = []
+            for prediction in predictions:
+                tupled_predictions.append([1 - prediction[0], prediction[0]])
             predictions = tupled_predictions
 
         if X.shape[0] == 1:

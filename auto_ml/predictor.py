@@ -117,7 +117,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer
-    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, trained_pipeline=None):
+    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, trained_pipeline=None, final_model=None):
 
         pipeline_list = []
 
@@ -161,7 +161,12 @@ class Predictor(object):
                 pipeline_list.append(('feature_selection', utils_feature_selection.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
 
         if trained_pipeline is not None:
-            pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
+
+            # Handling the case where we have run gscv on just the final model itself, and we now need to integrate it back into the rest of the pipeline
+            if final_model is not None:
+                pipeline_list.append(('final_model', final_model))
+            else:
+                pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer)))
@@ -304,7 +309,7 @@ class Predictor(object):
         return X_df, y
 
 
-    def _consolidate_feature_selection_steps(self, trained_pipeline):
+    def _consolidate_feature_selection_steps(self, trained_pipeline, final_model=None):
         # First, restrict our DictVectorizer or DataFrameVectorizer
         # This goes through and has DV only output the items that have passed our support mask
         # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
@@ -315,14 +320,15 @@ class Predictor(object):
         # If we do not have feature selection in the pipeline, just return the pipeline as is
         try:
             feature_selection = trained_pipeline.named_steps['feature_selection']
+            feature_selection_mask = feature_selection.support_mask
+            dv.restrict(feature_selection_mask)
         except KeyError:
-            return trained_pipeline
-        feature_selection_mask = feature_selection.support_mask
-        dv.restrict(feature_selection_mask)
+            pass
+            # passing so that we can still use this with adding the final_model back in after GSCV
 
         # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
         # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
-        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=trained_pipeline)
+        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=trained_pipeline, final_model=final_model)
 
         return trained_pipeline_without_feature_selection
 
@@ -386,7 +392,6 @@ class Predictor(object):
             data_selection_func = training_params.pop('data_selection_func', None)
             if callable(data_selection_func):
                 try:
-                    # TODO: figure out how to see if this function is expecting to take in the name argument or not
                     this_rounds_data = data_selection_func(data, name)
                 except TypeError:
                     this_rounds_data = data_selection_func(data)
@@ -577,6 +582,7 @@ class Predictor(object):
             self._scorer = scoring
 
 
+        # TODO TODO: make sure we get both the feature transformation pipeline, and the GSCV results. Right now we're just saving the gscv results
         self.perform_grid_search_by_model_names(estimator_names, self._scorer, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
@@ -602,8 +608,28 @@ class Predictor(object):
                 # In that case, the thing at the end of the best_result_list will be the trained pipeline we're interested in
                 self.trained_pipeline = best_trained_gs
 
+        # TODO TODO: combine our GSCV final model and our feature transformation pipeline right here
+        # if self.continue_after_single_gscv == False:
+        #     print('Modifying self.trained_pipeline to make sure we have both our transformation pipeline, as well as our trained final model')
+        #     # self.transformation_pipeline.steps.append(self.trained_pipeline)
+        #     # self.transformation_pipeline.named_steps['final_model'] = self.trained_pipeline
+        #     # print('self.transformation_pipeline after setting final_model to our gscv results')
+        #     # print(self.transformation_pipeline)
+        #     self.transformation_pipeline.steps.append(self.trained_pipeline)
+        #     print('self.transformation_pipeline after adding gscv result to .steps')
+        #     print(self.transformation_pipeline)
+        #     self.trained_pipeline = self.transformation_pipeline
+            # self.trained_pipeline =
+
+
         # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-        self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+        if self.continue_after_single_gscv == True:
+            if self.transformation_pipeline is None:
+                self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+            else:
+                self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
+        else:
+            self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
 
         # verify_features is not enabled by default. It adds a significant amount to the file size of the saved pipelines.
         # If you are interested in submitting a PR to reduce the saved file size, there are definitely some optimizations you can make!
@@ -687,7 +713,9 @@ class Predictor(object):
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
                 raw_search_params = utils_models.get_search_params(model_name)
                 for param_name, param_list in raw_search_params.items():
-                    self.grid_search_params['final_model__model__' + param_name] = param_list
+                    # TODO TODO: remove the 'final_model__' prefix here
+                    # self.grid_search_params['final_model__model__' + param_name] = param_list
+                    self.grid_search_params['model__' + param_name] = param_list
 
             if self.user_gs_params is not None:
                 # If the user gave us GSCV params, overwrite our defaults with what they provided
@@ -714,21 +742,51 @@ class Predictor(object):
                 if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
                     self.fit_grid_search = True
 
-            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models. Just add them to the GSCV params, and run GSCV, and we should be set.
-            self.continue_after_single_gscv = False
 
+            self.continue_after_single_gscv = False
+            self.transformation_pipeline = None
+            # This is also where we built in the logic for fitting the feature transformation pipeline separately from grid searching hyperparameters on the final model.
+            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models.
+            # Just add them to the GSCV params, and run GSCV, and we should be set.
+            # Obviously, as part of this, say that we want to continue after a single round of GSCV
             if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
 
                 final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
                 self.grid_search_params['final_model__model'] = list(final_model_models)
                 self.fit_grid_search = True
                 self.continue_after_single_gscv = True
+                ppl_to_fit_gscv_on = ppl
+
+            elif self.fit_grid_search == True:
+                # Here is where we are handling Keras!
+
+                # At this point, only optimize the final model. That's all we want to run GSCV on- just optimizing the final model.
+                ppl_to_fit_gscv_on = ppl.named_steps['final_model']
+                # We want to remove the final_model step from the pipeline.
+                # We will be breaking the pipeline into two parts:
+                    # One that is a pure feature transformation pipeline we fit and transform a single time
+                    # And one that is the final model we run the grid search on to optimize hyperparameters
+                ppl.steps.pop()
+                # We are intentionally overwriting X_df here to try to save some memory space
+                X_df = ppl.fit_transform(X_df, y)
+
+                self.transformation_pipeline = ppl
+
+                self.continue_after_single_gscv = True
+
+                # TODO TODO: see if we need to remove final_model__model from gscv params
+                del self.grid_search_params['final_model__model']
+
+            else:
+                ppl_to_fit_gscv_on = ppl
+
 
             if self.fit_grid_search == True:
 
                 gs = GridSearchCV(
                     # Fit on the pipeline.
-                    ppl,
+                    # TODO TODO: pass in ppl.named_steps['final_model'] instead of ppl
+                    ppl_to_fit_gscv_on,
                     cv=2,
                     param_grid=self.grid_search_params,
                     # Train across all cores.
@@ -749,6 +807,10 @@ class Predictor(object):
                     else:
                         print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
 
+                # TODO TODO: fit the rest of the pipeline first
+                    # then, transform all the data a single time in the trained feature_transformation pipeline.
+                    # pass in that transformed data here, rather than the raw data we pass in currently.
+                    # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
                 gs.fit(X_df, y)
 
                 self.trained_pipeline = gs.best_estimator_
@@ -823,6 +885,7 @@ class Predictor(object):
                     # If we don't have pipeline_results (if we did not fit GSCV), then pass
                     pass
 
+            # For each model we train, append their results to grid_search_pipelines
             try:
                 self.grid_search_pipelines.append(pipeline_results)
             except Exception as e:
@@ -873,24 +936,24 @@ class Predictor(object):
 
 
     def _print_ml_analytics_results_random_forest(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        try:
+            final_model_obj = self.trained_pipeline.named_steps['final_model']
+        except:
+            final_model_obj = self.trained_pipeline
+
+        print('\n\nHere are the results from our ' + final_model_obj.model_name)
         if self.name is not None:
             print(self.name)
         print('predicting ' + self.output_column)
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
-        if self.trained_pipeline.named_steps['final_model'].model_name in ['XGBRegressor', 'XGBClassifier']:
-            self._get_xgb_feat_importances(self.trained_pipeline.named_steps['final_model'].model)
+        if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
+            self._get_xgb_feat_importances(final_model_obj.model)
 
         else:
             trained_feature_names = self._get_trained_feature_names()
 
-            try:
-                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
-            except:
-                # There's either a typo or a very odd design decision in LightGBM that removes the s on importanceS
-                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importance_
-
+            trained_feature_importances = final_model_obj.model.feature_importances_
 
             feature_infos = zip(trained_feature_names, trained_feature_importances)
 
@@ -904,22 +967,30 @@ class Predictor(object):
 
     def _get_trained_feature_names(self):
 
-        trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        try:
+            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        except AttributeError:
+            trained_feature_names = self.transformation_pipeline.named_steps['dv'].get_feature_names()
+
 
         return trained_feature_names
 
 
     def _print_ml_analytics_results_linear_model(self):
-        print('\n\nHere are the results from our ' + self.trained_pipeline.named_steps['final_model'].model_name)
+        try:
+            final_model_obj = self.trained_pipeline.named_steps['final_model']
+        except:
+            final_model_obj = self.trained_pipeline
+        print('\n\nHere are the results from our ' + final_model_obj.model_name)
 
         trained_feature_names = self._get_trained_feature_names()
 
         if self.type_of_estimator == 'classifier':
-            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_[0]
+            trained_coefficients = final_model_obj.model.coef_[0]
         else:
-            trained_coefficients = self.trained_pipeline.named_steps['final_model'].model.coef_
+            trained_coefficients = final_model_obj.model.coef_
 
-        # feature_ranges = self.trained_pipeline.named_steps['final_model'].feature_ranges
+        # feature_ranges = final_model_obj.feature_ranges
 
         # TODO(PRESTON): readability. Can probably do this in a single zip statement.
         feature_summary = []
@@ -1024,30 +1095,62 @@ class Predictor(object):
 
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
-        with open(file_name, 'wb') as open_file_name:
-            dill.dump(self.trained_pipeline, open_file_name)
 
-        if verbose:
-            print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
-            print('It is saved in the directory: ')
-            print(os.getcwd())
-            print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
-            print('`with open("' + file_name + '", "rb") as read_file:`')
-            print('`    trained_ml_pipeline = dill.load(read_file)`')
-            print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
+        # NOTE: Right now we are not supporting deep learning as part of an ensemble.
+        is_deep_learning = False
+        try:
+            if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+                is_deep_learning = True
+        except:
+            pass
 
-            print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
-            print('This version of Python is:')
-            print(sys.version_info)
+        if is_deep_learning == True:
+            keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
 
-            print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
-            print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
-            # print('\nThese are the most important features that were fed into the model:')
+            keras_wrapper = self.trained_pipeline.named_steps['final_model'].model
+            self.trained_pipeline.named_steps['final_model'].model.model.save(keras_file_name)
 
-            # if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            #     self._print_ml_analytics_results_linear_model()
-            # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
-            #     self._print_ml_analytics_results_random_forest()
+            # Now that we've saved the keras model, set that spot in the pipeline to None, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
+            self.trained_pipeline.named_steps['final_model'].model = None
+            with open(file_name, 'wb') as open_file_name:
+                dill.dump(self.trained_pipeline, open_file_name)
+
+            self.trained_pipeline.named_steps['final_model'].model = keras_wrapper
+            if verbose:
+                print('\n\nSaved the Keras model to it\'s own file:')
+                print(keras_file_name)
+                print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
+                print('from auto_ml.utils_models import load_keras_model')
+                print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
+                print('\nIt is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
+                print(file_name)
+                print(keras_file_name)
+
+        else:
+            with open(file_name, 'wb') as open_file_name:
+                dill.dump(self.trained_pipeline, open_file_name)
+
+            if verbose:
+                print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
+                print('It is saved in the directory: ')
+                print(os.getcwd())
+                print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
+                print('`with open("' + file_name + '", "rb") as read_file:`')
+                print('`    trained_ml_pipeline = dill.load(read_file)`')
+                print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
+
+                print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
+                print('This version of Python is:')
+                print(sys.version_info)
+
+                print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
+                print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
+                # print('\nThese are the most important features that were fed into the model:')
+
+                # if self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+                #     self._print_ml_analytics_results_linear_model()
+                # elif self.ml_for_analytics and self.trained_pipeline.named_steps['final_model'].model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor']:
+                #     self._print_ml_analytics_results_random_forest()
 
         return os.path.join(os.getcwd(), file_name)
 

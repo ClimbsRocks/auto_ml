@@ -247,6 +247,23 @@ class ClassificationScorer(object):
 
         self.scoring_method = scoring_method
 
+    def clean_probas(self, probas):
+        print('Warning: We have found some values in the predicted probabilities that fall outside the range {0, 1}')
+        print('This is likely the result of a model being trained on too little data, or with a bad set of hyperparameters. If you get this warning while doing a hyperparameter search, for instance, you can probably safely ignore it')
+        print('We will cap those values at 0 or 1 for the purposes of scoring, but you should be careful to have similar safeguards in place in prod if you use this model')
+        if not isinstance(probas[0], list):
+            probas = [min(max(pred, 0), 1) for pred in probas]
+            return probas
+        else:
+            cleaned_probas = []
+            for proba_tuple in probas:
+                cleaned_tuple = []
+                for item in proba_tuple:
+                    cleaned_tuple.append(max(min(item, 1), 0))
+                cleaned_probas.append(cleaned_tuple)
+            return cleaned_probas
+
+
 
     def score(self, estimator, X, y, advanced_scoring=False):
         if isinstance(estimator, GradientBoostingClassifier):
@@ -261,6 +278,7 @@ class ClassificationScorer(object):
         #     pass
 
         predictions = estimator.predict_proba(X)
+
 
         if self.scoring_method == 'brier_score_loss':
             # At the moment, Microsoft's LightGBM returns probabilities > 1 and < 0, which can break some scoring functions. So we have to take the max of 1 and the pred, and the min of 0 and the pred.
@@ -283,7 +301,14 @@ class ClassificationScorer(object):
             y = [val for idx, val in enumerate(y) if idx not in bad_val_indices]
 
             print('Found ' + str(len(bad_val_indices)) + 'null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
-            score = self.scoring_func(y, predictions)
+            try:
+                score = self.scoring_func(y, predictions)
+            except ValueError:
+                # Sometimes, particularly for a badly fit model using either too little data, or a really bad set of hyperparameters during a grid search, we can predict probas that are > 1 or < 0. We'll cap those here, while warning the user about them, because they're unlikely to occur in a model that's properly trained with enough data and reasonable params
+                predictions = self.clean_probas(predictions)
+                score = self.scoring_func(y, predictions)
+
+
 
 
         if advanced_scoring:

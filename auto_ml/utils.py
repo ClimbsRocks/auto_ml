@@ -7,11 +7,6 @@ import math
 import os
 import random
 
-# from keras.constraints import maxnorm
-# from keras.layers import Dense, Dropout
-# from keras.models import Sequential
-# from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.cluster import MiniBatchKMeans
 from sklearn.datasets import load_boston
@@ -45,27 +40,6 @@ except ImportError:
 
 if xgb_installed:
     import xgboost as xgb
-
-
-# TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
-# def make_deep_learning_model(num_cols=250, optimizer='adam', dropout_rate=0.2, weight_constraint=0, shape='standard'):
-#     model = Sequential()
-#     # Add a dense hidden layer, with num_nodes = num_cols, and telling it that the incoming input dimensions also = num_cols
-#     model.add(Dense(num_cols, input_dim=num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-#     model.add(Dropout(dropout_rate))
-#     model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-#     model.add(Dense(num_cols, activation='relu', init='normal', W_constraint=maxnorm(weight_constraint)))
-#     # For regressors, we want an output layer with a single node
-#     # For classifiers, we'll want to add in some other processing here (like a softmax activation function)
-#     model.add(Dense(1, init='normal'))
-
-#     # The final step is to compile the model
-#     # TODO: see if we can pass in our own custom loss function here
-#     model.compile(loss='mean_squared_error', optimizer=optimizer)
-
-#     return model
-
-
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
