@@ -536,5 +536,5 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
         model.add(Dense(layer_size, init='normal', activation='relu'))
 
     model.add(Dense(1, init='normal', activation=final_activation))
-    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson', 'precision', 'recall', 'fbeta_score'])
+    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson'])
     return model
