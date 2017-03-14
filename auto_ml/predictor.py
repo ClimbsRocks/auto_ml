@@ -217,7 +217,18 @@ class Predictor(object):
         else:
             raise('TypeError: type_of_estimator must be either "classifier" or "regressor".')
 
-    def _prepare_for_training(self, X_df):
+    def _prepare_for_training(self, X):
+
+        # We accept input as either a DataFrame, or as a list of dictionaries. Internally, we use DataFrames. So if the user gave us a list, convert it to a DataFrame here.
+        if isinstance(X, list):
+            X_df = pd.DataFrame(X)
+            del X
+        else:
+            X_df = X
+
+        # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
+        if len(self.cols_to_ignore) > 0:
+            X_df = utils.safely_drop_columns(X_df, self.cols_to_ignore)
 
         # Having duplicate columns can really screw things up later. Remove them here, with user logging to tell them what we're doing
         X_df = utils.drop_duplicate_columns(X_df)
@@ -279,9 +290,7 @@ class Predictor(object):
                 print(indices_to_delete)
                 print('These were the bad values')
                 print(bad_vals)
-                # indices_to_delete = set(indices_to_delete)
                 X_df = X_df.drop(X_df.index(indices_to_delete))
-                # X_df = [row for idx, row in enumerate(X_df) if idx not in indices_to_delete]
 
         return X_df, y
 
@@ -334,12 +343,14 @@ class Predictor(object):
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
 
-        # We accept input as either a DataFrame, or as a list of dictionaries. Internally, we use DataFrames. So if the user gave us a list, convert it to a DataFrame here.
-        if isinstance(raw_training_data, list):
-            X_df = pd.DataFrame(raw_training_data)
-            del raw_training_data
-        else:
-            X_df = raw_training_data
+        X_df, y = self._prepare_for_training(raw_training_data)
+
+        if self.take_log_of_y:
+            y = [math.log(val) for val in y]
+            self.took_log_of_y = True
+
+        self.X_df = X_df
+        self.y = y
 
         # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
         if perform_feature_selection is None:
@@ -349,19 +360,6 @@ class Predictor(object):
                 perform_feature_selection = True
 
         self.perform_feature_selection = perform_feature_selection
-
-        # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
-        if len(self.cols_to_ignore) > 0:
-            X_df = utils.safely_drop_columns(X_df, self.cols_to_ignore)
-
-        X_df, y = self._prepare_for_training(X_df)
-        self.X_df = X_df
-        self.y = y
-
-
-        if self.take_log_of_y:
-            y = [math.log(val) for val in y]
-            self.took_log_of_y = True
 
         if model_names is not None:
             estimator_names = model_names
