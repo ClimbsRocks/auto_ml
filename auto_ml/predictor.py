@@ -31,7 +31,7 @@ from sklearn.preprocessing import FunctionTransformer
 from auto_ml import DataFrameVectorizer
 from auto_ml import utils
 from auto_ml import utils_data_cleaning
-from auto_ml import utils_ensemble
+# from auto_ml import utils_ensemble
 from auto_ml import utils_feature_selection
 from auto_ml import utils_model_training
 from auto_ml import utils_models
@@ -79,7 +79,7 @@ class Predictor(object):
 
         self.grid_search_pipelines = []
 
-        self.is_ensemble = False
+        # self.is_ensemble = False
         # Set this here for later use if this is an ensembled subpredictor
         self.name = name
 
@@ -121,11 +121,11 @@ class Predictor(object):
 
         pipeline_list = []
 
-        if self.ensembler is not None:
-            if trained_pipeline is not None:
-                pipeline_list.append(('add_ensemble_predictions', trained_pipeline.named_steps['add_ensemble_predictions']))
-            else:
-                pipeline_list.append(('add_ensemble_predictions', utils_ensemble.AddEnsembledPredictions(ensembler=self.ensembler, type_of_estimator=self.type_of_estimator)))
+        # if self.ensembler is not None:
+        #     if trained_pipeline is not None:
+        #         pipeline_list.append(('add_ensemble_predictions', trained_pipeline.named_steps['add_ensemble_predictions']))
+        #     else:
+        #         pipeline_list.append(('add_ensemble_predictions', utils_ensemble.AddEnsembledPredictions(ensembler=self.ensembler, type_of_estimator=self.type_of_estimator)))
 
         if self.user_input_func is not None:
             if trained_pipeline is not None:
@@ -333,185 +333,185 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2, include_original_X=True, scoring=None):
+    # def train_ensemble(self, data, ensemble_training_list, X_test=None, y_test=None, ensemble_method='median', data_for_final_ensembling=None, find_best_method=False, verbose=2, include_original_X=True, scoring=None):
 
-        self.scoring = scoring
+    #     self.scoring = scoring
 
-        if y_test is not None:
-            y_test = list(y_test)
-        self.ensemble_predictors = []
+    #     if y_test is not None:
+    #         y_test = list(y_test)
+    #     self.ensemble_predictors = []
 
-        self.is_ensemble = True
-        self.ml_for_analytics = True
+    #     self.is_ensemble = True
+    #     self.ml_for_analytics = True
 
-        if self.type_of_estimator == 'classifier':
-            scoring = utils_scoring.ClassificationScorer(self.scoring)
-            self._scorer = scoring
-        else:
-            scoring = utils_scoring.RegressionScorer(self.scoring)
-            self._scorer = scoring
+    #     if self.type_of_estimator == 'classifier':
+    #         scoring = utils_scoring.ClassificationScorer(self.scoring)
+    #         self._scorer = scoring
+    #     else:
+    #         scoring = utils_scoring.RegressionScorer(self.scoring)
+    #         self._scorer = scoring
 
-        # Make it optional for the person to pass in type_of_estimator
-        for training_params in ensemble_training_list:
-            if training_params.get('type_of_estimator', None) is None:
-                training_params['type_of_estimator'] = self.type_of_estimator
-            if training_params.get('scoring', None) is None:
-                training_params['scoring'] = self.scoring
+    #     # Make it optional for the person to pass in type_of_estimator
+    #     for training_params in ensemble_training_list:
+    #         if training_params.get('type_of_estimator', None) is None:
+    #             training_params['type_of_estimator'] = self.type_of_estimator
+    #         if training_params.get('scoring', None) is None:
+    #             training_params['scoring'] = self.scoring
 
-        # ################################
-        # If we're using machine learning to assemble our final ensemble, and we don't have data for it from the user, split out data here
-        # ################################
-        if ensemble_method in ['machine learning', 'ml', 'machine_learning'] and data_for_final_ensembling is None:
-
-
-
-            # Just grab the last 20% of the dataset in the order it was given to us
-            ensemble_idx = int(0.7 * len(data))
-            data_for_final_ensembling = data[ensemble_idx:]
-            data = data[:ensemble_idx]
+    #     # ################################
+    #     # If we're using machine learning to assemble our final ensemble, and we don't have data for it from the user, split out data here
+    #     # ################################
+    #     if ensemble_method in ['machine learning', 'ml', 'machine_learning'] and data_for_final_ensembling is None:
 
 
 
-        # ################################
-        # Train one subpredictor, with logging, and only a subset of the data as chosen by the user
-        # ################################
-        def train_one_ensemble_subpredictor(training_params):
-
-            print('\n\n************************')
-            print('Training a new subpredictor for the ensemble!')
-            name = training_params.pop('name')
-            print('The name you gave for this estimator is:')
-            print(name)
-            print('\n\n')
-            type_of_estimator = training_params.pop('type_of_estimator')
-            col_descs = training_params.pop('column_descriptions')
-            ml_predictor = Predictor(type_of_estimator, col_descs, name=name)
-
-            this_rounds_data = data
-
-            data_selection_func = training_params.pop('data_selection_func', None)
-            if callable(data_selection_func):
-                try:
-                    this_rounds_data = data_selection_func(data, name)
-                except TypeError:
-                    this_rounds_data = data_selection_func(data)
-            else:
-                this_rounds_data = data
-
-
-            training_params['raw_training_data'] = this_rounds_data
-
-            ml_predictor.train(**training_params)
-
-            return ml_predictor
-
-            # self.ensemble_predictors.append(ml_predictor)
-
-
-        # ################################
-        # Train subpredictors in parallel
-        # ################################
-        pool = pathos.multiprocessing.ProcessPool()
-
-        # Since we may have already closed the pool, try to restart it
-        try:
-            pool.restart()
-        except AssertionError as e:
-            pass
-        trained_ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list, chunksize=100)
-        trained_ensemble_predictors = list(trained_ensemble_predictors)
-
-        # self.ensemble_predictors = [predictor.trained_pipeline for predictor in self.ensemble_predictors]
-        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-        pool.close()
-        try:
-            pool.join()
-        except AssertionError:
-            pass
-
-        # ################################
-        # Print scoring information for each trained subpredictor
-        # ################################
-        if X_test is not None and verbose >= 3:
-            print('Scoring each of the trained subpredictors on the holdout data')
-
-            def score_predictor(predictor, X_test, y_test):
-                try:
-                    print(predictor.name)
-                except AttributeError:
-                    pass
-
-
-                predictor.score(X_test, y_test)
-
-            pool = pathos.multiprocessing.ProcessPool()
-
-            # Since we may have already closed the pool, try to restart it
-            try:
-                pool.restart()
-            except AssertionError as e:
-                pass
-            pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), trained_ensemble_predictors, chunksize=100)
-            # pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors, chunksize=100)
-            # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-            pool.close()
-            try:
-                pool.join()
-            except AssertionError:
-                pass
-
-        # Now that we've handled scoring (for which we will want the full ml_predictor objects with name and advanced_scoring, etc.), only grab the trained pipelines, which are much, much smaller objects
-        for predictor in trained_ensemble_predictors:
-            trained_pipeline = predictor.trained_pipeline
-            # trained_pipeline.named_steps['final_model']['name'] = predictor.name
-            self.ensemble_predictors.append(trained_pipeline)
-
-        # ################################
-        # Ensemble together our trained subpredictors, either using simple averaging, or training a new machine learning model to pick from amongst them
-        # ################################
-
-        if ensemble_method in ['machine learning', 'ml', 'machine_learning']:
-            ensembler = utils_ensemble.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
-
-
-            ml_predictor = Predictor(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, name=self.name)
-
-            print('\n\n\n')
-            print('We have trained up a bunch of individual estimators on this problem. Now it is time to train one final estimator that will ensemble all these predictions together for us')
-            print('Using machine learning to ensemble together a bunch of trained estimators!')
-            data_for_final_ensembling = data_for_final_ensembling.reset_index()
-            if self.type_of_estimator == 'regressor':
-                model_names = ['RandomForestRegressor', 'LinearRegression', 'ExtraTreesRegressor', 'Ridge', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'SGDRegressor']
-                if xgb_installed:
-                    model_names.append('XGBRegressor')
-            else:
-                model_names = ['RandomForestClassifier', 'GradientBoostingClassifier', 'RidgeClassifier', 'LogisticRegression']
-                if xgb_installed:
-                    model_names.append('XGBClassifier')
-                # model_names = ['LogisticRegression']
-            ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names, _include_original_X=include_original_X, scoring=self.scoring)
-
-
-            # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
-            # data_for_final_ensembling = pd.concat([data_for_final_ensembling, predictions_on_ensemble_data], axis=1)
-
-            self.trained_pipeline = ml_predictor.trained_pipeline
-
-            if find_best_method == True:
-                ensembler.find_best_ensemble_method(df=X_test, actuals=y_test)
-
-        else:
-
-            # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
-            self.trained_pipeline = utils_ensemble.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
-
-            if find_best_method == True:
-                self.trained_pipeline.find_best_ensemble_method(df=X_test, actuals=y_test)
+    #         # Just grab the last 20% of the dataset in the order it was given to us
+    #         ensemble_idx = int(0.7 * len(data))
+    #         data_for_final_ensembling = data[ensemble_idx:]
+    #         data = data[:ensemble_idx]
 
 
 
+    #     # ################################
+    #     # Train one subpredictor, with logging, and only a subset of the data as chosen by the user
+    #     # ################################
+    #     def train_one_ensemble_subpredictor(training_params):
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None):
+    #         print('\n\n************************')
+    #         print('Training a new subpredictor for the ensemble!')
+    #         name = training_params.pop('name')
+    #         print('The name you gave for this estimator is:')
+    #         print(name)
+    #         print('\n\n')
+    #         type_of_estimator = training_params.pop('type_of_estimator')
+    #         col_descs = training_params.pop('column_descriptions')
+    #         ml_predictor = Predictor(type_of_estimator, col_descs, name=name)
+
+    #         this_rounds_data = data
+
+    #         data_selection_func = training_params.pop('data_selection_func', None)
+    #         if callable(data_selection_func):
+    #             try:
+    #                 this_rounds_data = data_selection_func(data, name)
+    #             except TypeError:
+    #                 this_rounds_data = data_selection_func(data)
+    #         else:
+    #             this_rounds_data = data
+
+
+    #         training_params['raw_training_data'] = this_rounds_data
+
+    #         ml_predictor.train(**training_params)
+
+    #         return ml_predictor
+
+    #         # self.ensemble_predictors.append(ml_predictor)
+
+
+    #     # ################################
+    #     # Train subpredictors in parallel
+    #     # ################################
+    #     pool = pathos.multiprocessing.ProcessPool()
+
+    #     # Since we may have already closed the pool, try to restart it
+    #     try:
+    #         pool.restart()
+    #     except AssertionError as e:
+    #         pass
+    #     trained_ensemble_predictors = pool.map(train_one_ensemble_subpredictor, ensemble_training_list, chunksize=100)
+    #     trained_ensemble_predictors = list(trained_ensemble_predictors)
+
+    #     # self.ensemble_predictors = [predictor.trained_pipeline for predictor in self.ensemble_predictors]
+    #     # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+    #     pool.close()
+    #     try:
+    #         pool.join()
+    #     except AssertionError:
+    #         pass
+
+    #     # ################################
+    #     # Print scoring information for each trained subpredictor
+    #     # ################################
+    #     if X_test is not None and verbose >= 3:
+    #         print('Scoring each of the trained subpredictors on the holdout data')
+
+    #         def score_predictor(predictor, X_test, y_test):
+    #             try:
+    #                 print(predictor.name)
+    #             except AttributeError:
+    #                 pass
+
+
+    #             predictor.score(X_test, y_test)
+
+    #         pool = pathos.multiprocessing.ProcessPool()
+
+    #         # Since we may have already closed the pool, try to restart it
+    #         try:
+    #             pool.restart()
+    #         except AssertionError as e:
+    #             pass
+    #         pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), trained_ensemble_predictors, chunksize=100)
+    #         # pool.map(lambda predictor: score_predictor(predictor, X_test, y_test), self.ensemble_predictors, chunksize=100)
+    #         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+    #         pool.close()
+    #         try:
+    #             pool.join()
+    #         except AssertionError:
+    #             pass
+
+    #     # Now that we've handled scoring (for which we will want the full ml_predictor objects with name and advanced_scoring, etc.), only grab the trained pipelines, which are much, much smaller objects
+    #     for predictor in trained_ensemble_predictors:
+    #         trained_pipeline = predictor.trained_pipeline
+    #         # trained_pipeline.named_steps['final_model']['name'] = predictor.name
+    #         self.ensemble_predictors.append(trained_pipeline)
+
+    #     # ################################
+    #     # Ensemble together our trained subpredictors, either using simple averaging, or training a new machine learning model to pick from amongst them
+    #     # ################################
+
+    #     if ensemble_method in ['machine learning', 'ml', 'machine_learning']:
+    #         ensembler = utils_ensemble.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+
+
+    #         ml_predictor = Predictor(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, name=self.name)
+
+    #         print('\n\n\n')
+    #         print('We have trained up a bunch of individual estimators on this problem. Now it is time to train one final estimator that will ensemble all these predictions together for us')
+    #         print('Using machine learning to ensemble together a bunch of trained estimators!')
+    #         data_for_final_ensembling = data_for_final_ensembling.reset_index()
+    #         if self.type_of_estimator == 'regressor':
+    #             model_names = ['RandomForestRegressor', 'LinearRegression', 'ExtraTreesRegressor', 'Ridge', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'SGDRegressor']
+    #             if xgb_installed:
+    #                 model_names.append('XGBRegressor')
+    #         else:
+    #             model_names = ['RandomForestClassifier', 'GradientBoostingClassifier', 'RidgeClassifier', 'LogisticRegression']
+    #             if xgb_installed:
+    #                 model_names.append('XGBClassifier')
+    #             # model_names = ['LogisticRegression']
+    #         ml_predictor.train(raw_training_data=data_for_final_ensembling, ensembler=ensembler, perform_feature_selection=False, model_names=model_names, _include_original_X=include_original_X, scoring=self.scoring)
+
+
+    #         # predictions_on_ensemble_data = ensembler._get_all_predictions(data_for_final_ensembling)
+    #         # data_for_final_ensembling = pd.concat([data_for_final_ensembling, predictions_on_ensemble_data], axis=1)
+
+    #         self.trained_pipeline = ml_predictor.trained_pipeline
+
+    #         if find_best_method == True:
+    #             ensembler.find_best_ensemble_method(df=X_test, actuals=y_test)
+
+    #     else:
+
+    #         # Create an instance of an Ensemble object that will get predictions from all the trained subpredictors
+    #         self.trained_pipeline = utils_ensemble.Ensemble(ensemble_predictors=self.ensemble_predictors, type_of_estimator=self.type_of_estimator, method=ensemble_method)
+
+    #         if find_best_method == True:
+    #             self.trained_pipeline.find_best_ensemble_method(df=X_test, actuals=y_test)
+
+
+
+
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -527,7 +527,6 @@ class Predictor(object):
             self.take_log_of_y = take_log_of_y
         self.model_names = model_names
         self.perform_feature_scaling = perform_feature_scaling
-        self.ensembler = ensembler
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
         self.training_params = training_params
