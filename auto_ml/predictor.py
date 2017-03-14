@@ -18,7 +18,6 @@ import pathos
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.options.mode.chained_assignment = None  # default='warn'
 
-# from sklearn.model_selection import
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.decomposition import TruncatedSVD
@@ -29,29 +28,15 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
 
-# This is ugly, but allows auto_ml to work whether it's installed using pip, or the whole project is installed using git clone https://github.com/ClimbsRocks/auto_ml
-try:
-# from auto_ml import date_feature_engineering
-    from auto_ml import DataFrameVectorizer
-    from auto_ml import utils
-    from auto_ml import utils_data_cleaning
-    from auto_ml import utils_ensemble
-    from auto_ml import utils_feature_selection
-    from auto_ml import utils_model_training
-    from auto_ml import utils_models
-    from auto_ml import utils_scaling
-    from auto_ml import utils_scoring
-except ImportError:
-    from .. auto_ml import date_feature_engineering
-    from .. auto_ml import DataFrameVectorizer
-    from .. auto_ml import utils
-    from .. auto_ml import utils_data_cleaning
-    from .. auto_ml import utils_ensemble
-    from .. auto_ml import utils_feature_selection
-    from .. auto_ml import utils_model_training
-    from .. auto_ml import utils_models
-    from .. auto_ml import utils_scaling
-    from .. auto_ml import utils_scoring
+from auto_ml import DataFrameVectorizer
+from auto_ml import utils
+from auto_ml import utils_data_cleaning
+from auto_ml import utils_ensemble
+from auto_ml import utils_feature_selection
+from auto_ml import utils_model_training
+from auto_ml import utils_models
+from auto_ml import utils_scaling
+from auto_ml import utils_scoring
 
 
 # XGBoost can be a pain to install. It's also a super powerful and effective package.
@@ -183,7 +168,7 @@ class Predictor(object):
             else:
                 pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
-            final_model = utils_models.get_model_from_name(model_name)
+            final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer)))
             # final_model = utils_models.get_model_from_name(model_name)
             # pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model_name=model_name, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name)))
@@ -526,7 +511,7 @@ class Predictor(object):
 
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None, verify_features=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, compute_power=3, take_log_of_y=None, model_names=None, perform_feature_scaling=True, ensembler=None, calibrate_final_model=False, _include_original_X=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -545,6 +530,8 @@ class Predictor(object):
         self.ensembler = ensembler
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
+        self.training_params = training_params
+        self.user_gs_params = grid_search_params
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -717,6 +704,7 @@ class Predictor(object):
 
             self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
 
+
             # self.grid_search_params['final_model__model_name'] = [model_name]
 
             if self.optimize_final_model is True or (self.compute_power >= 5 and self.optimize_final_model is not False):
@@ -725,6 +713,16 @@ class Predictor(object):
                     # TODO TODO: remove the 'final_model__' prefix here
                     # self.grid_search_params['final_model__model__' + param_name] = param_list
                     self.grid_search_params['model__' + param_name] = param_list
+
+            if self.user_gs_params is not None:
+                # If the user gave us GSCV params, overwrite our defaults with what they provided
+                print('Using the grid_search_params you passed in:')
+                print(self.user_gs_params)
+                self.grid_search_params.update(self.user_gs_params)
+                print('Here is our final list of grid_search_params:')
+                print(self.grid_search_params)
+                print('Please note that if you want to set the grid search params for the final model specifically, they need to be prefixed with: "final_model__model__"')
+
 
             if self.verbose:
                 grid_search_verbose = 5
@@ -820,7 +818,7 @@ class Predictor(object):
                     if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                         self._print_ml_analytics_results_linear_model()
 
-                    elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
+                    elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
                         self._print_ml_analytics_results_random_forest()
 
                     break
@@ -846,7 +844,7 @@ class Predictor(object):
 
             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
                 self._print_ml_analytics_results_linear_model()
-            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier']:
+            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMClassifier', 'LGBMRegressor']:
                 self._print_ml_analytics_results_random_forest()
 
             if (self.X_test) is not None and (self.y_test) is not None:
@@ -932,7 +930,12 @@ class Predictor(object):
         else:
             trained_feature_names = self._get_trained_feature_names()
 
-            trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+            try:
+                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importances_
+            except:
+                # There's either a typo or a very odd design decision in LightGBM that removes the s on importanceS
+                trained_feature_importances = self.trained_pipeline.named_steps['final_model'].model.feature_importance_
+
 
             feature_infos = zip(trained_feature_names, trained_feature_importances)
 

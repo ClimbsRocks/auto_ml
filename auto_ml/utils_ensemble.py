@@ -1,13 +1,8 @@
 import numpy as np
 import pandas as pd
 
-try:
-    from auto_ml.utils_scoring import advanced_scoring_regressors, advanced_scoring_classifiers
-except ImportError:
-    from ..auto_ml.utils_scoring import advanced_scoring_regressors, advanced_scoring_classifiers
-
+from auto_ml.utils_scoring import advanced_scoring_regressors, advanced_scoring_classifiers
 import pathos
-
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
