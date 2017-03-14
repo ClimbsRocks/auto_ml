@@ -50,6 +50,11 @@ except ImportError:
 
 def get_model_from_name(model_name, training_params=None):
 
+    # For Keras
+    nb_epoch = 250
+    if 'is_test_suite' in sys.argv:
+        nb_epoch = 10
+
     all_model_params = {
         'LogisticRegression': {'n_jobs': -2},
         'RandomForestClassifier': {'n_jobs': -2},
@@ -69,8 +74,9 @@ def get_model_from_name(model_name, training_params=None):
         'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
         'LGBMRegressor': {},
-        'LGBMClassifier': {}
-
+        'LGBMClassifier': {},
+        'DeepLearningRegressor': {'nb_epoch': nb_epoch, 'batch_size': 50, 'verbose': 2},
+        'DeepLearningClassifier': {'nb_epoch': nb_epoch, 'batch_size': 50, 'verbose': 2}
     }
 
     model_params = all_model_params.get(model_name, None)
@@ -132,12 +138,9 @@ def get_model_from_name(model_name, training_params=None):
         model_map['LGBMClassifier'] = lgb.LGBMClassifier()
 
     if keras_installed:
-        nb_epoch = 250
-        if 'is_test_suite' in sys.argv:
-            nb_epoch = 10
 
-        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier, nb_epoch=nb_epoch, batch_size=50, verbose=2)
-        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=nb_epoch, batch_size=50, verbose=2)
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model)
 
     model_without_params = model_map[model_name]
     model_with_params = model_without_params.set_params(**model_params)
