@@ -51,9 +51,10 @@ except ImportError:
 def get_model_from_name(model_name, training_params=None):
 
     # For Keras
-    nb_epoch = 250
+    epochs = 250
     if 'is_test_suite' in sys.argv:
-        nb_epoch = 10
+        print('Heard that this is the test suite. Limiting epochs to 10, which will increase training speed dramatically at the expense of model accuracy')
+        epochs = 10
 
     all_model_params = {
         'LogisticRegression': {'n_jobs': -2},
@@ -75,8 +76,8 @@ def get_model_from_name(model_name, training_params=None):
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
         'LGBMRegressor': {},
         'LGBMClassifier': {},
-        'DeepLearningRegressor': {'nb_epoch': nb_epoch, 'batch_size': 50, 'verbose': 2},
-        'DeepLearningClassifier': {'nb_epoch': nb_epoch, 'batch_size': 50, 'verbose': 2}
+        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
     }
 
     model_params = all_model_params.get(model_name, None)
@@ -107,7 +108,7 @@ def get_model_from_name(model_name, training_params=None):
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
-        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, **training_params, verbose=1),
+        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, epochs=10, batch_size=10, **training_params, verbose=1),
         'LinearRegression': LinearRegression(),
         'RandomForestRegressor': RandomForestRegressor(),
         'Ridge': Ridge(),
@@ -269,7 +270,7 @@ def get_search_params(model_name):
                 [1, 2, 2, 1]
             ]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
-            # , 'nb_epoch': [2, 4, 6, 10, 20]
+            # , 'epochs': [2, 4, 6, 10, 20]
             # , 'batch_size': [10, 25, 50, 100, 200, 1000]
             # , 'lr': [0.001, 0.01, 0.1, 0.3]
             # , 'momentum': [0.0, 0.3, 0.6, 0.8, 0.9]
