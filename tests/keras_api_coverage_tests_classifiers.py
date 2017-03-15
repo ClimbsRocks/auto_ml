@@ -131,27 +131,27 @@ def test_perform_feature_scaling_false_classification():
     assert -0.25 < test_score < -0.17
 
 
-def test_optimize_entire_pipeline_classification():
-    np.random.seed(0)
+# def test_optimize_entire_pipeline_classification():
+#     np.random.seed(0)
 
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
-    column_descriptions = {
-        'survived': 'output'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
+#     column_descriptions = {
+#         'survived': 'output'
+#         , 'embarked': 'categorical'
+#         , 'pclass': 'categorical'
+#     }
 
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True, model_names=['DeepLearningClassifier'])
+#     ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True, model_names=['DeepLearningClassifier'])
 
-    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
-    print('test_score')
-    print(test_score)
+#     print('test_score')
+#     print(test_score)
 
-    assert -0.25 < test_score < -0.17
+#     assert -0.25 < test_score < -0.17
 
 
 def test_X_test_and_y_test_classification():

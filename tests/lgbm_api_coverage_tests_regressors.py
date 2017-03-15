@@ -130,26 +130,26 @@ def test_perform_feature_scaling_false_regression():
     assert -9.5 < test_score < -2.8
 
 
-def test_optimize_entire_pipeline_regression():
-    np.random.seed(42)
+# def test_optimize_entire_pipeline_regression():
+#     np.random.seed(42)
 
-    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+#     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
 
-    column_descriptions = {
-        'MEDV': 'output'
-        , 'CHAS': 'categorical'
-    }
+#     column_descriptions = {
+#         'MEDV': 'output'
+#         , 'CHAS': 'categorical'
+#     }
 
-    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+#     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, optimize_entire_pipeline=True, model_names=['LGBMRegressor'])
+#     ml_predictor.train(df_boston_train, optimize_entire_pipeline=True, model_names=['LGBMRegressor'])
 
-    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+#     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
-    print('test_score')
-    print(test_score)
+#     print('test_score')
+#     print(test_score)
 
-    assert -9.5 < test_score < -2.8
+#     assert -9.5 < test_score < -2.8
 
 
 def test_X_test_and_y_test_regression():
