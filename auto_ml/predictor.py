@@ -319,11 +319,10 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_entire_pipeline=False, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
-        self.optimize_entire_pipeline = optimize_entire_pipeline
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.ml_for_analytics = ml_for_analytics
         self.only_analytics = only_analytics
@@ -338,6 +337,8 @@ class Predictor(object):
         self.scoring = scoring
         self.training_params = training_params
         self.user_gs_params = grid_search_params
+        if self.user_gs_params is not None:
+            self.optimize_final_model = True
         self.compare_all_models = compare_all_models
 
         if verbose:
@@ -379,7 +380,7 @@ class Predictor(object):
 
 
         # This is our main logic for how we configure the training
-        self.perform_grid_search_by_model_names(estimator_names, self._scorer, X_df, y)
+        self.train_pipeline(estimator_names, self._scorer, X_df, y)
 
         # If we ran GridSearchCV, we will have to pick the best model
         # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
@@ -473,10 +474,65 @@ class Predictor(object):
         del X_df
 
 
+    def fit_single_pipeline(self, model_name):
+        full_pipeline = self._construct_pipeline(model_name=model_name)
+        ppl = full_pipeline.pop()
+        if self.verbose:
+            print('\n\n********************************************************************************************')
+            if self.name is not None:
+                print(self.name)
+            print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+            print('Started at:')
+            start_time = datetime.datetime.now().replace(microsecond=0)
+            print(start_time)
+
+        ppl.fit(X_df, y)
+        self.trained_pipeline = ppl
+
+        if self.verbose:
+            print('Finished training the pipeline!')
+            print('Total training time:')
+            print(datetime.datetime.now().replace(microsecond=0) - start_time)
+
+        pass
+
+
+    def fit_transformation_pipeline(self, X_df, y):
+        ppl = self._construct_pipeline(model_name=model_name)
+        ppl.steps.pop()
+
+        # We are intentionally overwriting X_df here to try to save some memory space
+        X_df = ppl.fit_transform(X_df, y)
+
+        self.transformation_pipeline = X_df
+
+        return X_df
+
+
     # This is broken out into it's own function for each estimator on purpose
     # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
     # This also lets us test on X_test and y_test for each model
-    def perform_grid_search_by_model_names(self, estimator_names, scoring, X_df, y):
+    def train_pipeline(self, estimator_names, scoring, X_df, y):
+
+        # Goals we need to accomplish:
+        # 1. Run grid search only if we have to (just directly train the model if we are not optimizing final model)
+        # 3. accept user gs_params
+        # 4. train one model for each of the different model names passed into us
+        # 5. If we are not optimizing final model, but we do have many models to train, handle that (probably just one gscv)
+        # 6. Print analytics results (and yes, we do want to do that here so that we can print analytics for each model we train, not just the final one)
+        # 7. save the trained pipeline to self.trained_pipeline
+        # 8. save any other parts of the pipeline process that we might need (transformation_pipeline, final_model, etc.)
+        # 9. print score on X_test and y_test, and use them to determine which model wins
+
+        # Goals we have accomplished
+        # 2. split out feature transformation pipeline from model training grid search if we are running grid search
+
+        X_df = self.fit_transformation_pipeline()
+
+
+        if len(estimator_names) == 1 and self.optimize_final_model != True:
+            self.fit_single_pipeline()
+
 
         for model_name in estimator_names:
 
