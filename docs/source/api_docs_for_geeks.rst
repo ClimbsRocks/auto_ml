@@ -40,9 +40,9 @@ auto_ml
 
 .. py:method:: ml_predictor.predict(prediction_rows)
 
-  :param prediction_rows: A single row, or a DataFrame or list of dictionaries with many rows. For production environments, the code is optimized to run quickly on a single row passed in as a dictionary, though batched predictions on thousands of rows at a time are generally more efficient if you're getting predictions for a larger dataset.
+  :param prediction_rows: A single dictionary, or a DataFrame, or list of dictionaries. For production environments, the code is optimized to run quickly on a single row passed in as a dictionary (taking around 1 millisecond for the entire pipeline). Batched predictions on thousands of rows at a time are generally more efficient if you're getting predictions for a larger dataset.
 
-  :rtype: list of predicted values, of the same length as the ``prediction_rows`` passed in. Each row will hold a single value. For 'regressor' estimators, each value will be a number. For 'classifier' estimators, each row will be a sting of the predicted label (category), matching the categories passed in to the training data. If a single dictionary is passed in, the return value will be the predicted value, not nested in a list (so just a single number or predicted class).
+  :rtype: list of predicted values, of the same length and order as the ``prediction_rows`` passed in. If a single dictionary is passed in, the return value will be the predicted value, not nested in a list (so just a single number or predicted class).
 
 
 .. py:method:: ml_predictor.predict_proba(prediction_rows)
@@ -52,9 +52,11 @@ auto_ml
   :rtype:  Only works for 'classifier' estimators. Same as above, except each row in the returned list will now itself be a list, of length (number of categories in training data). The items in this row's list will represent the probability of each category.
 
 
-.. py:method:: ml_predictor.score(X_test, y_test)
+.. py:method:: ml_predictor.score(X_test, y_test, verbose=2)
 
-  :rtype: number representing the trained estimator's score on the validation data. Note that you can also pass X_test and y_test into .train() to have scores on validation data reported out for each algorithm we try, and each subpredictor we build.
+  :rtype: number representing the trained estimator's score on the validation data.
+
+  :param verbose: [Default- 2] If 3, even more detailed logging will be included.
 
 .. py:method:: ml_predictor.save(file_name='auto_ml_saved_pipeline.pkl', verbose=True)
 
@@ -62,4 +64,4 @@ auto_ml
   :type file_name: string
   :param verbose: If ``True``, will log information about the file, the system this was trained on, and which features to make sure to feed in at prediction time.
   :type verbose: Boolean
-  :rtype: the name of the file the trained ml_predictor is saved to.
+  :rtype: the name of the file the trained ml_predictor is saved to. This function will serialize the trained pipeline to disk, so that you can then load it into a production environment and use it to make predictions. The serialized file will likely be several hundred KB or several MB, depending on number of columns in training data and parameters used.

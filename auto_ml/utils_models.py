@@ -107,7 +107,6 @@ def get_model_from_name(model_name, training_params=None):
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
-        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, nb_epoch=10, batch_size=10, **training_params, verbose=1),
         'LinearRegression': LinearRegression(),
         'RandomForestRegressor': RandomForestRegressor(),
         'Ridge': Ridge(),
