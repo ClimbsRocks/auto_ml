@@ -28,13 +28,13 @@ Here's the whole code block that will get you analytics results in your console:
   ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
   # Can pass in type_of_estimator='regressor' as well
 
-  ml_predictor.train(list_of_dictionaries, ml_for_analytics=True)
+  ml_predictor.train(df, ml_for_analytics=True)
   # Wait for the machine to learn all the complex and beautiful patterns in your data...
 
   # And this time, in your shell, it will print out the results for what it found was useful in making predictions!
 
   ml_predictor.predict(new_data)
-  # Where new_data is also a list of dictionaries
+  # Where new_data is a single dictionary, or a DataFrame
 
 
 Tangent time- what do you mean analytics from machine learning?

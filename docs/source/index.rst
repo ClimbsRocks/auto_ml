@@ -27,21 +27,16 @@ Installation
 Core Functionality Example
 --------------------------
 
+auto_ml is designed for production. Here's an example that includes serializing and loading the trained model, then getting predictions on single dictionaries, roughly the process you'd likely follow to deploy the trained model.
+
 .. code-block:: python
 
   import dill
-  import pandas as pd
-  from sklearn.datasets import load_boston
-  from sklearn.model_selection import train_test_split
-
   from auto_ml import Predictor
+  from auto_ml.utils import get_boston_dataset
 
   # Load data
-  boston = load_boston()
-  df_boston = pd.DataFrame(boston.data)
-  df_boston.columns = boston.feature_names
-  df_boston['MEDV'] = boston['target']
-  df_boston_train, df_boston_test = train_test_split(df_boston, test_size=0.2, random_state=42)
+  df_train, df_test = get_boston_dataset()
 
   # Tell auto_ml which column is 'output'
   # Also note columns that aren't purely numerical
@@ -53,10 +48,10 @@ Core Functionality Example
 
   ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-  ml_predictor.train(df_boston_train)
+  ml_predictor.train(df_train)
 
   # Score the model on test data
-  test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+  test_score = ml_predictor.score(df_test, df_test.MEDV)
 
   # auto_ml is specifically tuned for running in production
   # It can get predictions on an individual row (passed in as a dictionary)
@@ -72,8 +67,31 @@ Core Functionality Example
   # A pandas DataFrame
   # A list of dictionaries
   # A single dictionary (optimized for speed in production evironments)
-  predictions = trained_model.predict(df_boston_test)
+  predictions = trained_model.predict(df_test)
   print(predictions)
+
+XGBoost, Deep Leaarning with TensorFlow & Keras, and LightGBM
+-------------------------------------------------------------
+
+auto_ml has all three of these awesome libraries integrated!
+Generally, just pass one of them in for model_names.
+`ml_predictor.train(data, model_names=['DeepLearningClassifier'])`
+
+Available options are
+- `DeepLearningClassifier` and `DeepLearningRegressor`
+- `XGBClassifier` and `XGBRegressor`
+- `LGBMClassifer` and `LGBMRegressor`
+
+All of these projects are ready for production. These projects all have prediction time in the 1 millisecond range for a single prediction, and are able to be serialized to disk and loaded into a new environment after training.
+
+Depending on your machine, they can occasionally be difficult to install, so they are not included in auto_ml's default installation. You are responsible for installing them yourself. auto_ml will run fine without them installed (we check what's isntalled before choosing which algorithm to use). If you want to try the easy install, just `pip install -r advanced_requirements.txt`, which will install TensorFlow, Keras, and XGBoost. LightGBM is not available as a pip install currently.
+
+
+Classification
+--------------
+
+Binary and multiclass classification are both supported. Note that for now, labels must be integers (0 and 1 for binary classification). auto_ml will automatically detect if it is a binary or multiclass classification problem- you just have to pass in `ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)`
+
 
 Advice
 ------

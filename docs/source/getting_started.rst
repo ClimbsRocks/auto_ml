@@ -13,18 +13,20 @@ Core Functionality Example
 .. code-block:: python
 
   from auto_ml import Predictor
+  from auto_ml.utils import get_boston_dataset
 
-  # If you pass in any categorical data as a number, tell us here and we'll take care of it.
-  col_desc_dictionary = {col_to_predict: 'output', state_code: 'categorical'}
+  df_train, df_test = get_boston_dataset()
 
-  ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
-  # Can pass in type_of_estimator='regressor' as well
+  column_descriptions = {
+      'MEDV': 'output'
+      , 'CHAS': 'categorical'
+  }
 
-  ml_predictor.train(training_dataframe)
-  # Wait for the machine to learn all the complex and beautiful patterns in your data...
+  ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-  ml_predictor.predict(new_data)
-  # Where new_data is either a dataframe, a list of dictionaries, or a single dictionary
+  ml_predictor.train(df_train)
+
+  ml_predictor.score(df_test, df_test.MEDV)
 
 
 That's it.

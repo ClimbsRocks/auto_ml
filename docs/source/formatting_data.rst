@@ -14,7 +14,7 @@ Try running your code first, and come back here only if you're not getting the r
 Training data format
 ---------------------
 #. Must either be a pandas DataFrame, or a list filled with python dictionaries.
-#. The non-header-row objects can be "sparse". You only have to include attributes on each object that actually apply to that row.
+#. The non-header-row objects can be "sparse". You only have to include attributes on each object that actually apply to that row. In fact, we'd recommend passing in None or nan if you have missing values- knowing that a value is missing can itself be signal.
 
 Header row information
 -----------------------
