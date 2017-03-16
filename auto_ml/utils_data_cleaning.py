@@ -98,7 +98,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
         # See if we should fit TfidfVectorizer or not
         for key in X_df.columns:
-            # col_desc = self.column_descriptions.get(key, False)
+
             if key in self.text_columns:
                     self.text_columns[key].fit(X_df[key].astype(str, raise_on_error=False))
 
@@ -230,8 +230,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     warnings.warn('UnknownValueInColumnDescriptions: Please make sure all the values you pass into column_descriptions are valid.')
 
         # Historically we've deleted columns here. However, we're moving this to DataFrameVectorizer as part of a broader effort to reduce duplicate computation
-        # if len(cols_to_drop) > 0:
-        #     X = X.drop(cols_to_drop, axis=1)
         return X
 
 
@@ -305,8 +303,6 @@ def add_date_features_dict(row, date_col):
         pass
 
     date_feature_dict[date_col + '_is_weekend'] = date_val.weekday() in (5,6)
-
-    # del row[date_col]
 
     return date_feature_dict
 

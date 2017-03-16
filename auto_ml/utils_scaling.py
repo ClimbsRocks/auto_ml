@@ -19,8 +19,6 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         max_val = series_vals[max_val_idx]
         min_val = series_vals[min_val_idx]
     else:
-        # print('This column appears to have only nan values, and will be ignored:')
-        # print(col)
         return 'ignore'
 
     inner_range = max_val - min_val
@@ -39,8 +37,6 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
                 inner_range = 1
             else:
                 # If this is just a column that holds all the same values for everything though, delete the column to save some space
-                # print('This column appears to have 0 variance (the max and min values are the same), and will be ignored:')
-                # print(col)
                 return 'ignore'
 
     col_summary = {
@@ -98,7 +94,6 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
             if len(self.cols_to_ignore) > 0:
                 X = utils.safely_drop_columns(X, self.cols_to_ignore)
-                # X = X.drop(self.cols_to_ignore, axis=1)
 
             for col, col_dict in self.column_ranges.items():
                 if col in X.columns:

@@ -9,8 +9,6 @@ from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFrom
 
 
 def get_feature_selection_model_from_name(type_of_estimator, model_name):
-    # TODO(PRESTON): eventually let threshold be user-configurable (or grid_searchable)
-    # TODO(PRESTON): optimize the params used here
     model_map = {
         'classifier': {
             'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1, max_depth=10, n_estimators=15), threshold='20*mean'),

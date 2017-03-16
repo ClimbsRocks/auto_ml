@@ -221,11 +221,6 @@ class RegressionScorer(object):
             print('Found ' + str(len(bad_val_indices)) + 'null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
             score = self.scoring_func(y, predictions)
 
-        # if scoring == 'rmse':
-        #     score = mean_squared_error(y, predictions)**0.5
-        # elif scoring == 'median_absolute_error':
-        #     score = median_absolute_error(y, predictions)
-
         if advanced_scoring == True:
             if hasattr(estimator, 'name'):
                 print(estimator.name)
@@ -268,14 +263,6 @@ class ClassificationScorer(object):
     def score(self, estimator, X, y, advanced_scoring=False):
         if isinstance(estimator, GradientBoostingClassifier):
             X = X.toarray()
-        # clean_ys = []
-        # # try:
-        # for val in y:
-        #     val = int(val)
-        #     clean_ys.append(val)
-        # y = clean_ys
-        # except:
-        #     pass
 
         predictions = estimator.predict_proba(X)
 
@@ -284,10 +271,6 @@ class ClassificationScorer(object):
             # At the moment, Microsoft's LightGBM returns probabilities > 1 and < 0, which can break some scoring functions. So we have to take the max of 1 and the pred, and the min of 0 and the pred.
             probas = [max(min(row[1], 1), 0) for row in predictions]
             predictions = probas
-        # score = brier_score_loss(y, probas)
-
-        # if self.scoring_method in ['accuracy_score', 'accuracy']:
-        #     predictions = [1 if x[1] >= 0.5 else 0 for x in predictions]
 
         try:
             score = self.scoring_func(y, predictions)
@@ -307,8 +290,6 @@ class ClassificationScorer(object):
                 # Sometimes, particularly for a badly fit model using either too little data, or a really bad set of hyperparameters during a grid search, we can predict probas that are > 1 or < 0. We'll cap those here, while warning the user about them, because they're unlikely to occur in a model that's properly trained with enough data and reasonable params
                 predictions = self.clean_probas(predictions)
                 score = self.scoring_func(y, predictions)
-
-
 
 
         if advanced_scoring:
