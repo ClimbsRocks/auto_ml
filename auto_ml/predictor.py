@@ -166,23 +166,23 @@ class Predictor(object):
         return constructed_pipeline
 
 
-    def _construct_pipeline_search_params(self, user_defined_model_names=None):
+    # def _get_gs_models_from_estimator_names(self, user_defined_model_names=None):
 
-        gs_params = {}
+    #     gs_params = {}
 
-        if user_defined_model_names is not None:
-            model_names = user_defined_model_names
-        else:
-            model_names = self._get_estimator_names()
+    #     if user_defined_model_names is not None:
+    #         model_names = user_defined_model_names
+    #     else:
+    #         model_names = self._get_estimator_names()
 
-        final_model__models = []
-        for model_name in model_names:
-            final_model__models.append(utils_models.get_model_from_name(model_name))
+    #     final_model__models = []
+    #     for model_name in model_names:
+    #         final_model__models.append(utils_models.get_model_from_name(model_name))
 
 
-        gs_params['final_model__model'] = final_model__models
+    #     gs_params['final_model__model'] = final_model__models
 
-        return gs_params
+    #     return gs_params
 
 
     def _get_estimator_names(self):
@@ -295,17 +295,16 @@ class Predictor(object):
         return X_df, y
 
 
-    def _consolidate_feature_selection_steps(self, trained_pipeline, final_model=None):
+    def _consolidate_pipeline(self, transformation_pipeline, final_model=None):
         # First, restrict our DictVectorizer or DataFrameVectorizer
         # This goes through and has DV only output the items that have passed our support mask
         # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
         # It also significantly reduces the size of dv.vocabulary_ which can get quite large
 
-        dv = trained_pipeline.named_steps['dv']
+        dv = transformation_pipeline.named_steps['dv']
 
-        # If we do not have feature selection in the pipeline, just return the pipeline as is
         try:
-            feature_selection = trained_pipeline.named_steps['feature_selection']
+            feature_selection = transformation_pipeline.named_steps['feature_selection']
             feature_selection_mask = feature_selection.support_mask
             dv.restrict(feature_selection_mask)
         except KeyError:
@@ -314,12 +313,12 @@ class Predictor(object):
 
         # We have overloaded our _construct_pipeline method to work both to create a new pipeline from scratch at the start of training, and to go through a trained pipeline in exactly the same order and steps to take a dedicated FeatureSelection model out of an already trained pipeline
         # In this way, we ensure that we only have to maintain a single centralized piece of logic for the correct order a pipeline should follow
-        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=trained_pipeline, final_model=final_model)
+        trained_pipeline_without_feature_selection = self._construct_pipeline(trained_pipeline=transformation_pipeline, final_model=final_model)
 
         return trained_pipeline_without_feature_selection
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -340,6 +339,7 @@ class Predictor(object):
         if self.user_gs_params is not None:
             self.optimize_final_model = True
         self.compare_all_models = compare_all_models
+        self.cv = cv
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
@@ -362,6 +362,7 @@ class Predictor(object):
 
         self.perform_feature_selection = perform_feature_selection
 
+
         if model_names is not None:
             estimator_names = model_names
         else:
@@ -380,92 +381,102 @@ class Predictor(object):
 
 
         # This is our main logic for how we configure the training
-        self.train_pipeline(estimator_names, self._scorer, X_df, y)
+        self.train_pipeline_components(estimator_names, self._scorer, X_df, y)
 
-        # If we ran GridSearchCV, we will have to pick the best model
-        # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
-        if len(self.grid_search_pipelines) > 1:
-            # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
-            # 1. Holdout data
-            # 2. CV data
+        # Calibrate the probability predictions from our final model
+        if self.calibrate_final_model is True:
+            self.trained_final_model.model = self._calibrate_final_model(self.trained_final_model.model, X_test, y_test)
 
-            # First, sort all of the tuples that hold our scores in their first position(s), and our actual trained pipeline in their final position
-            # Since a more positive score is better, we want to make sure that the first item in our sorted list is the highest score, thus, reverse=True
-            sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0], reverse=True)
+        self.trained_pipeline = self._consolidate_pipeline(self.transformation_pipeline, self.trained_final_model)
+        # self.trained_pipeline = trained_pipeline
 
-            # Next, grab the thing at position 0 in our sorted list, which is itself a list of the scores(s), and the pipeline itself
-            best_result_list = sorted_gs_pipeline_results[0]
-            # Our best grid search result is the thing at the end of that list.
-            best_trained_gs = best_result_list[-1]
-            # And the pipeline is the best estimator within that grid search object.
-            try:
-                self.trained_pipeline = best_trained_gs.best_estimator_
-            except:
-                # We are also supporting the use case of the user training multiple model types, without optimzing any of them (so no GridSearchCV), but using X_test and y_test to determine the best model
-                # In that case, the thing at the end of the best_result_list will be the trained pipeline we're interested in
-                self.trained_pipeline = best_trained_gs
 
-        # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
-        if self.continue_after_single_gscv == True:
-            if self.transformation_pipeline is None:
-                self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
-            else:
-                self.trained_pipeline = self._consolidate_feature_selection_steps(self.transformation_pipeline, final_model=self.trained_pipeline)
-        else:
-            self.trained_pipeline = self._consolidate_feature_selection_steps(self.trained_pipeline)
+
+        # # If we ran GridSearchCV, we will have to pick the best model
+        # # If we did not, the best trained pipeline will already be saved in self.trained_pipeline
+        # if len(self.grid_search_pipelines) > 1:
+        #     # Once we have trained all the pipelines, select the best one based on it's performance on (top priority first):
+        #     # 1. Holdout data
+        #     # 2. CV data
+
+        #     # First, sort all of the tuples that hold our scores in their first position(s), and our actual trained pipeline in their final position
+        #     # Since a more positive score is better, we want to make sure that the first item in our sorted list is the highest score, thus, reverse=True
+        #     sorted_gs_pipeline_results = sorted(self.grid_search_pipelines, key=lambda x: x[0], reverse=True)
+
+        #     # Next, grab the thing at position 0 in our sorted list, which is itself a list of the scores(s), and the pipeline itself
+        #     best_result_list = sorted_gs_pipeline_results[0]
+        #     # Our best grid search result is the thing at the end of that list.
+        #     best_trained_gs = best_result_list[-1]
+        #     # And the pipeline is the best estimator within that grid search object.
+        #     try:
+        #         self.trained_pipeline = best_trained_gs.best_estimator_
+        #     except:
+        #         # We are also supporting the use case of the user training multiple model types, without optimzing any of them (so no GridSearchCV), but using X_test and y_test to determine the best model
+        #         # In that case, the thing at the end of the best_result_list will be the trained pipeline we're interested in
+        #         self.trained_pipeline = best_trained_gs
+
+        # # DictVectorizer will now perform DictVectorizer and FeatureSelection in a very efficient combination of the two steps.
+        # if self.continue_after_single_gscv == True:
+        #     if self.transformation_pipeline is None:
+        #         self.trained_pipeline = self._consolidate_pipeline(self.trained_pipeline)
+        #     else:
+        #         self.trained_pipeline = self._consolidate_pipeline(self.transformation_pipeline, final_model=self.trained_pipeline)
+        # else:
+        #     self.trained_pipeline = self._consolidate_pipeline(self.trained_pipeline)
 
         # verify_features is not enabled by default. It adds a significant amount to the file size of the saved pipelines.
         # If you are interested in submitting a PR to reduce the saved file size, there are definitely some optimizations you can make!
         if verify_features == True:
-            # Save the features we used for training to our FinalModelATC instance.
-            # This lets us provide useful information to the user when they call .predict(data, verbose=True)
-            trained_feature_names = self._get_trained_feature_names()
-            self.trained_pipeline.set_params(final_model__training_features=trained_feature_names)
-            # We will need to know which columns are categorical/ignored/nlp when verifying features
-            self.trained_pipeline.set_params(final_model__column_descriptions=self.column_descriptions)
-            # self.trained_pipeline.named_steps['final_model']['training_features'] = trained_feature_names
+            self._prepare_for_verify_features()
+            # # Save the features we used for training to our FinalModelATC instance.
+            # # This lets us provide useful information to the user when they call .predict(data, verbose=True)
+            # trained_feature_names = self._get_trained_feature_names()
+            # self.trained_pipeline.set_params(final_model__training_features=trained_feature_names)
+            # # We will need to know which columns are categorical/ignored/nlp when verifying features
+            # self.trained_pipeline.set_params(final_model__column_descriptions=self.column_descriptions)
+            # # self.trained_pipeline.named_steps['final_model']['training_features'] = trained_feature_names
 
 
-        # Calibrate the probability predictions from our final model
-        if self.calibrate_final_model is True and X_test is not None and y_test is not None:
-            print('Now calibrating the final model so the probability predictions line up with the observed probabilities in the X_test and y_test datasets you passed in.')
-            print('Note: the validation scores printed above are truly validation scores: they were scored before the model was calibrated to this data.')
-            print('However, now that we are calibrating on the X_test and y_test data you gave us, it is no longer accurate to call this data validation data, since the model is being calibrated to it. As such, you must now report a validation score on a different dataset, or report the validation score used above before the model was calibrated to X_test and y_test. ')
+        # # Calibrate the probability predictions from our final model
+        # if self.calibrate_final_model is True and X_test is not None and y_test is not None:
+        #     print('Now calibrating the final model so the probability predictions line up with the observed probabilities in the X_test and y_test datasets you passed in.')
+        #     print('Note: the validation scores printed above are truly validation scores: they were scored before the model was calibrated to this data.')
+        #     print('However, now that we are calibrating on the X_test and y_test data you gave us, it is no longer accurate to call this data validation data, since the model is being calibrated to it. As such, you must now report a validation score on a different dataset, or report the validation score used above before the model was calibrated to X_test and y_test. ')
 
-            trained_model = self.trained_pipeline.named_steps['final_model'].model
+        #     trained_model = self.trained_pipeline.named_steps['final_model'].model
 
-            if len(X_test) < 1000:
-                calibration_method = 'sigmoid'
-            else:
-                calibration_method = 'isotonic'
+        #     if len(X_test) < 1000:
+        #         calibration_method = 'sigmoid'
+        #     else:
+        #         calibration_method = 'isotonic'
 
-            calibrated_classifier = CalibratedClassifierCV(trained_model, method=calibration_method, cv='prefit')
+        #     calibrated_classifier = CalibratedClassifierCV(trained_model, method=calibration_method, cv='prefit')
 
-            # We need to make sure X_test has been processed the exact same way y_test has.
-            # So grab all the steps of the pipeline up to, but not including, the final_model
-            # and run X_test through that transformer pipeline
-            self.trained_transformer_pipeline = self.trained_pipeline
-            transformer_pipeline = []
-            for step in self.trained_transformer_pipeline.steps:
-                if step[0] != 'final_model':
-                    transformer_pipeline.append(step)
+        #     # We need to make sure X_test has been processed the exact same way y_test has.
+        #     # So grab all the steps of the pipeline up to, but not including, the final_model
+        #     # and run X_test through that transformer pipeline
+        #     self.trained_transformer_pipeline = self.trained_pipeline
+        #     transformer_pipeline = []
+        #     for step in self.trained_transformer_pipeline.steps:
+        #         if step[0] != 'final_model':
+        #             transformer_pipeline.append(step)
 
-            self.trained_transformer_pipeline = Pipeline(transformer_pipeline)
+        #     self.trained_transformer_pipeline = Pipeline(transformer_pipeline)
 
-            X_test = self.trained_transformer_pipeline.transform(X_test)
+        #     X_test = self.trained_transformer_pipeline.transform(X_test)
 
-            try:
-                calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
-            except TypeError as e:
-                if scipy.sparse.issparse(X_test):
-                    X_test = X_test.toarray()
+        #     try:
+        #         calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
+        #     except TypeError as e:
+        #         if scipy.sparse.issparse(X_test):
+        #             X_test = X_test.toarray()
 
-                    calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
-                else:
-                    raise(e)
+        #             calibrated_classifier = calibrated_classifier.fit(X_test, y_test)
+        #         else:
+        #             raise(e)
 
-            # Now insert the calibrated model back into our final_model step
-            self.trained_pipeline.named_steps['final_model'].model = calibrated_classifier
+        #     # Now insert the calibrated model back into our final_model step
+        #     self.trained_pipeline.named_steps['final_model'].model = calibrated_classifier
 
         # Delete values that we no longer need that are just taking up space.
         del self.X_test
@@ -474,9 +485,68 @@ class Predictor(object):
         del X_df
 
 
-    def fit_single_pipeline(self, model_name):
+    def _prepare_for_verify_features(self):
+        # Save the features we used for training to our FinalModelATC instance.
+        # This lets us provide useful information to the user when they call .predict(data, verbose=True)
+        trained_feature_names = self._get_trained_feature_names()
+        self.trained_pipeline.set_params(final_model__training_features=trained_feature_names)
+        # We will need to know which columns are categorical/ignored/nlp when verifying features
+        self.trained_pipeline.set_params(final_model__column_descriptions=self.column_descriptions)
+
+
+    def _calibrate_final_model(self, trained_model, X_test, y_test):
+
+        if X_test is None or y_test is None:
+            print('X_test or y_test was not present while trying to calibrate the final model')
+            print('Please pass in both X_test and y_test to calibrate the final model')
+            print('Skipping model calibration')
+            return trained_model
+
+        print('Now calibrating the final model so the probability predictions line up with the observed probabilities in the X_test and y_test datasets you passed in.')
+        print('Note: the validation scores printed above are truly validation scores: they were scored before the model was calibrated to this data.')
+        print('However, now that we are calibrating on the X_test and y_test data you gave us, it is no longer accurate to call this data validation data, since the model is being calibrated to it. As such, you must now report a validation score on a different dataset, or report the validation score used above before the model was calibrated to X_test and y_test. ')
+
+        # trained_model = self.trained_pipeline.named_steps['final_model'].model
+
+        if len(X_test) < 1000:
+            calibration_method = 'sigmoid'
+        else:
+            calibration_method = 'isotonic'
+
+        calibrated_classifier = CalibratedClassifierCV(trained_model, method=calibration_method, cv='prefit')
+
+        # So grab all the steps of the pipeline up to, but not including, the final_model
+        # and run X_test through that transformer pipeline
+        # self.trained_transformer_pipeline = self.trained_pipeline
+        # transformer_pipeline = []
+        # for step in self.trained_transformer_pipeline.steps:
+        #     if step[0] != 'final_model':
+        #         transformer_pipeline.append(step)
+
+        # self.trained_transformer_pipeline = Pipeline(transformer_pipeline)
+
+        # We need to make sure X_test has been processed the exact same way y_test has.
+        X_test_processed = self.transformation_pipeline.transform(X_test)
+
+        try:
+            calibrated_classifier = calibrated_classifier.fit(X_test_processed, y_test)
+        except TypeError as e:
+            if scipy.sparse.issparse(X_test_processed):
+                X_test_processed = X_test_processed.toarray()
+
+                calibrated_classifier = calibrated_classifier.fit(X_test_processed, y_test)
+            else:
+                raise(e)
+
+        return calibrated_classifier
+
+        # # Now insert the calibrated model back into our final_model step
+        # self.trained_pipeline.named_steps['final_model'].model = calibrated_classifier
+
+    def fit_single_pipeline(self, X_df, y, model_name):
+
         full_pipeline = self._construct_pipeline(model_name=model_name)
-        ppl = full_pipeline.pop()
+        ppl = full_pipeline.named_steps['final_model']
         if self.verbose:
             print('\n\n********************************************************************************************')
             if self.name is not None:
@@ -487,38 +557,135 @@ class Predictor(object):
             print(start_time)
 
         ppl.fit(X_df, y)
-        self.trained_pipeline = ppl
 
         if self.verbose:
             print('Finished training the pipeline!')
             print('Total training time:')
             print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
-        pass
+        self.trained_final_model = ppl
+        self.print_results(model_name)
+
+        return ppl
 
 
-    def fit_transformation_pipeline(self, X_df, y):
+    # We have broken our model training into separate components. The first component is always going to be fitting a transformation pipeline. The great part about separating the feature transformation step is that now we can perform other work on the final step, and not have to repeat the sometimes time-consuming step of the transformation pipeline.
+    # NOTE: if included, we will be fitting a feature selection step here. This can get messy later on with ensembling if we end up training on different y values.
+    def fit_transformation_pipeline(self, X_df, y, model_name):
         ppl = self._construct_pipeline(model_name=model_name)
         ppl.steps.pop()
 
         # We are intentionally overwriting X_df here to try to save some memory space
         X_df = ppl.fit_transform(X_df, y)
 
-        self.transformation_pipeline = X_df
+        self.transformation_pipeline = ppl
 
         return X_df
 
 
+    def print_results(self, model_name):
+        if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+            self._print_ml_analytics_results_linear_model()
+
+        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
+            self._print_ml_analytics_results_random_forest()
+
+
+    def fit_grid_search(self, X_df, y, gs_params):
+
+        model = gs_params['model']
+        # Sometimes we're optimizing just one model, sometimes we're comparing a bunch of non-optimized models.
+        if isinstance(model, list):
+            model = model[0]
+        model_name = utils_models.get_name_from_model(model)
+
+        full_pipeline = self._construct_pipeline(model_name=model_name)
+        ppl = full_pipeline.named_steps['final_model']
+
+        if self.verbose:
+            grid_search_verbose = 5
+        else:
+            grid_search_verbose = 0
+
+
+        gs = GridSearchCV(
+            # Fit on the pipeline.
+            ppl,
+            # Two splits of cross-validation, by default
+            cv=self.cv,
+            param_grid=gs_params,
+            # Train across all cores.
+            n_jobs=-1,
+            # Be verbose (lots of printing).
+            verbose=grid_search_verbose,
+            # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+            # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+            error_score=-1000000000,
+            scoring=self._scorer.score,
+            # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
+            pre_dispatch='1.5*n_jobs'
+        )
+
+        if self.verbose:
+            print('\n\n********************************************************************************************')
+            if self.optimize_final_model == True:
+                print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+            else:
+                print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
+                # Note that we will only report analytics results on the final model
+
+        # TODO TODO: fit the rest of the pipeline first
+            # then, transform all the data a single time in the trained feature_transformation pipeline.
+            # pass in that transformed data here, rather than the raw data we pass in currently.
+            # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
+        gs.fit(X_df, y)
+
+        if self.write_gs_param_results_to_file:
+            utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
+
+        if self.print_training_summary_to_viewer:
+            self.print_training_summary(gs)
+
+        self.trained_final_model = gs.best_estimator_
+        if 'model' in gs.best_params_:
+            model_name = gs.best_params_['model']
+            self.print_results(model_name)
+
+        return gs
+
+
+    def create_gs_params(self, model_name):
+        grid_search_params = {}
+
+        raw_search_params = utils_models.get_search_params(model_name)
+
+        for param_name, param_list in raw_search_params.items():
+            # We need to tell GS where to set these params. In our case, it is on the "final_model" object, and specifically the "model" attribute on that object
+            grid_search_params['model__' + param_name] = param_list
+
+        # Overwrite with the user-provided gs_params if they're provided
+        if self.user_gs_params is not None:
+            print('Using the grid_search_params you passed in:')
+            print(self.user_gs_params)
+            grid_search_params.update(self.user_gs_params)
+            print('Here is our final list of grid_search_params:')
+            print(grid_search_params)
+            print('Please note that if you want to set the grid search params for the final model specifically, they need to be prefixed with: "model__"')
+
+        return grid_search_params
+
     # This is broken out into it's own function for each estimator on purpose
     # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
     # This also lets us test on X_test and y_test for each model
-    def train_pipeline(self, estimator_names, scoring, X_df, y):
+    def train_pipeline_components(self, estimator_names, scoring, X_df, y):
 
         # Goals we need to accomplish:
         # 1. Run grid search only if we have to (just directly train the model if we are not optimizing final model)
         # 3. accept user gs_params
         # 4. train one model for each of the different model names passed into us
-        # 5. If we are not optimizing final model, but we do have many models to train, handle that (probably just one gscv)
+        # 5. If we are not optimizing final model, but we do have many models to train, handle that (probably just one gscv- NO).
+            # Changing how we handle this. Each one will just be it's own individual train_pipeline. Then we'll have to build in a bit of logic that comes after train_pipelines to consolidate them. But that's a workflow I think we want to support (training a bunch of models, then handling how we aggregate them using some later piece of logic).
+            # Crap, i remembered why we did it that way in the first place: choosing between models. we'll have to go back to relying on gscv for this.
         # 6. Print analytics results (and yes, we do want to do that here so that we can print analytics for each model we train, not just the final one)
         # 7. save the trained pipeline to self.trained_pipeline
         # 8. save any other parts of the pipeline process that we might need (transformation_pipeline, final_model, etc.)
@@ -527,197 +694,260 @@ class Predictor(object):
         # Goals we have accomplished
         # 2. split out feature transformation pipeline from model training grid search if we are running grid search
 
-        X_df = self.fit_transformation_pipeline()
+        # We both fit the transformation pipeline, and transform X_df in this step
+        X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
 
+        # Use Case 1: Super straightforward: just train a single, non-optimized model
         if len(estimator_names) == 1 and self.optimize_final_model != True:
-            self.fit_single_pipeline()
+            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0])
+            # self.trained_final_model = trained_final_model
+            # TODO: print analytics results from this model
 
 
-        for model_name in estimator_names:
+        # Use Case 2: Compare a bunch of models, but don't optimize any of them
+        elif len(estimator_names) > 1 and self.optimize_final_model != True:
+            grid_search_params = {}
+            # We will have to use GSCV here to choose between the different models
 
-            ppl = self._construct_pipeline(model_name=model_name)
+            # grid_search_params = self._get_gs_models_from_estimator_names(user_defined_model_names=estimator_names)
+            # final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
+            final_model_models = map(utils_models.get_model_from_name, estimator_names)
+            grid_search_params['model'] = list(final_model_models)
+            # self.grid_search_params['final_model__model'] = list(final_model_models)
 
-            self.grid_search_params = self._construct_pipeline_search_params(user_defined_model_names=estimator_names)
+            self.grid_search_params = grid_search_params
 
-            if self.optimize_final_model is True:
-                raw_search_params = utils_models.get_search_params(model_name)
-                for param_name, param_list in raw_search_params.items():
-                    self.grid_search_params['model__' + param_name] = param_list
+            gscv_results = self.fit_grid_search(X_df, y, grid_search_params)
+            # self.trained_final_model = gscv_results.best_estimator_
 
-            if self.user_gs_params is not None:
-                # If the user gave us GSCV params, overwrite our defaults with what they provided
-                print('Using the grid_search_params you passed in:')
-                print(self.user_gs_params)
-                self.grid_search_params.update(self.user_gs_params)
-                print('Here is our final list of grid_search_params:')
-                print(self.grid_search_params)
-                print('Please note that if you want to set the grid search params for the final model specifically, they need to be prefixed with: "final_model__model__"')
-
-
-            if self.verbose:
-                grid_search_verbose = 5
-            else:
-                grid_search_verbose = 0
-
-            # Only fit GridSearchCV if we actually have hyperparameters to optimize.
-            # Oftentimes, we'll just want to train a pipeline using all the default values, or using the user-provided values.
-            # In those cases, fitting GSCV is unnecessarily computationally expensive.
-            self.fit_grid_search = False
-            for key, val in self.grid_search_params.items():
-
-                # if it is a list, and has a length > 1, we will want to fit grid search
-                if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
-                    self.fit_grid_search = True
+            # TODO: print analytics results for only the final model (the one we fit to the entire dataset)
+            # printing analytics results for the models we only fit to half the dataset is misleading
 
 
-            self.continue_after_single_gscv = False
-            self.transformation_pipeline = None
-            # This is also where we built in the logic for fitting the feature transformation pipeline separately from grid searching hyperparameters on the final model.
-            # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models.
-            # Just add them to the GSCV params, and run GSCV, and we should be set.
-            # Obviously, as part of this, say that we want to continue after a single round of GSCV
-            if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
+        # Use Case 3: One model, and optimize it!
+        # Use Case 4: Many models, and optimize them!
+        elif self.optimize_final_model == True:
+            # Use Cases 3 & 4 are clearly highly related
 
-                final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
-                self.grid_search_params['final_model__model'] = list(final_model_models)
-                self.fit_grid_search = True
-                self.continue_after_single_gscv = True
-                ppl_to_fit_gscv_on = ppl
+            all_gs_results = []
 
-            elif self.fit_grid_search == True:
-                # Here is where we are handling Keras!
+            # If we just have one model, this will obviously be a very simple loop :)
+            for model_name in estimator_names:
 
-                # At this point, only optimize the final model. That's all we want to run GSCV on- just optimizing the final model.
-                ppl_to_fit_gscv_on = ppl.named_steps['final_model']
-                # We want to remove the final_model step from the pipeline.
-                # We will be breaking the pipeline into two parts:
-                    # One that is a pure feature transformation pipeline we fit and transform a single time
-                    # And one that is the final model we run the grid search on to optimize hyperparameters
-                ppl.steps.pop()
-                # We are intentionally overwriting X_df here to try to save some memory space
-                X_df = ppl.fit_transform(X_df, y)
+                grid_search_params = self.create_gs_params(model_name)
+                # Adding model name to gs params just to help with logging
+                grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
+                self.grid_search_params = grid_search_params
 
-                self.transformation_pipeline = ppl
+                gscv_results = self.fit_grid_search(X_df, y, grid_search_params)
 
-                self.continue_after_single_gscv = True
+                all_gs_results.append(gscv_results)
 
-                # TODO TODO: see if we need to remove final_model__model from gscv params
-                del self.grid_search_params['final_model__model']
+            # Grab the first one by default
+            self.trained_final_model = all_gs_results[0].best_estimator_
+            best_score = all_gs_results[0].best_score_
 
-            else:
-                ppl_to_fit_gscv_on = ppl
+            # Iterate through the rest, and see if any are better!
+            for result in all_gs_results[1:]:
+                if result.best_score_ > best_score:
+                    self.trained_final_model = result.best_estimator_
+                    best_score = result.best_score_
+
+            # If we wanted to do something tricky, here would be the place to do it
+                # Train the final model up on more epochs, or with more trees
+                # Run a two-stage GSCV. First stage figures out activation function, second stage figures out architecture
 
 
-            if self.fit_grid_search == True:
 
-                gs = GridSearchCV(
-                    # Fit on the pipeline.
-                    # TODO TODO: pass in ppl.named_steps['final_model'] instead of ppl
-                    ppl_to_fit_gscv_on,
-                    cv=2,
-                    param_grid=self.grid_search_params,
-                    # Train across all cores.
-                    n_jobs=-1,
-                    # Be verbose (lots of printing).
-                    verbose=grid_search_verbose,
-                    # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-                    # Set the score on this partition to some very negative number, so that we do not choose this estimator.
-                    error_score=-1000000000,
-                    scoring=scoring.score,
-                    # ,pre_dispatch='1*n_jobs'
-                )
 
-                if self.verbose:
-                    print('\n\n********************************************************************************************')
-                    if self.continue_after_single_gscv:
-                        print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
-                    else:
-                        print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+        # for model_name in estimator_names:
 
-                # TODO TODO: fit the rest of the pipeline first
-                    # then, transform all the data a single time in the trained feature_transformation pipeline.
-                    # pass in that transformed data here, rather than the raw data we pass in currently.
-                    # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
-                gs.fit(X_df, y)
+        #     ppl = self._construct_pipeline(model_name=model_name)
 
-                self.trained_pipeline = gs.best_estimator_
+        #     self.grid_search_params = self._get_gs_models_from_estimator_names(user_defined_model_names=estimator_names)
 
-                # write the results for each param combo to file for user analytics.
-                if self.write_gs_param_results_to_file:
-                    utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
+        #     if self.optimize_final_model is True:
+        #         raw_search_params = utils_models.get_search_params(model_name)
+        #         for param_name, param_list in raw_search_params.items():
+        #             self.grid_search_params['model__' + param_name] = param_list
 
-                if self.print_training_summary_to_viewer:
-                    self.print_training_summary(gs)
 
-                # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
-                pipeline_results = []
-                pipeline_results.append(gs.best_score_)
-                pipeline_results.append(gs)
+        #     # NOTE: we are intentionally not doing this logic inside fit_grid_search. It is our job to figure out what the gs_params are outside of fit_grid_search, since that is going to vary a bit.
+        #     if self.user_gs_params is not None:
+        #         # If the user gave us GSCV params, overwrite our defaults with what they provided
+        #         print('Using the grid_search_params you passed in:')
+        #         print(self.user_gs_params)
+        #         self.grid_search_params.update(self.user_gs_params)
+        #         print('Here is our final list of grid_search_params:')
+        #         print(self.grid_search_params)
+        #         print('Please note that if you want to set the grid search params for the final model specifically, they need to be prefixed with: "model__"')
 
-                if self.continue_after_single_gscv == True:
 
-                    # Print ml_for_analytics here, since we break out of the loop before we can do it below
-                    if 'final_model__model' in gs.best_params_:
-                        model_name = gs.best_params_['final_model__model']
+        #     if self.verbose:
+        #         grid_search_verbose = 5
+        #     else:
+        #         grid_search_verbose = 0
 
-                    if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-                        self._print_ml_analytics_results_linear_model()
+        #     # Only fit GridSearchCV if we actually have hyperparameters to optimize.
+        #     # Oftentimes, we'll just want to train a pipeline using all the default values, or using the user-provided values.
+        #     # In those cases, fitting GSCV is unnecessarily computationally expensive.
+        #     self.fit_grid_search = False
+        #     for key, val in self.grid_search_params.items():
 
-                    elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
-                        self._print_ml_analytics_results_random_forest()
+        #         # if it is a list, and has a length > 1, we will want to fit grid search
+        #         if hasattr(val, '__len__') and (not isinstance(val, str)) and len(val) > 1 and key != 'final_model__model':
+        #             self.fit_grid_search = True
 
-                    break
 
-            # The case where we just want to run the training straight through, not fitting GridSearchCV
-            else:
-                if self.verbose:
-                    print('\n\n********************************************************************************************')
-                    if self.name is not None:
-                        print(self.name)
-                    print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
-                    print('Started at:')
-                    start_time = datetime.datetime.now().replace(microsecond=0)
-                    print(start_time)
+        #     self.continue_after_single_gscv = False
+        #     self.transformation_pipeline = None
+        #     # This is also where we built in the logic for fitting the feature transformation pipeline separately from grid searching hyperparameters on the final model.
+        #     # Here is where we will want to build in the logic for handling cases of no X_test, and no GSCV, but multiple models.
+        #     # Just add them to the GSCV params, and run GSCV, and we should be set.
+        #     # Obviously, as part of this, say that we want to continue after a single round of GSCV
+        #     if self.fit_grid_search == False and (self.X_test is None and self.y_test is None) and len(estimator_names) > 1:
 
-                ppl.fit(X_df, y)
-                self.trained_pipeline = ppl
+        #         final_model_models = map(lambda estimator_name: utils_models.get_model_from_name(estimator_name), estimator_names)
+        #         self.grid_search_params['final_model__model'] = list(final_model_models)
+        #         self.fit_grid_search = True
+        #         self.continue_after_single_gscv = True
+        #         ppl_to_fit_gscv_on = ppl
 
-                if self.verbose:
-                    print('Finished training the pipeline!')
-                    print('Total training time:')
-                    print(datetime.datetime.now().replace(microsecond=0) - start_time)
+        #     elif self.fit_grid_search == True:
+        #         # Here is where we are handling Keras!
 
-            if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-                self._print_ml_analytics_results_linear_model()
-            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMClassifier', 'LGBMRegressor']:
-                self._print_ml_analytics_results_random_forest()
+        #         # At this point, only optimize the final model. That's all we want to run GSCV on- just optimizing the final model.
+        #         ppl_to_fit_gscv_on = ppl.named_steps['final_model']
+        #         # We want to remove the final_model step from the pipeline.
+        #         # We will be breaking the pipeline into two parts:
+        #             # One that is a pure feature transformation pipeline we fit and transform a single time
+        #             # And one that is the final model we run the grid search on to optimize hyperparameters
+        #         ppl.steps.pop()
+        #         # We are intentionally overwriting X_df here to try to save some memory space
+        #         X_df = ppl.fit_transform(X_df, y)
 
-            if (self.X_test) is not None and (self.y_test) is not None:
-                if len(self.X_test) > 0 and len(self.y_test) > 0 and len(self.X_test) == len(self.y_test):
-                    print('Calculating score on holdout data')
-                    holdout_data_score = self.score(self.X_test, self.y_test)
-                    print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data)')
-                    print(self.output_column + ':')
-                    print(holdout_data_score)
+        #         self.transformation_pipeline = ppl
 
-                try:
-                    # We want our score on the holdout data to be the first thing in our pipeline results tuple. This is what we will be selecting our best model from.
-                    pipeline_results.prepend(holdout_data_score)
-                except:
-                    # If we do not have pipeline_results defined already, that means we did not fit grid search, but are relying on X_test/y_test to determine our best model
-                    pipeline_results = []
-                    pipeline_results.append(holdout_data_score)
-                    pipeline_results.append(self.trained_pipeline)
+        #         self.continue_after_single_gscv = True
 
-                    # If we don't have pipeline_results (if we did not fit GSCV), then pass
-                    pass
+        #         # TODO TODO: see if we need to remove final_model__model from gscv params
+        #         del self.grid_search_params['final_model__model']
 
-            # For each model we train, append their results to grid_search_pipelines
-            try:
-                self.grid_search_pipelines.append(pipeline_results)
-            except Exception as e:
-                pass
+        #     else:
+        #         ppl_to_fit_gscv_on = ppl
+
+
+        #     if self.fit_grid_search == True:
+
+        #         gs = GridSearchCV(
+        #             # Fit on the pipeline.
+        #             # TODO TODO: pass in ppl.named_steps['final_model'] instead of ppl
+        #             ppl_to_fit_gscv_on,
+        #             cv=2,
+        #             param_grid=self.grid_search_params,
+        #             # Train across all cores.
+        #             n_jobs=-1,
+        #             # Be verbose (lots of printing).
+        #             verbose=grid_search_verbose,
+        #             # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+        #             # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+        #             error_score=-1000000000,
+        #             scoring=scoring.score,
+        #             # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
+        #             ,pre_dispatch='1.5*n_jobs'
+        #         )
+
+        #         if self.verbose:
+        #             print('\n\n********************************************************************************************')
+        #             if self.continue_after_single_gscv:
+        #                 print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
+        #             else:
+        #                 print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+
+        #         # TODO TODO: fit the rest of the pipeline first
+        #             # then, transform all the data a single time in the trained feature_transformation pipeline.
+        #             # pass in that transformed data here, rather than the raw data we pass in currently.
+        #             # NOTE: eventually, we will want to add in a check to make sure that the rest of the pipeline doesn't have anything that needs to be grid searched (feature selection, for instance)
+        #         gs.fit(X_df, y)
+
+        #         self.trained_pipeline = gs.best_estimator_
+
+        #         # write the results for each param combo to file for user analytics.
+        #         if self.write_gs_param_results_to_file:
+        #             utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
+
+        #         if self.print_training_summary_to_viewer:
+        #             self.print_training_summary(gs)
+
+        #         # We will save the info for this pipeline grid search, along with it's scores on the CV data, and the holdout data
+        #         pipeline_results = []
+        #         pipeline_results.append(gs.best_score_)
+        #         pipeline_results.append(gs)
+
+        #         if self.continue_after_single_gscv == True:
+
+        #             # Print ml_for_analytics here, since we break out of the loop before we can do it below
+        #             if 'final_model__model' in gs.best_params_:
+        #                 model_name = gs.best_params_['final_model__model']
+
+        #             if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+        #                 self._print_ml_analytics_results_linear_model()
+
+        #             elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
+        #                 self._print_ml_analytics_results_random_forest()
+
+        #             break
+
+        #     # The case where we just want to run the training straight through, not fitting GridSearchCV
+        #     else:
+        #         if self.verbose:
+        #             print('\n\n********************************************************************************************')
+        #             if self.name is not None:
+        #                 print(self.name)
+        #             print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+        #             print('Started at:')
+        #             start_time = datetime.datetime.now().replace(microsecond=0)
+        #             print(start_time)
+
+        #         ppl.fit(X_df, y)
+        #         self.trained_pipeline = ppl
+
+        #         if self.verbose:
+        #             print('Finished training the pipeline!')
+        #             print('Total training time:')
+        #             print(datetime.datetime.now().replace(microsecond=0) - start_time)
+
+        #     if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+        #         self._print_ml_analytics_results_linear_model()
+        #     elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMClassifier', 'LGBMRegressor']:
+        #         self._print_ml_analytics_results_random_forest()
+
+        #     if (self.X_test) is not None and (self.y_test) is not None:
+        #         if len(self.X_test) > 0 and len(self.y_test) > 0 and len(self.X_test) == len(self.y_test):
+        #             print('Calculating score on holdout data')
+        #             holdout_data_score = self.score(self.X_test, self.y_test)
+        #             print('The results from the X_test and y_test data passed into ml_for_analytics (which were not used for training- true holdout data)')
+        #             print(self.output_column + ':')
+        #             print(holdout_data_score)
+
+        #         try:
+        #             # We want our score on the holdout data to be the first thing in our pipeline results tuple. This is what we will be selecting our best model from.
+        #             pipeline_results.prepend(holdout_data_score)
+        #         except:
+        #             # If we do not have pipeline_results defined already, that means we did not fit grid search, but are relying on X_test/y_test to determine our best model
+        #             pipeline_results = []
+        #             pipeline_results.append(holdout_data_score)
+        #             pipeline_results.append(self.trained_pipeline)
+
+        #             # If we don't have pipeline_results (if we did not fit GSCV), then pass
+        #             pass
+
+        #     # For each model we train, append their results to grid_search_pipelines
+        #     try:
+        #         self.grid_search_pipelines.append(pipeline_results)
+        #     except Exception as e:
+        #         pass
 
 
     def _get_xgb_feat_importances(self, clf):
@@ -763,9 +993,9 @@ class Predictor(object):
 
     def _print_ml_analytics_results_random_forest(self):
         try:
-            final_model_obj = self.trained_pipeline.named_steps['final_model']
+            final_model_obj = self.trained_final_model.named_steps['final_model']
         except:
-            final_model_obj = self.trained_pipeline
+            final_model_obj = self.trained_final_model
 
         print('\n\nHere are the results from our ' + final_model_obj.model_name)
         if self.name is not None:
@@ -779,9 +1009,13 @@ class Predictor(object):
         else:
             trained_feature_names = self._get_trained_feature_names()
 
+
+            # trained_feature_importances = final_model_obj.model.feature_importances_
             try:
                 trained_feature_importances = final_model_obj.model.feature_importances_
             except AttributeError as e:
+                print('Error getting analytics results')
+                print(e)
                 # There was a version of LightGBM that had this misnamed to miss the "s" at the end
                 trained_feature_importances = final_model_obj.model.feature_importance_
 
@@ -807,9 +1041,9 @@ class Predictor(object):
 
     def _print_ml_analytics_results_linear_model(self):
         try:
-            final_model_obj = self.trained_pipeline.named_steps['final_model']
+            final_model_obj = self.trained_final_model.named_steps['final_model']
         except:
-            final_model_obj = self.trained_pipeline
+            final_model_obj = self.trained_final_model
         print('\n\nHere are the results from our ' + final_model_obj.model_name)
 
         trained_feature_names = self._get_trained_feature_names()
@@ -849,10 +1083,10 @@ class Predictor(object):
         print('The best params were')
 
         # Remove 'final_model__model' from what we print- it's redundant with model name, and is difficult to read quickly in a list since it's a python object.
-        if 'final_model__model' in gs.best_params_:
+        if 'model' in gs.best_params_:
             printing_copy = {}
             for k, v in gs.best_params_.items():
-                if k != 'final_model__model':
+                if k != 'model':
                     printing_copy[k] = v
                 else:
                     printing_copy[k] = utils_models.get_name_from_model(v)
@@ -867,7 +1101,7 @@ class Predictor(object):
             sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
             for score in sorted_scores:
                 for k, v in score[0].items():
-                    if k == 'final_model__model':
+                    if k == 'model':
                         score[0][k] = utils_models.get_name_from_model(v)
                 print(score)
         # Print some nice summary output of all the training we did.
