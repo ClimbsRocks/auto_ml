@@ -330,7 +330,11 @@ class Predictor(object):
         self.print_training_summary_to_viewer = print_training_summary_to_viewer
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
-        self.model_names = model_names
+        if isinstance(model_names, str):
+            # Allow the user to pass in a single string for model_names
+            self.model_names = [model_names]
+        else:
+            self.model_names = model_names
         self.perform_feature_scaling = perform_feature_scaling
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
