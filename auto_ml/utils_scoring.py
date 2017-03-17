@@ -1,9 +1,10 @@
 from collections import OrderedDict
+import math
 import multiprocessing
+
+from auto_ml import utils
 import pathos
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
-
-import math
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
 import pandas as pd
@@ -197,6 +198,8 @@ class RegressionScorer(object):
 
 
     def score(self, estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
+        X, y = utils.drop_missing_y_vals(X, y, output_column=None)
+
         if isinstance(estimator, GradientBoostingRegressor):
             X = X.toarray()
 
@@ -261,6 +264,9 @@ class ClassificationScorer(object):
 
 
     def score(self, estimator, X, y, advanced_scoring=False):
+
+        X, y = utils.drop_missing_y_vals(X, y, output_column=None)
+
         if isinstance(estimator, GradientBoostingClassifier):
             X = X.toarray()
 
