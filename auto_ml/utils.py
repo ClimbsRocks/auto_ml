@@ -135,3 +135,36 @@ def get_boston_dataset():
     df_boston['MEDV'] = boston['target']
     df_boston_train, df_boston_test = train_test_split(df_boston, test_size=0.2, random_state=42)
     return df_boston_train, df_boston_test
+
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+
+def drop_missing_y_vals(df, y, output_column=None):
+
+    y = list(y)
+    indices_to_drop = []
+
+    for idx, val in enumerate(y):
+        if str(val) in bad_vals_as_strings:
+            indices_to_drop.append(idx)
+
+    if len(indices_to_drop) > 0:
+        set_of_indices_to_drop = set(indices_to_drop)
+
+        print('We encountered a number of missing values for this output column')
+        if output_column is not None:
+            print(output_column)
+        print('And here is the number of missing (nan, None, etc.) values for this column:')
+        print(len(indices_to_drop))
+        print('Here are some example missing values')
+        for idx, df_idx in enumerate(indices_to_drop):
+            if idx >= 5:
+                break
+            print(y[df_idx])
+        print('We will remove these values, and continue with training on the cleaned dataset')
+
+        support_mask = [True if idx not in set_of_indices_to_drop else False for idx in range(len(df)) ]
+        df = df[support_mask]
+        y = [val for idx, val in enumerate(y) if idx not in set_of_indices_to_drop]
+
+
+    return df, y
