@@ -129,6 +129,219 @@ def test_perform_feature_scaling_false_classification():
     assert -0.215 < test_score < -0.17
 
 
+def test_compare_all_models_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, compare_all_models=True)
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_pass_in_list_of_dictionaries_train_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    list_titanic_train = df_titanic_train.to_dict('records')
+
+    ml_predictor.train(list_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_pass_in_list_of_dictionaries_predict_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    list_titanic_train = df_titanic_train.to_dict('records')
+
+    ml_predictor.train(df_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_include_bad_y_vals_train_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    df_titanic_train.ix[1, 'survived'] = None
+    df_titanic_train.ix[8, 'survived'] = None
+    df_titanic_train.ix[26, 'survived'] = None
+
+    ml_predictor.train(df_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+
+def test_include_bad_y_vals_predict_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    df_titanic_test.ix[1, 'survived'] = float('nan')
+    df_titanic_test.ix[8, 'survived'] = float('inf')
+    df_titanic_test.ix[26, 'survived'] = None
+
+    ml_predictor.train(df_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_single_string_model_names_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, model_names='GradientBoostingClassifier')
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_linear_model_analytics_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, model_names='Ridge')
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_user_input_func_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    def age_bucketing(df):
+
+        def define_buckets(age):
+            if age <= 17:
+                return 'youth'
+            elif age <= 40:
+                return 'adult'
+            elif age <= 60:
+                return 'adult2'
+            else:
+                return 'over_60'
+
+        df['age_bucket'] = df.age.apply(define_buckets)
+
+        return df
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, user_input_func=age_bucketing)
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
 # def test_optimize_entire_pipeline_classification():
 #     np.random.seed(0)
 

@@ -86,6 +86,28 @@ def test_perform_feature_selection_false_regression():
     assert -3.2 < test_score < -2.8
 
 
+def test_compare_all_models_regression():
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, compare_all_models=True)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    assert -3.2 < test_score < -2.8
+
+
 def test_perform_feature_scaling_true_regression():
     np.random.seed(0)
 
