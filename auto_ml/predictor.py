@@ -114,7 +114,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer, and adds final_model back in if we did grid search on it
-    def _construct_pipeline(self, model_name='LogisticRegression', impute_missing_values=True, trained_pipeline=None, final_model=None):
+    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None):
 
         pipeline_list = []
 
@@ -123,6 +123,8 @@ class Predictor(object):
             if trained_pipeline is not None:
                 pipeline_list.append(('user_func', trained_pipeline.named_steps['user_func']))
             else:
+                print('Including the user_input_func in the pipeline! Please remember to return X, and not modify the length or order of X at all.')
+                print('Your function will be called as the first step of the pipeline at both training and prediction times.')
                 pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False)))
 
         # These parts will be included no matter what.
@@ -222,21 +224,24 @@ class Predictor(object):
             except:
                 pass
 
-        # Drop all rows that have an empty value for our output column
-        # User logging so they can adjust if they pass in a bunch of bad values:
-        bad_rows = X_df[pd.isnull(X_df[self.output_column])]
-        if bad_rows.shape[0] > 0:
-            print('We encountered a number of missing values for this output column')
-            print('Specifically, here is the output column:')
-            print(self.output_column)
-            print('And here is the number of missing (nan, None, etc.) values for this column:')
-            print(bad_rows.shape[0])
-            print('We will remove these values, and continue with training on the cleaned dataset')
-        X_df = X_df.dropna(subset=[self.output_column])
+
+        # bad_rows = X_df[pd.isnull(X_df[self.output_column])]
+        # if bad_rows.shape[0] > 0:
+        #     print('We encountered a number of missing values for this output column')
+        #     print('Specifically, here is the output column:')
+        #     print(self.output_column)
+        #     print('And here is the number of missing (nan, None, etc.) values for this column:')
+        #     print(bad_rows.shape[0])
+        #     print('We will remove these values, and continue with training on the cleaned dataset')
+        # X_df = X_df.dropna(subset=[self.output_column])
 
 
         # Remove the output column from the dataset, and store it into the y varaible
         y = list(X_df.pop(self.output_column))
+
+        # Drop all rows that have an empty value for our output column
+        # User logging so they can adjust if they pass in a bunch of bad values:
+        X_df, y = utils.drop_missing_y_vals(X_df, y, self.output_column)
 
         # If this is a classifier, try to turn all the y values into proper ints
         # Some classifiers play more nicely if you give them category labels as ints rather than strings, so we'll make our jobs easier here if we can.
@@ -298,16 +303,14 @@ class Predictor(object):
         return trained_pipeline_without_feature_selection
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, print_training_summary_to_viewer=True, ml_for_analytics=True, only_analytics=False, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.ml_for_analytics = ml_for_analytics
-        self.only_analytics = only_analytics
         self.X_test = X_test
         self.y_test = y_test
-        self.print_training_summary_to_viewer = print_training_summary_to_viewer
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
         if isinstance(model_names, str):
@@ -525,7 +528,7 @@ class Predictor(object):
         if self.write_gs_param_results_to_file:
             utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
 
-        if self.print_training_summary_to_viewer:
+        if self.verbose:
             self.print_training_summary(gs)
 
         self.trained_final_model = gs.best_estimator_
@@ -788,6 +791,8 @@ class Predictor(object):
         if isinstance(X_test, list):
             X_test = pd.DataFrame(X_test)
         y_test = list(y_test)
+
+        X_test, y_test = utils.drop_missing_y_vals(X_test, y_test, self.output_column)
 
         if self._scorer is not None:
             if self.type_of_estimator == 'regressor':
