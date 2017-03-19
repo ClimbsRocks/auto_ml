@@ -351,10 +351,9 @@ class Predictor(object):
 
 
         if model_names is not None:
-            estimator_names = model_names
+            estimator_names = self.model_names
         else:
             estimator_names = self._get_estimator_names()
-
 
         if self.type_of_estimator == 'classifier':
             if len(set(y)) > 2 and self.scoring is None:
@@ -709,12 +708,13 @@ class Predictor(object):
             final_model_obj = self.trained_final_model.named_steps['final_model']
         except:
             final_model_obj = self.trained_final_model
-        print('\n\nHere are the results from our ' + final_model_obj.model_name)
+        print('\n\nHere are the results from our ' + final_model_obj.model_name + ' model')
 
         trained_feature_names = self._get_trained_feature_names()
 
         if self.type_of_estimator == 'classifier':
-            trained_coefficients = final_model_obj.model.coef_[0]
+            trained_coefficients = final_model_obj.model.coef_
+            # Note to self: this used to be accessing the [0]th index of .coef_ for classifiers. Not sure why.
         else:
             trained_coefficients = final_model_obj.model.coef_
 
