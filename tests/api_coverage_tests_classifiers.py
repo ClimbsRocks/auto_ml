@@ -293,14 +293,15 @@ def test_linear_model_analytics_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names='Ridge')
+    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier')
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    # Linear models aren't super great on this dataset...
+    assert -0.37 < test_score < -0.17
 
 
 def test_user_input_func_classification():
