@@ -713,7 +713,7 @@ class Predictor(object):
         trained_feature_names = self._get_trained_feature_names()
 
         if self.type_of_estimator == 'classifier':
-            trained_coefficients = final_model_obj.model.coef_
+            trained_coefficients = final_model_obj.model.coef_[0]
             # Note to self: this used to be accessing the [0]th index of .coef_ for classifiers. Not sure why.
         else:
             trained_coefficients = final_model_obj.model.coef_
