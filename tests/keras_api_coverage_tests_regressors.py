@@ -2,11 +2,12 @@
 # At first, it is not necessarily testing whether those things have the intended effect or not
 
 import os
+import random
 import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 sys.argv.append('is_test_suite')
 
-from auto_ml import Predictor
+from auto_ml import Predictor, utils_models
 
 import dill
 from nose.tools import assert_equal, assert_not_equal, with_setup
@@ -125,6 +126,34 @@ def test_perform_feature_scaling_false_regression():
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
+    print('test_score')
+    print(test_score)
+
+    assert -24 < test_score < -2.8
+
+
+def test_perform_feature_scaling_false_regression():
+    np.random.seed(42)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=['DeepLearningRegressor'])
+
+    file_name = ml_predictor.save(str(random.random()))
+
+    saved_ml_pipeline = utils_models.load_keras_model(file_name)
+    # with open(file_name, 'rb') as read_file:
+    #     saved_ml_pipeline = dill.load(read_file)
+    os.remove(file_name)
+
+    test_score = saved_ml_pipeline.score(df_boston_test, df_boston_test.MEDV)
     print('test_score')
     print(test_score)
 

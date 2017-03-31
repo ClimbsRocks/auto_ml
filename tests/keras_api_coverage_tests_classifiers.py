@@ -2,11 +2,12 @@
 # At first, it is not necessarily testing whether those things have the intended effect or not
 
 import os
+import random
 import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 sys.argv.append('is_test_suite')
 
-from auto_ml import Predictor
+from auto_ml import Predictor, utils_models
 
 import dill
 import numpy as np
@@ -129,6 +130,29 @@ def test_perform_feature_scaling_false_classification():
     print(test_score)
 
     assert -0.25 < test_score < -0.17
+
+def test_verify_features_does_not_work_by_default():
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, model_names=['DeepLearningClassifier'])
+
+    file_name = ml_predictor.save(str(random.random()))
+
+    saved_ml_pipeline = utils_models.load_keras_model(file_name)
+    os.remove(file_name)
+
+    test_score = saved_ml_pipeline.score(df_titanic_test, df_titanic_test.survived)
+
+    assert -0.25 < test_score < -0.17
+
 
 
 # def test_optimize_entire_pipeline_classification():
