@@ -13,7 +13,8 @@ install:
 
   # We need scipy installed to get the python version of lightgbm.
   - pip install --upgrade pip
-  - pip install --only-binary=numpy,scipy numpy scipy
+  - pip install --only-binary=scipy scipy
+  - pip install --only-binary=numpy numpy
 
   # Install XGBoost
   - git clone --recursive https://github.com/dmlc/xgboost
