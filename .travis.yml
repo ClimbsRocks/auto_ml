@@ -11,6 +11,10 @@ install:
   - TEST_DIR=$PWD
   - sudo apt-get update
 
+  # We need scipy installed to get the python version of lightgbm.
+  - pip install --upgrade pip
+  - pip install --only-binary=numpy,scipy numpy scipy
+
   # Install XGBoost
   - git clone --recursive https://github.com/dmlc/xgboost
   - cd xgboost; make -j4
@@ -23,10 +27,6 @@ install:
   - cd LightGBM && mkdir build && cd build && cmake .. && make -j
   # Exit out of the build dir up a level to where python-package is
   - cd ..
-
-  # We need scipy installed to get the python version of lightgbm.
-  - pip install --upgrade pip
-  - pip install --only-binary=numpy,scipy numpy scipy
 
   # Install the python part of LightGBM now that we have scipy
   - cd python-package
