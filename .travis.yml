@@ -19,7 +19,7 @@ install:
   # Install XGBoost
   - git clone --recursive https://github.com/dmlc/xgboost
   - cd xgboost; make -j4
-  - cd python-package; sudo python setup.py install
+  - cd python-package; python setup.py install
   - cd $TEST_DIR
 
   #  Install LightGBM
