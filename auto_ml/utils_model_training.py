@@ -5,18 +5,14 @@ import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 import warnings
 
-from auto_ml import utils, utils_models
-from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
-from auto_ml.utils_models import get_model_from_name, get_name_from_model
+from auto_ml import utils_models
+from auto_ml.utils_models import get_name_from_model
 
 keras_installed = False
 try:
     # Suppress some level of logs
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    from keras.constraints import maxnorm
-    from keras.layers import Dense, Dropout
-    from keras.models import Sequential
     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
     keras_installed = True
 except:
@@ -50,13 +46,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y):
         self.model_name = get_name_from_model(self.model)
-
-        # if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
-        #     ones = [[1] for x in range(X.shape[0])]
-        #     # Trying to force XGBoost to play nice with sparse matrices
-        #     X_fit = scipy.sparse.hstack((X, ones))
-
-        # else:
 
         X_fit = X
 
@@ -249,11 +238,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def predict_proba(self, X, verbose=False):
 
-        # if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
-        #     ones = [[1] for x in range(X.shape[0])]
-        #     # Trying to force XGBoost to play nice with sparse matrices
-        #     X = scipy.sparse.hstack((X, ones))
-
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
 
@@ -300,11 +284,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return predictions
 
     def predict(self, X, verbose=False):
-
-        # if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
-        #     ones = [[1] for x in range(X.shape[0])]
-        #     # Trying to force XGBoost to play nice with sparse matrices
-        #     X_predict = scipy.sparse.hstack((X, ones))
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()

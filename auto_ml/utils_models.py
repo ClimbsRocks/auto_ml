@@ -19,22 +19,17 @@ try:
     from keras.layers import Dense, Dropout
     from keras.models import Sequential
     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-    # import keras
     keras_installed = True
 except:
     pass
 
-try:
-    from auto_ml import utils
-except ImportError:
-    from ..auto_ml import utils
+from auto_ml import utils
+
 
 xgb_installed = False
 try:
     import xgboost as xgb
     xgb_installed = True
-except NameError:
-    pass
 except ImportError:
     pass
 
@@ -42,8 +37,6 @@ lgb_installed = False
 try:
     import lightgbm as lgb
     lgb_installed = True
-except NameError:
-    pass
 except ImportError:
     pass
 
@@ -108,7 +101,6 @@ def get_model_from_name(model_name, training_params=None):
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
 
         # Regressors
-        # 'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model, epochs=10, batch_size=10, **training_params, verbose=1),
         'LinearRegression': LinearRegression(),
         'RandomForestRegressor': RandomForestRegressor(),
         'Ridge': Ridge(),
@@ -200,7 +192,7 @@ def get_name_from_model(model):
         return 'PassiveAggressiveRegressor'
     if isinstance(model, MiniBatchKMeans):
         return 'MiniBatchKMeans'
-    # Putting these at the end. By this point, we've already determined it is not any of our other models
+
     if xgb_installed:
         if isinstance(model, xgb.XGBClassifier):
             return 'XGBClassifier'
@@ -212,6 +204,7 @@ def get_name_from_model(model):
             return 'DeepLearningRegressor'
         if isinstance(model, KerasClassifier):
             return 'DeepLearningClassifier'
+
     if lgb_installed:
         if isinstance(model, lgb.LGBMClassifier):
             return 'LGBMClassifier'
@@ -490,7 +483,6 @@ def load_keras_model(file_name):
     return base_pipeline
 
 
-# TODO: figure out later on how to wrap this inside another wrapper or something to make num_cols more dynamic
 def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
     if hidden_layers is None:
         hidden_layers = [1, 1, 1]
@@ -516,8 +508,6 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
     return model
 
 
-# TODO: eventually take in other parameters to tune
-# TODO: eventually take in final_activation and hidden_layer_activations
 def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid'):
 
     if hidden_layers is None:

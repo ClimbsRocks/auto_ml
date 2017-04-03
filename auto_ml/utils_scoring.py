@@ -1,12 +1,10 @@
 from collections import OrderedDict
-import multiprocessing
-import pathos
-from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
-
 import math
+
+from auto_ml import utils
+from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
-import pandas as pd
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
@@ -197,6 +195,8 @@ class RegressionScorer(object):
 
 
     def score(self, estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
+        X, y = utils.drop_missing_y_vals(X, y, output_column=None)
+
         if isinstance(estimator, GradientBoostingRegressor):
             X = X.toarray()
 
@@ -220,11 +220,6 @@ class RegressionScorer(object):
 
             print('Found ' + str(len(bad_val_indices)) + ' null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
             score = self.scoring_func(y, predictions)
-
-        # if scoring == 'rmse':
-        #     score = mean_squared_error(y, predictions)**0.5
-        # elif scoring == 'median_absolute_error':
-        #     score = median_absolute_error(y, predictions)
 
         if advanced_scoring == True:
             if hasattr(estimator, 'name'):
@@ -266,16 +261,11 @@ class ClassificationScorer(object):
 
 
     def score(self, estimator, X, y, advanced_scoring=False):
+
+        X, y = utils.drop_missing_y_vals(X, y, output_column=None)
+
         if isinstance(estimator, GradientBoostingClassifier):
             X = X.toarray()
-        # clean_ys = []
-        # # try:
-        # for val in y:
-        #     val = int(val)
-        #     clean_ys.append(val)
-        # y = clean_ys
-        # except:
-        #     pass
 
         predictions = estimator.predict_proba(X)
 
@@ -284,10 +274,6 @@ class ClassificationScorer(object):
             # At the moment, Microsoft's LightGBM returns probabilities > 1 and < 0, which can break some scoring functions. So we have to take the max of 1 and the pred, and the min of 0 and the pred.
             probas = [max(min(row[1], 1), 0) for row in predictions]
             predictions = probas
-        # score = brier_score_loss(y, probas)
-
-        # if self.scoring_method in ['accuracy_score', 'accuracy']:
-        #     predictions = [1 if x[1] >= 0.5 else 0 for x in predictions]
 
         try:
             score = self.scoring_func(y, predictions)
@@ -307,8 +293,6 @@ class ClassificationScorer(object):
                 # Sometimes, particularly for a badly fit model using either too little data, or a really bad set of hyperparameters during a grid search, we can predict probas that are > 1 or < 0. We'll cap those here, while warning the user about them, because they're unlikely to occur in a model that's properly trained with enough data and reasonable params
                 predictions = self.clean_probas(predictions)
                 score = self.scoring_func(y, predictions)
-
-
 
 
         if advanced_scoring:

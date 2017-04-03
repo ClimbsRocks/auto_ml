@@ -1,6 +1,8 @@
 Ensembling & Subpredictors
 ===================================
 
+NOTE: This feature is temporarily deprecated until we replace with an even better version shortly.
+
 Notes on ensembling v2:
 
 Ensembling estimators that have been trained on different cuts of the data can be really useful. Say, training one on holidays, one on weekdays, and one on weekends. Or different months, or different columns (really basic model, potentially overloaded model, etc.).
@@ -24,7 +26,6 @@ If you pass in a name for an ensemble_sub_estimator, it must be unique
 
 
 
-NOTE: This feature is temporarily deprecated until we replace with an even better version shortly.
 
 I would say this is the tough stuff, but removing all the annoying manual work typically associated with ensembling is one of `auto_ml`'s best feaures.
 

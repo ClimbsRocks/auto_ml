@@ -129,7 +129,7 @@ def test_perform_feature_scaling_false_classification():
     assert -0.215 < test_score < -0.17
 
 
-def test_optimize_entire_pipeline_classification():
+def test_compare_all_models_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
@@ -142,7 +142,7 @@ def test_optimize_entire_pipeline_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True)
+    ml_predictor.train(df_titanic_train, compare_all_models=True)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -152,7 +152,7 @@ def test_optimize_entire_pipeline_classification():
     assert -0.215 < test_score < -0.17
 
 
-def test_X_test_and_y_test_classification():
+def test_pass_in_list_of_dictionaries_train_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
@@ -165,7 +165,9 @@ def test_X_test_and_y_test_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, X_test=df_titanic_test, y_test=df_titanic_test.survived)
+    list_titanic_train = df_titanic_train.to_dict('records')
+
+    ml_predictor.train(list_titanic_train)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -175,7 +177,7 @@ def test_X_test_and_y_test_classification():
     assert -0.215 < test_score < -0.17
 
 
-def test_compute_power_1_classification():
+def test_pass_in_list_of_dictionaries_predict_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
@@ -188,7 +190,87 @@ def test_compute_power_1_classification():
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, compute_power=1)
+    list_titanic_train = df_titanic_train.to_dict('records')
+
+    ml_predictor.train(df_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_include_bad_y_vals_train_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    df_titanic_train.ix[1, 'survived'] = None
+    df_titanic_train.ix[8, 'survived'] = None
+    df_titanic_train.ix[26, 'survived'] = None
+
+    ml_predictor.train(df_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+
+def test_include_bad_y_vals_predict_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    df_titanic_test.ix[1, 'survived'] = float('nan')
+    df_titanic_test.ix[8, 'survived'] = float('inf')
+    df_titanic_test.ix[26, 'survived'] = None
+
+    ml_predictor.train(df_titanic_train)
+
+    test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+def test_single_string_model_names_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, model_names='GradientBoostingClassifier')
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -196,6 +278,138 @@ def test_compute_power_1_classification():
     print(test_score)
 
     assert -0.215 < test_score < -0.17
+
+
+def test_linear_model_analytics_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier')
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    # Linear models aren't super great on this dataset...
+    assert -0.37 < test_score < -0.17
+
+
+def test_user_input_func_classification():
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    def age_bucketing(df):
+
+        def define_buckets(age):
+            if age <= 17:
+                return 'youth'
+            elif age <= 40:
+                return 'adult'
+            elif age <= 60:
+                return 'adult2'
+            else:
+                return 'over_60'
+
+        df['age_bucket'] = df.age.apply(define_buckets)
+
+        return df
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, user_input_func=age_bucketing)
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.215 < test_score < -0.17
+
+
+# def test_optimize_entire_pipeline_classification():
+#     np.random.seed(0)
+
+#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+#     column_descriptions = {
+#         'survived': 'output'
+#         , 'embarked': 'categorical'
+#         , 'pclass': 'categorical'
+#     }
+
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+#     ml_predictor.train(df_titanic_train, optimize_entire_pipeline=True)
+
+#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+#     print('test_score')
+#     print(test_score)
+
+#     assert -0.215 < test_score < -0.17
+
+
+# def test_X_test_and_y_test_classification():
+#     np.random.seed(0)
+
+#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+#     column_descriptions = {
+#         'survived': 'output'
+#         , 'embarked': 'categorical'
+#         , 'pclass': 'categorical'
+#     }
+
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+#     ml_predictor.train(df_titanic_train, X_test=df_titanic_test, y_test=df_titanic_test.survived)
+
+#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+#     print('test_score')
+#     print(test_score)
+
+#     assert -0.215 < test_score < -0.17
+
+
+# def test_compute_power_1_classification():
+#     np.random.seed(0)
+
+#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+#     column_descriptions = {
+#         'survived': 'output'
+#         , 'embarked': 'categorical'
+#         , 'pclass': 'categorical'
+#     }
+
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+#     ml_predictor.train(df_titanic_train, compute_power=1)
+
+#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+#     print('test_score')
+#     print(test_score)
+
+#     assert -0.215 < test_score < -0.17
 
 
 # This test passes, but takes a long time to run. deprecating it for now until we rethink what we really want compute_power to accomplish
@@ -245,27 +459,27 @@ def test_all_algos_classification():
     assert -0.215 < test_score < -0.17
 
 # If the user passes in X_test and y_test, we will use those to determine the best model, rather than CV scores
-def test_select_from_multiple_classification_models_using_X_test_and_y_test():
-    np.random.seed(0)
+# def test_select_from_multiple_classification_models_using_X_test_and_y_test():
+#     np.random.seed(0)
 
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
-    column_descriptions = {
-        'survived': 'output'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
+#     column_descriptions = {
+#         'survived': 'output'
+#         , 'embarked': 'categorical'
+#         , 'pclass': 'categorical'
+#     }
 
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'], X_test=df_titanic_test, y_test=df_titanic_test.survived)
+#     ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'], X_test=df_titanic_test, y_test=df_titanic_test.survived)
 
-    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
-    print('test_score')
-    print(test_score)
+#     print('test_score')
+#     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+#     assert -0.215 < test_score < -0.17
 
 
 def test_binary_classification_predict_on_Predictor_instance():

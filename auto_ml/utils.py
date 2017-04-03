@@ -1,45 +1,11 @@
-from collections import OrderedDict
 import csv
 import datetime
-import itertools
-import dateutil
-import math
 import os
-import random
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.cluster import MiniBatchKMeans
 from sklearn.datasets import load_boston
-# from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
-from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
-# from sklearn.grid_search import GridSearchCV, RandomizedSearchCV
-# from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
-from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
-from sklearn.feature_extraction.text import TfidfVectorizer
 
-import numpy as np
 import pandas as pd
-import pathos
-import scipy
-
-# XGBoost can be a pain to install. It's also a super powerful and effective package.
-# So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
-# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that.
-# The same logic will apply to deep learning with Keras and TensorFlow
-global xgb_installed
-xgb_installed = False
-try:
-    import xgboost as xgb
-    xgb_installed = True
-except NameError:
-    pass
-except ImportError:
-    pass
-
-if xgb_installed:
-    import xgboost as xgb
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
@@ -138,3 +104,36 @@ def get_boston_dataset():
     df_boston['MEDV'] = boston['target']
     df_boston_train, df_boston_test = train_test_split(df_boston, test_size=0.2, random_state=42)
     return df_boston_train, df_boston_test
+
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+
+def drop_missing_y_vals(df, y, output_column=None):
+
+    y = list(y)
+    indices_to_drop = []
+
+    for idx, val in enumerate(y):
+        if str(val) in bad_vals_as_strings:
+            indices_to_drop.append(idx)
+
+    if len(indices_to_drop) > 0:
+        set_of_indices_to_drop = set(indices_to_drop)
+
+        print('We encountered a number of missing values for this output column')
+        if output_column is not None:
+            print(output_column)
+        print('And here is the number of missing (nan, None, etc.) values for this column:')
+        print(len(indices_to_drop))
+        print('Here are some example missing values')
+        for idx, df_idx in enumerate(indices_to_drop):
+            if idx >= 5:
+                break
+            print(y[df_idx])
+        print('We will remove these values, and continue with training on the cleaned dataset')
+
+        support_mask = [True if idx not in set_of_indices_to_drop else False for idx in range(len(df)) ]
+        df = df[support_mask]
+        y = [val for idx, val in enumerate(y) if idx not in set_of_indices_to_drop]
+
+
+    return df, y
