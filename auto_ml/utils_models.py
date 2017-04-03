@@ -23,17 +23,13 @@ try:
 except:
     pass
 
-try:
-    from auto_ml import utils
-except ImportError:
-    from ..auto_ml import utils
+from auto_ml import utils
+
 
 xgb_installed = False
 try:
     import xgboost as xgb
     xgb_installed = True
-except NameError:
-    pass
 except ImportError:
     pass
 
@@ -41,8 +37,6 @@ lgb_installed = False
 try:
     import lightgbm as lgb
     lgb_installed = True
-except NameError:
-    pass
 except ImportError:
     pass
 

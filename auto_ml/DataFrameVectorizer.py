@@ -1,6 +1,5 @@
 # Modified version of scikit-learn's DictVectorizer
 from array import array
-from collections import Mapping
 from operator import itemgetter
 
 import numpy as np
@@ -8,8 +7,6 @@ import scipy.sparse as sp
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.externals import six
-from sklearn.externals.six.moves import xrange
-from sklearn.utils import check_array, tosequence
 from sklearn.utils.fixes import frombuffer_empty
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])

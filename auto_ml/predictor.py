@@ -1,15 +1,12 @@
 import datetime
 import math
-import multiprocessing
 import os
-import random
 import sys
 import warnings
 
 import dill
 
 import pandas as pd
-import pathos
 
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
@@ -20,9 +17,8 @@ pd.options.mode.chained_assignment = None  # default='warn'
 
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
-from sklearn.decomposition import TruncatedSVD
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -37,22 +33,12 @@ from auto_ml import utils_models
 from auto_ml import utils_scaling
 from auto_ml import utils_scoring
 
-
-# XGBoost can be a pain to install. It's also a super powerful and effective package.
-# So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
-# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that.
-# The same logic will apply to deep learning with Keras and TensorFlow
-global xgb_installed
 xgb_installed = False
 try:
     import xgboost as xgb
     xgb_installed = True
-except NameError:
-    pass
 except ImportError:
     pass
-
-
 
 class Predictor(object):
 
@@ -558,9 +544,7 @@ class Predictor(object):
 
         return grid_search_params
 
-    # This is broken out into it's own function for each estimator on purpose
     # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
-    # This also lets us test on X_test and y_test for each model
     def train_pipeline_components(self, estimator_names, scoring, X_df, y):
 
         # We both fit the transformation pipeline, and transform X_df in this step

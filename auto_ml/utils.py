@@ -1,42 +1,11 @@
-from collections import OrderedDict
 import csv
 import datetime
-import itertools
-import dateutil
-import math
 import os
-import random
 
-from sklearn.base import BaseEstimator, TransformerMixin
-from sklearn.cluster import MiniBatchKMeans
 from sklearn.datasets import load_boston
-from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
-from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelBinarizer, OneHotEncoder
-from sklearn.feature_extraction.text import TfidfVectorizer
 
-import numpy as np
 import pandas as pd
-import pathos
-import scipy
-
-# XGBoost can be a pain to install. It's also a super powerful and effective package.
-# So we'll make it optional here. If a user wants to install XGBoost themselves, we fully support XGBoost!
-# But, if they just want to get running out of the gate, without dealing with any installation other than what's done for them automatically, we won't force them to go through that.
-# The same logic will apply to deep learning with Keras and TensorFlow
-global xgb_installed
-xgb_installed = False
-try:
-    import xgboost as xgb
-    xgb_installed = True
-except NameError:
-    pass
-except ImportError:
-    pass
-
-if xgb_installed:
-    import xgboost as xgb
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):

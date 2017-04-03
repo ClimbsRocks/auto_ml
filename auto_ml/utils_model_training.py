@@ -5,18 +5,14 @@ import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 import warnings
 
-from auto_ml import utils, utils_models
-from auto_ml.utils_scoring import ClassificationScorer, RegressionScorer
-from auto_ml.utils_models import get_model_from_name, get_name_from_model
+from auto_ml import utils_models
+from auto_ml.utils_models import get_name_from_model
 
 keras_installed = False
 try:
     # Suppress some level of logs
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    from keras.constraints import maxnorm
-    from keras.layers import Dense, Dropout
-    from keras.models import Sequential
     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
     keras_installed = True
 except:
