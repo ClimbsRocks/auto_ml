@@ -1,6 +1,5 @@
 tensorflow
 keras
-xgboost
 yaml
 h5py
 tables
