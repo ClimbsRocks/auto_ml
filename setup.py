@@ -54,11 +54,16 @@ setup(
         #   3 - Alpha
         #   4 - Beta
         #   5 - Production/Stable
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
 
         # Indicate who your project is intended for
         'Intended Audience :: Developers',
+        'Intended Audience :: Information Technology',
+        'Intended Audience :: Science/Research',
+
         'Topic :: Scientific/Engineering :: Artificial Intelligence',
+        'Topic :: Scientific/Engineering :: Information Analysis',
+        'Topic :: Software Development :: Libraries :: Python Modules',
 
         # Pick your license as you wish (should match "license" above)
         'License :: OSI Approved :: MIT License',
@@ -75,7 +80,7 @@ setup(
     ],
 
     # What does your project relate to?
-    keywords=['machine learning', 'data science', 'automated machine learning', 'regressor', 'regressors', 'regression', 'classification', 'classifiers', 'classifier', 'estimators', 'predictors', 'XGBoost', 'Random Forest', 'sklearn', 'scikit-learn', 'analytics', 'analysts', 'coefficients', 'feature importances' 'analytics', 'artificial intelligence', 'subpredictors', 'ensembling', 'stacking', 'blending', 'feature engineering', 'feature extraction', 'feature selection', 'production', 'pandas', 'dataframes', 'machinejs'],
+    keywords=['machine learning', 'data science', 'automated machine learning', 'regressor', 'regressors', 'regression', 'classification', 'classifiers', 'classifier', 'estimators', 'predictors', 'XGBoost', 'Random Forest', 'sklearn', 'scikit-learn', 'analytics', 'analysts', 'coefficients', 'feature importances' 'analytics', 'artificial intelligence', 'subpredictors', 'ensembling', 'stacking', 'blending', 'feature engineering', 'feature extraction', 'feature selection', 'production', 'pandas', 'dataframes', 'machinejs', 'deep learning', 'tensorflow', 'deeplearning', 'lightgbm', 'gradient boosting', 'gbm', 'keras', 'production ready', 'test coverage'],
 
     # You can just specify the packages manually here if your project is
     # simple. Or you can use find_packages().
