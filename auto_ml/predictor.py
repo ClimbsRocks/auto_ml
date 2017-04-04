@@ -210,18 +210,6 @@ class Predictor(object):
             except:
                 pass
 
-
-        # bad_rows = X_df[pd.isnull(X_df[self.output_column])]
-        # if bad_rows.shape[0] > 0:
-        #     print('We encountered a number of missing values for this output column')
-        #     print('Specifically, here is the output column:')
-        #     print(self.output_column)
-        #     print('And here is the number of missing (nan, None, etc.) values for this column:')
-        #     print(bad_rows.shape[0])
-        #     print('We will remove these values, and continue with training on the cleaned dataset')
-        # X_df = X_df.dropna(subset=[self.output_column])
-
-
         # Remove the output column from the dataset, and store it into the y varaible
         y = list(X_df.pop(self.output_column))
 
@@ -288,8 +276,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2):
+    def set_params_and_defaults(self, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -299,11 +286,14 @@ class Predictor(object):
         self.y_test = y_test
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
+
+        # We expect model_names to be a list of strings
         if isinstance(model_names, str):
-            # Allow the user to pass in a single string for model_names
+            # If the user passes in a single string, put it in a list
             self.model_names = [model_names]
         else:
             self.model_names = model_names
+
         self.perform_feature_scaling = perform_feature_scaling
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
@@ -314,10 +304,13 @@ class Predictor(object):
         self.compare_all_models = compare_all_models
         self.cv = cv
 
-        if verbose:
-            print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
+        self.perform_feature_selection = perform_feature_selection
 
-        X_df, y = self._prepare_for_training(raw_training_data)
+
+    # We are taking in scoring here to deal with the unknown behavior around multilabel classification below
+    def _clean_data_and_prepare_for_training(self, data, scoring):
+
+        X_df, y = self._prepare_for_training(data)
 
         if self.take_log_of_y:
             y = [math.log(val) for val in y]
@@ -327,20 +320,19 @@ class Predictor(object):
         self.y = y
 
         # Unless the user has told us to, don't perform feature selection unless we have a pretty decent amount of data
-        if perform_feature_selection is None:
+        if self.perform_feature_selection is None:
             if len(X_df.columns) < 50 or len(X_df) < 100000:
-                perform_feature_selection = False
+                self.perform_feature_selection = False
             else:
-                perform_feature_selection = True
+                self.perform_feature_selection = True
 
-        self.perform_feature_selection = perform_feature_selection
-
-
-        if model_names is not None:
+        if self.model_names is not None:
             estimator_names = self.model_names
         else:
             estimator_names = self._get_estimator_names()
 
+
+        # TODO: we're not using ClassificationScorer for multilabel classification. Why?
         if self.type_of_estimator == 'classifier':
             if len(set(y)) > 2 and self.scoring is None:
                 self.scoring = 'accuracy_score'
@@ -350,6 +342,20 @@ class Predictor(object):
         else:
             scoring = utils_scoring.RegressionScorer(self.scoring)
             self._scorer = scoring
+
+
+        return X_df, y, estimator_names
+
+
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2):
+
+        self.set_params_and_defaults(user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv)
+
+        if verbose:
+            print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning')
+
+
+        X_df, y, estimator_names = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
 
 
         # This is our main logic for how we configure the training
@@ -600,6 +606,10 @@ class Predictor(object):
             # If we wanted to do something tricky, here would be the place to do it
                 # Train the final model up on more epochs, or with more trees
                 # Run a two-stage GSCV. First stage figures out activation function, second stage figures out architecture
+
+
+    def train_categorical_ensemble(self, data, categorical_column, **kwargs):
+        print(kwargs)
 
 
     def _get_xgb_feat_importances(self, clf):

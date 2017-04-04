@@ -235,12 +235,13 @@ class ClassificationScorer(object):
         if scoring_method is None:
             scoring_method = 'brier_score_loss'
 
+        self.scoring_method = scoring_method
+
         if callable(scoring_method):
             self.scoring_func = scoring_method
         else:
             self.scoring_func = scoring_name_function_map[scoring_method]
 
-        self.scoring_method = scoring_method
 
     def clean_probas(self, probas):
         print('Warning: We have found some values in the predicted probabilities that fall outside the range {0, 1}')
@@ -277,7 +278,7 @@ class ClassificationScorer(object):
 
         try:
             score = self.scoring_func(y, predictions)
-        except ValueError:
+        except ValueError as e:
             bad_val_indices = []
             for idx, val in enumerate(y):
                 if str(val) in bad_vals_as_strings:
@@ -286,7 +287,7 @@ class ClassificationScorer(object):
             predictions = [val for idx, val in enumerate(predictions) if idx not in bad_val_indices]
             y = [val for idx, val in enumerate(y) if idx not in bad_val_indices]
 
-            print('Found ' + str(len(bad_val_indices)) + 'null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
+            print('Found ' + str(len(bad_val_indices)) + ' null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
             try:
                 score = self.scoring_func(y, predictions)
             except ValueError:
