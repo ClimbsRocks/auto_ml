@@ -655,10 +655,17 @@ class Predictor(object):
 
             relevant_X, relevant_y = self.get_relevant_categorical_rows(X_df, y, category)
 
+            if len(relevant_X) == 0:
+                return {
+                    'trained_category_model': None
+                    , 'category': None
+                    , 'len_relevant_X': None
+                }
             print('Some stats on the y values for this category: ' + str(category))
             print(pd.Series(relevant_y).describe(include='all'))
 
             relevant_X = self.transformation_pipeline.transform(relevant_X)
+
 
             category_trained_final_model = self.train_pipeline_components(estimator_names, self._scorer, relevant_X, relevant_y)
 
@@ -693,11 +700,12 @@ class Predictor(object):
             pass
 
         for result in results:
-            category = result['category']
-            self.trained_category_models[category] = result['trained_category_model']
-            if self.search_for_default_category == True and result['len_relevant_X'] > self.len_largest_category:
-                self.default_category = category
-                self.len_largest_category = result['len_relevant_X']
+            if result['trained_category_model'] is not None:
+                category = result['category']
+                self.trained_category_models[category] = result['trained_category_model']
+                if self.search_for_default_category == True and result['len_relevant_X'] > self.len_largest_category:
+                    self.default_category = category
+                    self.len_largest_category = result['len_relevant_X']
 
         print('Finished training all the category models!')
 
