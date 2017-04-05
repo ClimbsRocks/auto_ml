@@ -19,12 +19,13 @@ def test_categorical_ensemble_basic_classifier():
 
     column_descriptions = {
         'survived': 'output'
+        , 'pclass': 'categorical'
         , 'embarked': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train_categorical_ensemble(df_titanic_train, categorical_column='pclass', optimize_final_model=True)
+    ml_predictor.train_categorical_ensemble(df_titanic_train, categorical_column='pclass', optimize_final_model=False)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 

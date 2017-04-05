@@ -26,6 +26,7 @@ from sklearn.preprocessing import FunctionTransformer
 
 from auto_ml import DataFrameVectorizer
 from auto_ml import utils
+from auto_ml import utils_categorical_ensembling
 from auto_ml import utils_data_cleaning
 from auto_ml import utils_feature_selection
 from auto_ml import utils_model_training
@@ -357,9 +358,11 @@ class Predictor(object):
 
         X_df, y, estimator_names = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
 
+        # We both fit the transformation pipeline, and transform X_df in this step
+        X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
-        # This is our main logic for how we configure the training
-        self.train_pipeline_components(estimator_names, self._scorer, X_df, y)
+        # This is our main logic for how we train the final model
+        self.trained_final_model = self.train_pipeline_components(estimator_names, self._scorer, X_df, y)
 
         # Calibrate the probability predictions from our final model
         if self.calibrate_final_model is True:
@@ -553,10 +556,6 @@ class Predictor(object):
     # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
     def train_pipeline_components(self, estimator_names, scoring, X_df, y):
 
-        # We both fit the transformation pipeline, and transform X_df in this step
-        X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
-
-
         # Use Case 1: Super straightforward: just train a single, non-optimized model
         if len(estimator_names) == 1 and self.optimize_final_model != True:
             trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0])
@@ -573,6 +572,8 @@ class Predictor(object):
             self.grid_search_params = grid_search_params
 
             gscv_results = self.fit_grid_search(X_df, y, grid_search_params)
+
+            trained_final_model = gscv_results.best_estimator_
 
         # Use Case 3: One model, and optimize it!
         # Use Case 4: Many models, and optimize them!
@@ -595,21 +596,71 @@ class Predictor(object):
 
             # Grab the first one by default
             self.trained_final_model = all_gs_results[0].best_estimator_
+            trained_final_model = all_gs_results[0].best_estimator_
             best_score = all_gs_results[0].best_score_
 
             # Iterate through the rest, and see if any are better!
             for result in all_gs_results[1:]:
                 if result.best_score_ > best_score:
-                    self.trained_final_model = result.best_estimator_
+                    trained_final_model = result.best_estimator_
                     best_score = result.best_score_
 
             # If we wanted to do something tricky, here would be the place to do it
                 # Train the final model up on more epochs, or with more trees
                 # Run a two-stage GSCV. First stage figures out activation function, second stage figures out architecture
 
+        return trained_final_model
+
+    def get_relevant_categorical_rows(self, X_df, y, category):
+        mask = X_df[self.categorical_column] == category
+
+        relevant_indices = []
+        relevant_y = []
+        for idx, val in enumerate(mask):
+            if val == True:
+                relevant_indices.append(idx)
+                relevant_y.append(y[idx])
+
+        relevant_X = X_df.iloc[relevant_indices]
+        # relevant_y = y[relevant_indices]
+
+        return relevant_X, relevant_y
+
 
     def train_categorical_ensemble(self, data, categorical_column, **kwargs):
+        self.categorical_column = categorical_column
+        self.trained_category_models = {}
+        self.column_descriptions[categorical_column] = 'categorical'
         print(kwargs)
+
+        self.set_params_and_defaults(**kwargs)
+
+        X_df, y, estimator_names = self._clean_data_and_prepare_for_training(data, self.scoring)
+        X_df = X_df.reset_index(drop=True)
+
+        print('Now fitting a single feature transformation pipeline that will be shared by all of our categorical estimators for the sake of space efficiency when saving the model')
+        X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+
+        for category in X_df[categorical_column].unique():
+            print('\n\nNow training a new estimator for the category: ' + str(category))
+
+            relevant_X, relevant_y = self.get_relevant_categorical_rows(X_df, y, category)
+
+            print('Some stats on the y values for this category:')
+            print(pd.Series(relevant_y).describe(include='all'))
+
+            relevant_X = self.transformation_pipeline.transform(relevant_X)
+
+            category_trained_final_model = self.train_pipeline_components(estimator_names, self._scorer, relevant_X, relevant_y)
+
+            self.trained_category_models[category] = category_trained_final_model
+
+        print('Finished training all the models!')
+        print(self.trained_category_models)
+
+        categorical_ensembler = utils_categorical_ensembling.CategoricalEnsembler(self.trained_category_models, self.transformation_pipeline, self.categorical_column)
+        self.trained_pipeline = categorical_ensembler
+
 
 
     def _get_xgb_feat_importances(self, clf):
