@@ -2,6 +2,7 @@ from collections import OrderedDict
 import math
 
 from auto_ml import utils
+import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
@@ -26,6 +27,7 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
 
     print(format(brier_score_loss(actuals, probas), '.4f'))
 
+
     print('\nHere is the trained estimator\'s overall accuracy (when it predicts a label, how frequently is that the correct label?)')
     predicted_labels = []
     for pred in probas:
@@ -34,6 +36,14 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
         else:
             predicted_labels.append(0)
     print(format(accuracy_score(y_true=actuals, y_pred=predicted_labels) * 100, '.1f') + '%')
+
+    
+    print('\nHere is a confusion matrix showing predictions and actuals by label')
+    #it would make sense to use sklearn's confusion_matrix here but it apparently has no labels
+    #took this idea instead from: http://stats.stackexchange.com/a/109015
+    conf = pd.crosstab(pd.Series(actuals), pd.Series(predicted_labels), rownames=['v Actual v'], colnames=['Predicted >'], margins=True)
+    print(conf)
+
 
     print('Here is the accuracy of our trained estimator at each level of predicted probabilities')
 
