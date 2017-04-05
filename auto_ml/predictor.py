@@ -5,6 +5,7 @@ import sys
 import warnings
 
 import dill
+import pathos
 
 import pandas as pd
 
@@ -627,11 +628,17 @@ class Predictor(object):
         return relevant_X, relevant_y
 
 
-    def train_categorical_ensemble(self, data, categorical_column, **kwargs):
+    def train_categorical_ensemble(self, data, categorical_column, default_category=None, **kwargs):
         self.categorical_column = categorical_column
         self.trained_category_models = {}
         self.column_descriptions[categorical_column] = 'categorical'
-        print(kwargs)
+
+        self.default_category = default_category
+        if self.default_category is None:
+            self.search_for_default_category = True
+            self.len_largest_category = 0
+        else:
+            self.search_for_default_category = False
 
         self.set_params_and_defaults(**kwargs)
 
@@ -641,12 +648,14 @@ class Predictor(object):
         print('Now fitting a single feature transformation pipeline that will be shared by all of our categorical estimators for the sake of space efficiency when saving the model')
         X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
-        for category in X_df[categorical_column].unique():
+        unique_categories = X_df[categorical_column].unique()
+
+        def train_one_categorical_model(category):
             print('\n\nNow training a new estimator for the category: ' + str(category))
 
             relevant_X, relevant_y = self.get_relevant_categorical_rows(X_df, y, category)
 
-            print('Some stats on the y values for this category:')
+            print('Some stats on the y values for this category: ' + str(category))
             print(pd.Series(relevant_y).describe(include='all'))
 
             relevant_X = self.transformation_pipeline.transform(relevant_X)
@@ -655,10 +664,50 @@ class Predictor(object):
 
             self.trained_category_models[category] = category_trained_final_model
 
-        print('Finished training all the models!')
-        print(self.trained_category_models)
+            try:
+                category_length = len(relevant_X)
+            except TypeError:
+                category_length = relevant_X.shape[0]
 
-        categorical_ensembler = utils_categorical_ensembling.CategoricalEnsembler(self.trained_category_models, self.transformation_pipeline, self.categorical_column)
+            result = {
+                'trained_category_model': category_trained_final_model
+                , 'category': category
+                , 'len_relevant_X': category_length
+            }
+            return result
+
+        pool = pathos.multiprocessing.ProcessPool()
+
+        # Since we may have already closed the pool, try to restart it
+        try:
+            pool.restart()
+        except AssertionError as e:
+            pass
+        results = list(pool.map(train_one_categorical_model, unique_categories))
+
+        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+        pool.close()
+        try:
+            pool.join()
+        except AssertionError:
+            pass
+
+        for result in results:
+            category = result['category']
+            self.trained_category_models[category] = result['trained_category_model']
+            if self.search_for_default_category == True and result['len_relevant_X'] > self.len_largest_category:
+                self.default_category = category
+                self.len_largest_category = result['len_relevant_X']
+
+        print('Finished training all the category models!')
+
+        if self.search_for_default_category == True:
+            print('By default, auto_ml finds the largest category, and uses that if asked to get predictions for any rows which come from a category that was not included in the training data (i.e., if you launch a new market and ask us to get predictions for it, we will default to using your largest market to get predictions for the market that was not included in the training data')
+            print('To avoid this behavior, you can either choose your own default category (the "default_category" parameter to train_categorical_ensemble), or pass in "_RAISE_ERROR" as the value for default_category, and we will raise an error when trying to get predictions for a row coming from a category that was not included in the training data.')
+            print('Here is the default category we selected:')
+            print(self.default_category)
+
+        categorical_ensembler = utils_categorical_ensembling.CategoricalEnsembler(self.trained_category_models, self.transformation_pipeline, self.categorical_column, self.default_category)
         self.trained_pipeline = categorical_ensembler
 
 

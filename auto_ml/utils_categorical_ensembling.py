@@ -2,10 +2,11 @@ import pandas as pd
 
 class CategoricalEnsembler(object):
 
-    def __init__(self, trained_models, transformation_pipeline, categorical_column):
+    def __init__(self, trained_models, transformation_pipeline, categorical_column, default_category):
         self.trained_models = trained_models
         self.categorical_column = categorical_column
         self.transformation_pipeline = transformation_pipeline
+        self.default_category = default_category
 
 
     def predict(self, data):
@@ -19,7 +20,13 @@ class CategoricalEnsembler(object):
         predictions = []
         for row in data:
             category = row[self.categorical_column]
-            model = self.trained_models[category]
+            try:
+                model = self.trained_models[category]
+            except KeyError as e:
+                if self.default_category == '_RAISE_ERROR':
+                    raise(e)
+                model = self.trained_models[self.default_category]
+
             transformed_row = self.transformation_pipeline.transform(row)
             prediction = model.predict(transformed_row)
             predictions.append(prediction)
