@@ -27,7 +27,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False):
 
         self.model = model
         self.model_name = model_name
@@ -36,6 +36,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.name = name
         self.training_features = training_features
         self.column_descriptions = column_descriptions
+        self.feature_learning = feature_learning
 
 
         if self.type_of_estimator == 'classifier':
@@ -63,9 +64,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     del model_params['build_fn']
 
                     if self.type_of_estimator == 'regressor':
-                        self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, **model_params)
+                        self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
                     elif self.type_of_estimator == 'classifier':
-                        self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, **model_params)
+                        self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
                 else:
                     print('WARNING: We did not detect that Keras was available.')
                     raise TypeError('A DeepLearning model was requested, but Keras was not available to import')
@@ -73,7 +74,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         try:
             if self.model_name[:12] == 'DeepLearning':
 
-                print('Stopping training early if we have not seen an improvement in training accuracy in 25 epochs')
+                print('\nWe will stop training early if we have not seen an improvement in training accuracy in 25 epochs')
                 from keras.callbacks import EarlyStopping
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
@@ -298,3 +299,31 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return prediction[0]
         else:
             return prediction
+
+    # transform is initially designed to be used with feature_learning
+    def transform(self, X):
+        predicted_features = self.predict(X)
+        predicted_features = list(predicted_features)
+        # print('predicted_features')
+        # print(predicted_features)
+        # print('type(predicted_features)')
+        # print(type(predicted_features))
+        # print('predicted_features.shape')
+        # print(predicted_features.shape)
+
+        for prediction in predicted_features[:10]:
+            print('prediction in feature_learning')
+            print(list(prediction))
+
+        print('X.shape')
+        print(X.shape)
+
+        if scipy.sparse.issparse(X):
+            X = scipy.sparse.hstack([X, predicted_features])
+        else:
+            print('Figuring out what type X is')
+            print(type(X))
+
+        print('X.shape after the hstacking')
+        print(X.shape)
+        return X

@@ -483,7 +483,11 @@ def load_keras_model(file_name):
     return base_pipeline
 
 
-def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0):
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False):
+
+    if feature_learning == True and hidden_layers is None:
+        hidden_layers = [1, 1, 0.5]
+
     if hidden_layers is None:
         hidden_layers = [1, 1, 1]
 
@@ -492,15 +496,22 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
     for layer in hidden_layers:
         scaled_layers.append(int(num_cols * layer))
 
+    # If we're training this model for feature_learning, our penultimate layer (our final hidden layer before the "output" layer) will always have 10 neurons, meaning that we always output 10 features from our feature_learning model
+    if feature_learning == True:
+        scaled_layers.append(10)
 
     model = Sequential()
 
-    model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, kernel_initializer='normal', activation='relu'))
 
-    for layer_size in scaled_layers[1:]:
-        model.add(Dense(layer_size, init='normal', activation='relu'))
+    for layer_size in scaled_layers[1:-1]:
+        model.add(Dense(layer_size, kernel_initializer='normal', activation='relu'))
+
+    # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
+    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', activation='relu', name='penultimate_layer'))
+
     # For regressors, we want an output layer with a single node
-    model.add(Dense(1, init='normal'))
+    model.add(Dense(1, kernel_initializer='normal'))
 
     # The final step is to compile the model
     model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
@@ -508,7 +519,10 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
     return model
 
 
-def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid'):
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False):
+
+    if feature_learning == True and hidden_layers is None:
+        hidden_layers = [1, 1, 0.5]
 
     if hidden_layers is None:
         hidden_layers = [1, 1, 1]
@@ -518,14 +532,21 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
     for layer in hidden_layers:
         scaled_layers.append(int(num_cols * layer))
 
+    # If we're training this model for feature_learning, our penultimate layer (our final hidden layer before the "output" layer) will always have 10 neurons, meaning that we always output 10 features from our feature_learning model
+    if feature_learning == True:
+        scaled_layers.append(10)
+
 
     model = Sequential()
 
-    model.add(Dense(hidden_layers[0], input_dim=num_cols, init='normal', activation='relu'))
+    # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, kernel_initializer='normal', activation='relu'))
 
-    for layer_size in scaled_layers[1:]:
-        model.add(Dense(layer_size, init='normal', activation='relu'))
+    for layer_size in scaled_layers[1:-1]:
+        model.add(Dense(layer_size, kernel_initializer='normal', activation='relu'))
 
-    model.add(Dense(1, init='normal', activation=final_activation))
+    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', activation='relu', name='penultimate_layer'))
+
+    model.add(Dense(1, kernel_initializer='normal', activation=final_activation))
     model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson'])
     return model
