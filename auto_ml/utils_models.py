@@ -17,6 +17,7 @@ try:
     tf.logging.set_verbosity(tf.logging.INFO)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
+    from keras.layers.advanced_activations import LeakyReLU, PReLU
     from keras.models import Sequential
     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
     keras_installed = True
@@ -502,13 +503,16 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
 
     model = Sequential()
 
-    model.add(Dense(hidden_layers[0], input_dim=num_cols, kernel_initializer='normal', activation='relu'))
+    model.add(Dense(hidden_layers[0], input_dim=num_cols, kernel_initializer='normal'))
+    model.add(PReLU())
 
     for layer_size in scaled_layers[1:-1]:
-        model.add(Dense(layer_size, kernel_initializer='normal', activation='relu'))
+        model.add(Dense(layer_size, kernel_initializer='normal'))
+        model.add(PReLU())
 
     # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
-    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', activation='relu', name='penultimate_layer'))
+    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', name='penultimate_layer'))
+    model.add(PReLU())
 
     # For regressors, we want an output layer with a single node
     model.add(Dense(1, kernel_initializer='normal'))
