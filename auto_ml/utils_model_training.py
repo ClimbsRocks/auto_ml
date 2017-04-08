@@ -88,6 +88,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self.model.fit(X_fit, y)
 
         except KeyboardInterrupt as e:
+            print('Stopping training at this point because we heard a KeyboardInterrupt')
+            print('If the model is functional at this point, we will output the model in its latest form')
+            print('Note that not all models can be interrupted and still used, and that this feature generally is an unofficial beta-release feature that is known to fail on occasion')
             pass
 
         return self

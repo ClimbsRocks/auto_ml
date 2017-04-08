@@ -21,7 +21,9 @@ try:
     from keras.models import Sequential
     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
     keras_installed = True
-except:
+except ImportError as e:
+    print('error importing keras')
+    print(e)
     pass
 
 from auto_ml import utils
@@ -132,7 +134,6 @@ def get_model_from_name(model_name, training_params=None):
         model_map['LGBMClassifier'] = lgb.LGBMClassifier()
 
     if keras_installed:
-
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
         model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model)
 
