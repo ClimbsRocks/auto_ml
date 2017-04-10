@@ -476,11 +476,29 @@ def load_keras_model(file_name):
     with open(file_name, 'rb') as read_file:
         base_pipeline = dill.load(read_file)
 
-    keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+    for step in base_pipeline.named_steps:
+        pipeline_step = base_pipeline.named_steps[step]
+        try:
+            if pipeline_step.model_name[:12] == 'DeepLearning':
 
-    keras_model = load_model(keras_file_name)
+                # This is where we saved the random_name for this model
+                random_name = pipeline_step.model
+                # Load the Keras model here
+                keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
+                model = load_model(keras_file_name)
+                # model = model_name_map[random_name]
 
-    base_pipeline.named_steps['final_model'].model = keras_model
+                # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
+                pipeline_step.model = model
+        except AttributeError:
+            pass
+
+
+    # keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+
+    # keras_model = load_model(keras_file_name)
+
+    # base_pipeline.named_steps['final_model'].model = keras_model
 
     return base_pipeline
 

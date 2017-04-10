@@ -314,19 +314,18 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         # print('predicted_features.shape')
         # print(predicted_features.shape)
 
-        for prediction in predicted_features[:10]:
-            print('prediction in feature_learning')
-            print(list(prediction))
-
-        print('X.shape')
-        print(X.shape)
+        try:
+            for prediction in predicted_features[:10]:
+                print(list(prediction))
+                print('prediction in feature_learning')
+        except TypeError:
+            pass
 
         if scipy.sparse.issparse(X):
             X = scipy.sparse.hstack([X, predicted_features])
         else:
             print('Figuring out what type X is')
             print(type(X))
+            print('If you see this message, please file a bug at https://github.com/ClimbsRocks/auto_ml')
 
-        print('X.shape after the hstacking')
-        print(X.shape)
         return X

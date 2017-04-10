@@ -577,6 +577,10 @@ class Predictor(object):
         # Sometimes we're optimizing just one model, sometimes we're comparing a bunch of non-optimized models.
         if isinstance(model, list):
             model = model[0]
+
+        if len(model) == 1:
+            # Delete this so it doesn't show up in our logging
+            del gs_params['model']
         model_name = utils_models.get_name_from_model(model)
 
         full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning)
@@ -684,8 +688,8 @@ class Predictor(object):
 
                 grid_search_params = self.create_gs_params(model_name)
                 # Adding model name to gs params just to help with logging
-                grid_search_params['model_name'] = model_name
-                # grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
+                grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
+                # grid_search_params['model_name'] = model_name
                 self.grid_search_params = grid_search_params
 
                 gscv_results = self.fit_grid_search(X_df, y, grid_search_params, feature_learning=feature_learning)
