@@ -577,6 +577,10 @@ class Predictor(object):
         # Sometimes we're optimizing just one model, sometimes we're comparing a bunch of non-optimized models.
         if isinstance(model, list):
             model = model[0]
+
+        if len(gs_params['model']) == 1:
+            # Delete this so it doesn't show up in our logging
+            del gs_params['model']
         model_name = utils_models.get_name_from_model(model)
 
         full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning)
@@ -684,8 +688,8 @@ class Predictor(object):
 
                 grid_search_params = self.create_gs_params(model_name)
                 # Adding model name to gs params just to help with logging
-                grid_search_params['model_name'] = model_name
-                # grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
+                grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
+                # grid_search_params['model_name'] = model_name
                 self.grid_search_params = grid_search_params
 
                 gscv_results = self.fit_grid_search(X_df, y, grid_search_params, feature_learning=feature_learning)
@@ -1043,7 +1047,11 @@ class Predictor(object):
                     model_name_map[random_name] = keras_wrapper
 
                     # Save the Keras model (which we have to extract from the sklearn wrapper)
-                    pipeline_step.model.save(keras_file_name)
+                    try:
+                        pipeline_step.model.save(keras_file_name)
+                    except AttributeError as e:
+                        # I'm not entirely clear why, but sometimes we need to access the ".model" property within a KerasRegressor or KerasClassifier, and sometimes we don't
+                        pipeline_step.model.model.save(keras_file_name)
 
                     # Now that we've saved the keras model, set that spot in the pipeline to our random name, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
                     # Using the random_name allows us to find the right model later if we have several (or several thousand) models to put back into place in the pipeline when we save this later

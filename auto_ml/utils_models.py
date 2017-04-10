@@ -8,6 +8,21 @@ from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, 
 
 from sklearn.cluster import MiniBatchKMeans
 
+xgb_installed = False
+try:
+    from xgboost import XGBClassifier, XGBRegressor
+    # import xgboost as xgb
+    xgb_installed = True
+except ImportError:
+    pass
+
+lgb_installed = False
+try:
+    from lightgbm import LGBMRegressor, LGBMClassifier
+    lgb_installed = True
+except ImportError:
+    pass
+
 keras_installed = False
 try:
     # Suppress some level of logs
@@ -29,19 +44,6 @@ except ImportError as e:
 from auto_ml import utils
 
 
-xgb_installed = False
-try:
-    import xgboost as xgb
-    xgb_installed = True
-except ImportError:
-    pass
-
-lgb_installed = False
-try:
-    import lightgbm as lgb
-    lgb_installed = True
-except ImportError:
-    pass
 
 
 def get_model_from_name(model_name, training_params=None):
@@ -126,12 +128,12 @@ def get_model_from_name(model_name, training_params=None):
     }
 
     if xgb_installed:
-        model_map['XGBClassifier'] = xgb.XGBClassifier()
-        model_map['XGBRegressor'] = xgb.XGBRegressor()
+        model_map['XGBClassifier'] = XGBClassifier()
+        model_map['XGBRegressor'] = XGBRegressor()
 
     if lgb_installed:
-        model_map['LGBMRegressor'] = lgb.LGBMRegressor()
-        model_map['LGBMClassifier'] = lgb.LGBMClassifier()
+        model_map['LGBMRegressor'] = LGBMRegressor()
+        model_map['LGBMClassifier'] = LGBMClassifier()
 
     if keras_installed:
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
@@ -196,9 +198,9 @@ def get_name_from_model(model):
         return 'MiniBatchKMeans'
 
     if xgb_installed:
-        if isinstance(model, xgb.XGBClassifier):
+        if isinstance(model, XGBClassifier):
             return 'XGBClassifier'
-        if isinstance(model, xgb.XGBRegressor):
+        if isinstance(model, XGBRegressor):
             return 'XGBRegressor'
 
     if keras_installed:
@@ -208,9 +210,9 @@ def get_name_from_model(model):
             return 'DeepLearningClassifier'
 
     if lgb_installed:
-        if isinstance(model, lgb.LGBMClassifier):
+        if isinstance(model, LGBMClassifier):
             return 'LGBMClassifier'
-        if isinstance(model, lgb.LGBMRegressor):
+        if isinstance(model, LGBMRegressor):
             return 'LGBMRegressor'
 
 # Hyperparameter search spaces for each model
@@ -476,11 +478,29 @@ def load_keras_model(file_name):
     with open(file_name, 'rb') as read_file:
         base_pipeline = dill.load(read_file)
 
-    keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+    for step in base_pipeline.named_steps:
+        pipeline_step = base_pipeline.named_steps[step]
+        try:
+            if pipeline_step.model_name[:12] == 'DeepLearning':
 
-    keras_model = load_model(keras_file_name)
+                # This is where we saved the random_name for this model
+                random_name = pipeline_step.model
+                # Load the Keras model here
+                keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
+                model = load_model(keras_file_name)
+                # model = model_name_map[random_name]
 
-    base_pipeline.named_steps['final_model'].model = keras_model
+                # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
+                pipeline_step.model = model
+        except AttributeError:
+            pass
+
+
+    # keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+
+    # keras_model = load_model(keras_file_name)
+
+    # base_pipeline.named_steps['final_model'].model = keras_model
 
     return base_pipeline
 
