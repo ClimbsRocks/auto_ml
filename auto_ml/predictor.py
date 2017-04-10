@@ -684,7 +684,8 @@ class Predictor(object):
 
                 grid_search_params = self.create_gs_params(model_name)
                 # Adding model name to gs params just to help with logging
-                grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
+                grid_search_params['model_name'] = model_name
+                # grid_search_params['model'] = [utils_models.get_model_from_name(model_name)]
                 self.grid_search_params = grid_search_params
 
                 gscv_results = self.fit_grid_search(X_df, y, grid_search_params, feature_learning=feature_learning)
@@ -1024,7 +1025,11 @@ class Predictor(object):
         for step in self.trained_pipeline.named_steps:
             pipeline_step = self.trained_pipeline.named_steps[step]
             try:
-                if pipeline_step['model_name'][:12] == 'DeepLearning':
+                print('pipeline_step')
+                print(pipeline_step)
+                print('pipeline_step.model_name')
+                print(pipeline_step.model_name)
+                if pipeline_step.model_name[:12] == 'DeepLearning':
                     used_deep_learning = True
 
                     random_name = str(random.random())
@@ -1033,10 +1038,12 @@ class Predictor(object):
 
                     # Save a reference to this so we can put it back in place later
                     keras_wrapper = pipeline_step.model
+                    print('keras_wrapper')
+                    print(keras_wrapper)
                     model_name_map[random_name] = keras_wrapper
 
                     # Save the Keras model (which we have to extract from the sklearn wrapper)
-                    pipeline_step.model.model.save(keras_file_name)
+                    pipeline_step.model.save(keras_file_name)
 
                     # Now that we've saved the keras model, set that spot in the pipeline to our random name, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
                     # Using the random_name allows us to find the right model later if we have several (or several thousand) models to put back into place in the pipeline when we save this later
@@ -1046,25 +1053,29 @@ class Predictor(object):
                     # save this model to a .h5 file following a consistent and predictable naming schema
                         # Probably using the step name we're iterating through
                     # remove this model property from the trained pipeline
-            except KeyError:
+            except AttributeError as e:
+                print('AttributeError while trying to see if we should save the keras model')
+                print(e)
                 pass
 
         if used_deep_learning == True:
+            # Save the rest of the pipeline without the deep learning models
             with open(file_name, 'wb') as open_file_name:
                 dill.dump(self.trained_pipeline, open_file_name)
 
+            # Now add the deep learning models back in so we can use the pipeline that's already loaded in memory, rather than having to load back in the saved pipeline
             for step in self.trained_pipeline.named_steps:
                 pipeline_step = self.trained_pipeline.named_steps[step]
                 try:
-                    if pipeline_step['model_name'][:12] == 'DeepLearning':
+                    if pipeline_step.model_name[:12] == 'DeepLearning':
 
                         # This is where we saved the random_name for this model
-                        model_name = pipeline_step.model
-                        model = model_name_map[model_name]
+                        random_name = pipeline_step.model
+                        model = model_name_map[random_name]
 
                         # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
                         pipeline_step.model = model
-                except TypeError:
+                except AttributeError:
                     pass
 
             # Save the whole pipeline
