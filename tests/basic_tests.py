@@ -339,7 +339,7 @@ def test_linear_model_analytics_classification(model_name=None):
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', model_names=model_name)
+    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier')
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 

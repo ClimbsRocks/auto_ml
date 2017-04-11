@@ -109,7 +109,7 @@ def user_input_func_classification(model_name=None):
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
-    def age_bucketing(df):
+    def age_bucketing(data):
 
         def define_buckets(age):
             if age <= 17:
@@ -121,9 +121,12 @@ def user_input_func_classification(model_name=None):
             else:
                 return 'over_60'
 
-        df['age_bucket'] = df.age.apply(define_buckets)
+        if isinstance(data, pd.DataFrame):
+            data['age_bucket'] = data.age.apply(define_buckets)
+        else:
+            data['age_bucket'] = define_buckets(data['age'])
 
-        return df
+        return data
 
     column_descriptions = {
         'survived': 'output'
