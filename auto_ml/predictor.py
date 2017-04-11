@@ -372,7 +372,8 @@ class Predictor(object):
             else:
                 self.perform_feature_selection = True
 
-        if self.model_names is not None:
+        # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
+        if self.model_names is not None and not (len(self.model_names) == 1 and self.model_names[0] is None):
             estimator_names = self.model_names
         else:
             estimator_names = self._get_estimator_names()

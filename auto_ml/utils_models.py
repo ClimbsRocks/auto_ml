@@ -23,13 +23,14 @@ try:
 except ImportError:
     pass
 
+# Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
 keras_installed = False
 try:
     # Suppress some level of logs
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    import tensorflow as tf
-    tf.logging.set_verbosity(tf.logging.INFO)
+    from tensorflow import logging
+    logging.set_verbosity(logging.INFO)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.layers.advanced_activations import LeakyReLU, PReLU
@@ -52,7 +53,7 @@ def get_model_from_name(model_name, training_params=None):
     epochs = 250
     if 'is_test_suite' in sys.argv:
         print('Heard that this is the test suite. Limiting epochs to 10, which will increase training speed dramatically at the expense of model accuracy')
-        epochs = 10
+        epochs = 85
 
     all_model_params = {
         'LogisticRegression': {'n_jobs': -2},
@@ -139,7 +140,11 @@ def get_model_from_name(model_name, training_params=None):
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
         model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model)
 
-    model_without_params = model_map[model_name]
+    try:
+        model_without_params = model_map[model_name]
+    except KeyError as e:
+        print('It appears you are trying to use a library that is not available when we try to import it, or using a value for model_names that we do not recognize')
+        raise(e)
     model_with_params = model_without_params.set_params(**model_params)
 
     return model_with_params
