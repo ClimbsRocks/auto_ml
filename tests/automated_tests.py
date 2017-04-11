@@ -58,6 +58,7 @@ training_parameters = {
 
 
 import classifiers as classifier_tests
+import regressors as regressor_tests
 # import regressor_tests
 # Make this an OrderedDict so that we run the tests in a consistent order
 test_names = OrderedDict([
@@ -68,7 +69,12 @@ test_names = OrderedDict([
     ('user_input_func_classification', classifier_tests.user_input_func_classification),
     ('binary_classification_predict_on_Predictor_instance', classifier_tests.binary_classification_predict_on_Predictor_instance),
     ('multilabel_classification_predict_on_Predictor_instance', classifier_tests.multilabel_classification_predict_on_Predictor_instance),
-    ('binary_classification_predict_proba_on_Predictor_instance', classifier_tests.binary_classification_predict_proba_on_Predictor_instance)
+    ('binary_classification_predict_proba_on_Predictor_instance', classifier_tests.binary_classification_predict_proba_on_Predictor_instance),
+
+    ('perform_feature_selection_true_regression', regressor_tests.perform_feature_selection_true_regression),
+    ('perform_feature_selection_false_regression', regressor_tests.perform_feature_selection_false_regression),
+    ('perform_feature_scaling_true_regression', regressor_tests.perform_feature_scaling_true_regression),
+    ('perform_feature_scaling_false_regression', regressor_tests.perform_feature_scaling_false_regression)
 ])
 
 expected_scores = {
@@ -84,6 +90,9 @@ def test_generator():
             test_model_name = model_name
             if '_classification' in name and model_name is not None:
                 test_model_name = model_name + 'Classifier'
+            elif '_regression' in name and model_name is not None:
+                test_model_name = model_name + 'Regressor'
+
             test.description = str(test_model_name) + '_' + name
             yield test, test_model_name
 

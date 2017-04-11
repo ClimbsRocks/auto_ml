@@ -1,0 +1,121 @@
+import os
+import sys
+sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+
+from auto_ml import Predictor
+
+import dill
+from nose.tools import assert_equal, assert_not_equal, with_setup
+import numpy as np
+from sklearn.model_selection import train_test_split
+
+import utils_testing as utils
+
+
+
+def perform_feature_selection_true_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_selection=True, model_names=model_name)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    # Bumping this up since without these features our score drops
+    lower_bound = -4.0
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -7.25
+    if model_name == 'LGBMRegressor':
+        lower_bound = -4.95
+
+
+    assert lower_bound < test_score < -2.8
+
+
+def perform_feature_selection_false_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_selection=False, model_names=model_name)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    lower_bound = -3.2
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -6.65
+    if model_name == 'LGBMRegressor':
+        lower_bound = -4.95
+
+
+    assert lower_bound < test_score < -2.8
+
+def perform_feature_scaling_true_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_scaling=True)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    assert -3.2 < test_score < -2.8
+
+def perform_feature_scaling_false_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=model_name)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    lower_bound = -3.2
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -7.85
+    if model_name == 'LGBMRegressor':
+        lower_bound = -4.95
+
+    assert lower_bound < test_score < -2.8
+
