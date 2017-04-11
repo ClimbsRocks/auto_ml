@@ -176,10 +176,8 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            if xgb_installed:
-                base_estimators = ['XGBRegressor']
-            else:
-                base_estimators = ['GradientBoostingRegressor']
+
+            base_estimators = ['GradientBoostingRegressor']
 
             if self.compare_all_models != True:
                 return base_estimators
@@ -192,10 +190,9 @@ class Predictor(object):
                 return base_estimators
 
         elif self.type_of_estimator == 'classifier':
-            if xgb_installed:
-                base_estimators = ['XGBClassifier']
-            else:
-                base_estimators = ['GradientBoostingClassifier']
+
+            base_estimators = ['GradientBoostingClassifier']
+
             if self.compare_all_models != True:
                 return base_estimators
             else:
@@ -372,7 +369,8 @@ class Predictor(object):
             else:
                 self.perform_feature_selection = True
 
-        if self.model_names is not None:
+        # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
+        if self.model_names is not None and not (len(self.model_names) == 1 and self.model_names[0] is None):
             estimator_names = self.model_names
         else:
             estimator_names = self._get_estimator_names()

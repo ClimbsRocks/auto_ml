@@ -29,6 +29,14 @@ install:
   # Move back to the directory we want to run our tests in, out of the LightGBM build directories
   - cd $TEST_DIR
 
+  # Install XGBoost
+  - git clone --recursive https://github.com/dmlc/xgboost
+  - cd xgboost; make -j4
+  - cd python-package
+  - python setup.py install
+  - cd $TEST_DIR
+
+
   - pip install coveralls
   - pip install -r requirements.txt
   - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
