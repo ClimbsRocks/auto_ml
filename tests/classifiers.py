@@ -6,6 +6,7 @@ from auto_ml import Predictor
 
 import dill
 import numpy as np
+import pandas as pd
 from nose.tools import assert_equal, assert_not_equal, with_setup
 from sklearn.metrics import accuracy_score
 from sklearn.model_selection import train_test_split
