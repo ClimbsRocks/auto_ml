@@ -13,8 +13,8 @@ try:
     # Suppress some level of logs
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    # import tensorflow as tf
-    # tf.logging.set_verbosity(tf.logging.INFO)
+    import tensorflow as tf
+    tf.logging.set_verbosity(tf.logging.INFO)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.layers.advanced_activations import LeakyReLU, PReLU
@@ -127,12 +127,12 @@ def get_model_from_name(model_name, training_params=None):
     }
 
     if xgb_installed:
-        model_map['XGBClassifier'] = xgb.XGBClassifier()
-        model_map['XGBRegressor'] = xgb.XGBRegressor()
+        model_map['XGBClassifier'] = XGBClassifier()
+        model_map['XGBRegressor'] = XGBRegressor()
 
     if lgb_installed:
-        model_map['LGBMRegressor'] = lgb.LGBMRegressor()
-        model_map['LGBMClassifier'] = lgb.LGBMClassifier()
+        model_map['LGBMRegressor'] = LGBMRegressor()
+        model_map['LGBMClassifier'] = LGBMClassifier()
 
     if keras_installed:
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
@@ -197,9 +197,9 @@ def get_name_from_model(model):
         return 'MiniBatchKMeans'
 
     if xgb_installed:
-        if isinstance(model, xgb.XGBClassifier):
+        if isinstance(model, XGBClassifier):
             return 'XGBClassifier'
-        if isinstance(model, xgb.XGBRegressor):
+        if isinstance(model, XGBRegressor):
             return 'XGBRegressor'
 
     if keras_installed:
@@ -209,9 +209,9 @@ def get_name_from_model(model):
             return 'DeepLearningClassifier'
 
     if lgb_installed:
-        if isinstance(model, lgb.LGBMClassifier):
+        if isinstance(model, LGBMClassifier):
             return 'LGBMClassifier'
-        if isinstance(model, lgb.LGBMRegressor):
+        if isinstance(model, LGBMRegressor):
             return 'LGBMRegressor'
 
 # Hyperparameter search spaces for each model

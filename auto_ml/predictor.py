@@ -578,7 +578,7 @@ class Predictor(object):
         if isinstance(model, list):
             model = model[0]
 
-        if len(model) == 1:
+        if len(gs_params['model']) == 1:
             # Delete this so it doesn't show up in our logging
             del gs_params['model']
         model_name = utils_models.get_name_from_model(model)
@@ -1047,7 +1047,11 @@ class Predictor(object):
                     model_name_map[random_name] = keras_wrapper
 
                     # Save the Keras model (which we have to extract from the sklearn wrapper)
-                    pipeline_step.model.save(keras_file_name)
+                    try:
+                        pipeline_step.model.save(keras_file_name)
+                    except AttributeError as e:
+                        # I'm not entirely clear why, but sometimes we need to access the ".model" property within a KerasRegressor or KerasClassifier, and sometimes we don't
+                        pipeline_step.model.model.save(keras_file_name)
 
                     # Now that we've saved the keras model, set that spot in the pipeline to our random name, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
                     # Using the random_name allows us to find the right model later if we have several (or several thousand) models to put back into place in the pipeline when we save this later
