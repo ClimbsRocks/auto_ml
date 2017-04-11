@@ -497,7 +497,7 @@ def load_keras_model(file_name):
 
                 # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
                 pipeline_step.model = model
-        except AttributeError:
+        except AttributeError as e:
             pass
 
 
