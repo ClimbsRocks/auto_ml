@@ -8,6 +8,21 @@ from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, 
 
 from sklearn.cluster import MiniBatchKMeans
 
+xgb_installed = False
+try:
+    from xgboost import XGBClassifier, XGBRegressor
+    # import xgboost as xgb
+    xgb_installed = True
+except ImportError:
+    pass
+
+lgb_installed = False
+try:
+    from lightgbm import LGBMRegressor, LGBMClassifier
+    lgb_installed = True
+except ImportError:
+    pass
+
 keras_installed = False
 try:
     # Suppress some level of logs
@@ -29,20 +44,6 @@ except ImportError as e:
 from auto_ml import utils
 
 
-xgb_installed = False
-try:
-    from xgboost import XGBClassifier, XGBRegressor
-    # import xgboost as xgb
-    xgb_installed = True
-except ImportError:
-    pass
-
-lgb_installed = False
-try:
-    from lightgbm import LGBMRegressor, LGBMClassifier
-    lgb_installed = True
-except ImportError:
-    pass
 
 
 def get_model_from_name(model_name, training_params=None):
