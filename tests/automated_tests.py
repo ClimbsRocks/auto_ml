@@ -57,34 +57,19 @@ training_parameters = {
     # This file has a dictionary mapping from test_name to the test definition
 
 
-import api_coverage_tests_classifiers as classifier_tests
+import classifiers as classifier_tests
 # import regressor_tests
 # Make this an OrderedDict so that we run the tests in a consistent order
 test_names = OrderedDict([
-    # 'test_optimize_final_model_classification': classifier_tests.test_optimize_final_model_classification
-    ('test_perform_feature_selection_true_classification', classifier_tests.test_perform_feature_selection_true_classification),
-    ('test_perform_feature_selection_false_classification', classifier_tests.test_perform_feature_selection_false_classification),
-    ('test_perform_feature_scaling_true_classification', classifier_tests.test_perform_feature_scaling_true_classification),
-    ('test_perform_feature_scaling_false_classification', classifier_tests.test_perform_feature_scaling_false_classification),
-    # , 'test_compare_all_models_classification': classifier_tests.test_compare_all_models_classification
-    # , 'test_pass_in_list_of_dictionaries_train_classification': classifier_tests.test_pass_in_list_of_dictionaries_train_classification
-    # , 'test_pass_in_list_of_dictionaries_predict_classification': classifier_tests.test_pass_in_list_of_dictionaries_predict_classification
-    # , 'test_include_bad_y_vals_train_classification': classifier_tests.test_include_bad_y_vals_train_classification
-    # , 'test_include_bad_y_vals_predict_classification': classifier_tests.test_include_bad_y_vals_predict_classification
-    # , 'test_list_of_single_model_name_classification': classifier_tests.test_list_of_single_model_name_classification
-    ('test_user_input_func_classification', classifier_tests.test_user_input_func_classification),
-    ('test_binary_classification_predict_on_Predictor_instance', classifier_tests.test_binary_classification_predict_on_Predictor_instance),
-    ('test_multilabel_classification_predict_on_Predictor_instance', classifier_tests.test_multilabel_classification_predict_on_Predictor_instance),
-    ('test_binary_classification_predict_proba_on_Predictor_instance', classifier_tests.test_binary_classification_predict_proba_on_Predictor_instance)
+    ('perform_feature_selection_true_classification', classifier_tests.perform_feature_selection_true_classification),
+    ('perform_feature_selection_false_classification', classifier_tests.perform_feature_selection_false_classification),
+    ('perform_feature_scaling_true_classification', classifier_tests.perform_feature_scaling_true_classification),
+    ('perform_feature_scaling_false_classification', classifier_tests.perform_feature_scaling_false_classification),
+    ('user_input_func_classification', classifier_tests.user_input_func_classification),
+    ('binary_classification_predict_on_Predictor_instance', classifier_tests.binary_classification_predict_on_Predictor_instance),
+    ('multilabel_classification_predict_on_Predictor_instance', classifier_tests.multilabel_classification_predict_on_Predictor_instance),
+    ('binary_classification_predict_proba_on_Predictor_instance', classifier_tests.binary_classification_predict_proba_on_Predictor_instance)
 ])
-
-# Test to move to singles:
-# test_compare_all_models_classification
-# test_pass_in_list_of_dictionaries_train_classification
-# test_pass_in_list_of_dictionaries_predict_classification
-# test_include_bad_y_vals_train_classification
-# test_include_bad_y_vals_predict_classification
-# test_list_of_single_model_name_classification
 
 expected_scores = {
     'test_name': {
