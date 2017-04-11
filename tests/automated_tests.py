@@ -32,6 +32,15 @@ import utils_testing as utils
     # Then we'll have all of our API coverage tests laid out, and run the entire group once for each training_params_to_test we encounter
 
 
+# Remaining TODOs:
+# 1. make this work for regressors
+# 2. make sure we're not running tests multiple times
+# 3. Figure out which tests only need to be run once, and reorganize them into the appropriate file
+# 4. go through all our model name files, delete repeated tests, and copy in any missing tests
+# 5. handle train_categorical_ensemble
+# 6. Update upper and lower bounds programmatically
+
+
 training_parameters = {
     'model_names': [None, 'GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
     # , 'train_categorical_ensemble': [True, False]

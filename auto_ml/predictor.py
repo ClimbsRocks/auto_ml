@@ -176,10 +176,8 @@ class Predictor(object):
 
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
-            if xgb_installed:
-                base_estimators = ['XGBRegressor']
-            else:
-                base_estimators = ['GradientBoostingRegressor']
+
+            base_estimators = ['GradientBoostingRegressor']
 
             if self.compare_all_models != True:
                 return base_estimators
@@ -192,10 +190,9 @@ class Predictor(object):
                 return base_estimators
 
         elif self.type_of_estimator == 'classifier':
-            if xgb_installed:
-                base_estimators = ['XGBClassifier']
-            else:
-                base_estimators = ['GradientBoostingClassifier']
+
+            base_estimators = ['GradientBoostingClassifier']
+
             if self.compare_all_models != True:
                 return base_estimators
             else:
