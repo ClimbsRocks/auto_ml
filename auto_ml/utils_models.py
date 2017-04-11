@@ -31,14 +31,15 @@ from auto_ml import utils
 
 xgb_installed = False
 try:
-    import xgboost as xgb
+    from xgboost import XGBClassifier, XGBRegressor
+    # import xgboost as xgb
     xgb_installed = True
 except ImportError:
     pass
 
 lgb_installed = False
 try:
-    import lightgbm as lgb
+    from lightgbm import LGBMRegressor, LGBMClassifier
     lgb_installed = True
 except ImportError:
     pass
