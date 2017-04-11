@@ -13,8 +13,8 @@ try:
     # Suppress some level of logs
     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    import tensorflow as tf
-    tf.logging.set_verbosity(tf.logging.INFO)
+    # import tensorflow as tf
+    # tf.logging.set_verbosity(tf.logging.INFO)
     from keras.constraints import maxnorm
     from keras.layers import Dense, Dropout
     from keras.layers.advanced_activations import LeakyReLU, PReLU
