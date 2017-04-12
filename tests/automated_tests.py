@@ -32,6 +32,7 @@ test_names = OrderedDict([
     ('multilabel_classification_predict_on_Predictor_instance', classifier_tests.multilabel_classification_predict_on_Predictor_instance),
     ('binary_classification_predict_proba_on_Predictor_instance', classifier_tests.binary_classification_predict_proba_on_Predictor_instance),
     ('getting_single_predictions_classification', classifier_tests.getting_single_predictions_classification),
+    ('feature_learning_getting_single_predictions_classification', classifier_tests.feature_learning_getting_single_predictions_classification),
     ('getting_single_predictions_nlp_date_multilabel_classification', classifier_tests.getting_single_predictions_nlp_date_multilabel_classification),
 
     ('optimize_final_model_regression', regressor_tests.optimize_final_model_regression),
@@ -40,17 +41,18 @@ test_names = OrderedDict([
     ('perform_feature_scaling_true_regression', regressor_tests.perform_feature_scaling_true_regression),
     ('perform_feature_scaling_false_regression', regressor_tests.perform_feature_scaling_false_regression),
     ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression)
+    ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression)
 ])
 
 
 def test_generator():
     for model_name in training_parameters['model_names']:
-        for name, test in test_names.items():
+        for test_name, test in test_names.items():
             test_model_name = model_name
-            if '_classification' in name and model_name is not None:
+            if '_classification' in test_name and model_name is not None:
                 test_model_name = model_name + 'Classifier'
-            elif '_regression' in name and model_name is not None:
+            elif '_regression' in test_name and model_name is not None:
                 test_model_name = model_name + 'Regressor'
 
-            test.description = str(test_model_name) + '_' + name
+            test.description = str(test_model_name) + '_' + test_name
             yield test, test_model_name

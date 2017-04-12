@@ -1030,10 +1030,6 @@ class Predictor(object):
         for step in self.trained_pipeline.named_steps:
             pipeline_step = self.trained_pipeline.named_steps[step]
             try:
-                print('pipeline_step')
-                print(pipeline_step)
-                print('pipeline_step.model_name')
-                print(pipeline_step.model_name)
                 if pipeline_step.model_name[:12] == 'DeepLearning':
                     used_deep_learning = True
 
@@ -1043,8 +1039,6 @@ class Predictor(object):
 
                     # Save a reference to this so we can put it back in place later
                     keras_wrapper = pipeline_step.model
-                    print('keras_wrapper')
-                    print(keras_wrapper)
                     model_name_map[random_name] = keras_wrapper
 
                     # Save the Keras model (which we have to extract from the sklearn wrapper)
@@ -1063,8 +1057,6 @@ class Predictor(object):
                         # Probably using the step name we're iterating through
                     # remove this model property from the trained pipeline
             except AttributeError as e:
-                print('AttributeError while trying to see if we should save the keras model')
-                print(e)
                 pass
 
         if used_deep_learning == True:

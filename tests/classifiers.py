@@ -354,6 +354,7 @@ def getting_single_predictions_classification(model_name=None):
     assert lower_bound < second_score < -0.17
 
 
+
 def getting_single_predictions_nlp_date_multilabel_classification(model_name=None):
     # auto_ml does not support multilabel classification for deep learning at the moment
     if model_name == 'DeepLearningClassifier':
@@ -446,4 +447,94 @@ def getting_single_predictions_nlp_date_multilabel_classification(model_name=Non
     # Make sure our score is good, but not unreasonably good
     assert lower_bound < second_score < 0.79
 
+
+def feature_learning_getting_single_predictions_classification(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    # NOTE: this is bad practice to pass in our same training set as our fl_data set, but we don't have enough data to do it any other way
+    df_titanic_train, fl_data = train_test_split(df_titanic_train, test_size=0.2)
+    ml_predictor.train(df_titanic_train, model_names=model_name, feature_learning=True, fl_data=df_titanic_train.copy())
+
+    file_name = ml_predictor.save(str(random.random()))
+
+    from auto_ml.utils_models import load_keras_model
+
+    saved_ml_pipeline = load_keras_model(file_name)
+
+    os.remove(file_name)
+
+    df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
+
+    # 1. make sure the accuracy is the same
+
+    predictions = []
+    for row in df_titanic_test_dictionaries:
+        predictions.append(saved_ml_pipeline.predict_proba(row)[1])
+
+    print('predictions')
+    print(predictions)
+
+    first_score = utils.calculate_brier_score_loss(df_titanic_test.survived, predictions)
+    print('first_score')
+    print(first_score)
+    # Make sure our score is good, but not unreasonably good
+
+    lower_bound = -0.215
+    if model_name == 'DeepLearningClassifier':
+        lower_bound = -0.25
+    if model_name == 'GradientBoostingClassifier' or model_name is None:
+        lower_bound = -0.23
+    if model_name == 'LGBMClassifier':
+        lower_bound = -0.221
+    if model_name == 'XGBClassifier':
+        lower_bound = -0.235
+
+    assert lower_bound < first_score < -0.17
+
+    # 2. make sure the speed is reasonable (do it a few extra times)
+    data_length = len(df_titanic_test_dictionaries)
+    start_time = datetime.datetime.now()
+    for idx in range(1000):
+        row_num = idx % data_length
+        saved_ml_pipeline.predict(df_titanic_test_dictionaries[row_num])
+    end_time = datetime.datetime.now()
+    duration = end_time - start_time
+
+    print('duration.total_seconds()')
+    print(duration.total_seconds())
+
+    # It's very difficult to set a benchmark for speed that will work across all machines.
+    # On my 2013 bottom of the line 15" MacBook Pro, this runs in about 0.8 seconds for 1000 predictions
+    # That's about 1 millisecond per prediction
+    # Assuming we might be running on a test box that's pretty weak, multiply by 3
+    # Also make sure we're not running unreasonably quickly
+    assert 0.2 < duration.total_seconds() < 10
+
+
+    # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
+
+    predictions = []
+    for row in df_titanic_test_dictionaries:
+        predictions.append(saved_ml_pipeline.predict_proba(row)[1])
+
+    print('predictions')
+    print(predictions)
+    print('df_titanic_test_dictionaries')
+    print(df_titanic_test_dictionaries)
+    second_score = utils.calculate_brier_score_loss(df_titanic_test.survived, predictions)
+    print('second_score')
+    print(second_score)
+    # Make sure our score is good, but not unreasonably good
+
+    assert lower_bound < second_score < -0.17
 
