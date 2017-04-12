@@ -87,7 +87,18 @@ def categorical_ensembling_classification(model_name=None):
     print('test_score')
     print(test_score)
 
-    assert -0.225 < test_score < -0.17
+    lower_bound = -0.215
+
+    if model_name == 'DeepLearningClassifier':
+        lower_bound = -0.24
+    if model_name == 'XGBClassifier':
+        lower_bound = -0.23
+    if model_name == 'LGBMClassifier':
+        lower_bound = -0.22
+    if model_name == 'GradientBoostingClassifier':
+        lower_bound = -0.23
+
+    assert lower_bound < test_score < -0.17
 
 
 def perform_feature_selection_false_classification(model_name=None):

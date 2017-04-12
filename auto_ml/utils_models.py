@@ -51,7 +51,7 @@ def get_model_from_name(model_name, training_params=None):
 
     # For Keras
     epochs = 250
-    if os.environ.get('is_test_suite', 0) == 'True':
+    if os.environ.get('is_test_suite', 0) == 'True' and model_name[:12] == 'DeepLearning':
         print('Heard that this is the test suite. Limiting epochs to 10, which will increase training speed dramatically at the expense of model accuracy')
         epochs = 85
 
