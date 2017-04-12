@@ -313,7 +313,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if isinstance(prediction, np.ndarray):
             prediction = prediction.tolist()
             if isinstance(prediction, float) or isinstance(prediction, int) or isinstance(prediction, str):
-                return prediction
 
         if len(prediction) == 1:
             return prediction[0]
