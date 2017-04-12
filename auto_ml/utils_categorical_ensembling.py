@@ -47,6 +47,8 @@ class CategoricalEnsembler(object):
         predictions = []
         for row in data:
             category = row[self.categorical_column]
+            if str(category) == 'nan':
+                category = 'nan'
             model = self.trained_models[category]
             transformed_row = self.transformation_pipeline.transform(row)
             prediction = model.predict_proba(transformed_row)
@@ -56,3 +58,16 @@ class CategoricalEnsembler(object):
             return predictions[0]
         else:
             return predictions
+
+
+# Remove nans from our categorical ensemble column
+def clean_categorical_definitions(df, categorical_column):
+    sum_of_nan_values = df[categorical_column].isnull().sum().sum()
+    if sum_of_nan_values > 0:
+        print('Found ' + str(sum_of_nan_values) + ' nan values in the categorical_column.')
+        print('We will default to making these values a string "nan" instead, since that can be used as a key')
+        print('If this is not the behavior you want, consider changing these categorical_column values yourself')
+
+        df[categorical_column].fillna('nan', inplace=True)
+
+    return df

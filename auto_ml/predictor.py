@@ -744,8 +744,10 @@ class Predictor(object):
 
         self.set_params_and_defaults(**kwargs)
 
+
         X_df, y, estimator_names = self._clean_data_and_prepare_for_training(data, self.scoring)
         X_df = X_df.reset_index(drop=True)
+        X_df = utils_categorical_ensembling.clean_categorical_definitions(X_df, categorical_column)
 
         print('Now fitting a single feature transformation pipeline that will be shared by all of our categorical estimators for the sake of space efficiency when saving the model')
         X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
@@ -769,7 +771,19 @@ class Predictor(object):
             relevant_X = self.transformation_pipeline.transform(relevant_X)
 
 
-            category_trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, relevant_X, relevant_y)
+            try:
+                category_trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, relevant_X, relevant_y)
+            except ValueError as e:
+                if 'BinomialDeviance requires 2 classes' in str(e) or 'BinomialDeviance requires 2 classes' in e or 'BinomialDeviance requires 2 classes' in e.get('message', None):
+                    print('Found a category with only one label')
+                    print('category: ' + str(category) + ', label: ' + str(relevant_y[0]))
+                    print('We will put in place a weak estimator trained on only this category/single-label, but consider some feature engineering work to combine this with a different category, or remove it altogether and use the default category when getting predictions for this category.')
+                    # This handles the edge case of having only one label for a given category
+                    # In that case, some models are perfectly fine being 100% correct, while others freak out
+                    # RidgeClassifier seems ok at just picking the same value each time. And using it instead of a custom function means we don't need to add in any custom logic for predict_proba or anything
+                    category_trained_final_model = self.train_ml_estimator(['RidgeClassifier'], self._scorer, relevant_X, relevant_y)
+                else:
+                    raise
 
             self.trained_category_models[category] = category_trained_final_model
 
@@ -792,7 +806,10 @@ class Predictor(object):
             pool.restart()
         except AssertionError as e:
             pass
-        results = list(pool.map(train_one_categorical_model, unique_categories))
+        if os.environ.get('is_test_suite', False) == 'True':
+            results = list(map(train_one_categorical_model, unique_categories))
+        else:
+            results = list(pool.map(train_one_categorical_model, unique_categories))
 
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()

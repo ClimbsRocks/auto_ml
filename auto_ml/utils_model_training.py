@@ -1,5 +1,6 @@
 import os
 
+import numpy as np
 import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -298,6 +299,22 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         prediction = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
         # It makes a cleaner interface just to get just the single prediction back, rather than a list with the prediction hidden inside.
+        # try:
+        #     len(prediction)
+        # except TypeError as e:
+        #     print('Heard an error')
+        #     print('Here is our prediction')
+        #     print(prediction)
+        #     print(type(prediction))
+        #     print('X')
+        #     print(X)
+        #     raise(e)
+
+        if isinstance(prediction, np.ndarray):
+            prediction = prediction.tolist()
+            if isinstance(prediction, float) or isinstance(prediction, int) or isinstance(prediction, str):
+                return prediction
+
         if len(prediction) == 1:
             return prediction[0]
         else:
@@ -314,12 +331,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         # print('predicted_features.shape')
         # print(predicted_features.shape)
 
-        try:
-            for prediction in predicted_features[:10]:
-                print(list(prediction))
-                print('prediction in feature_learning')
-        except TypeError:
-            pass
 
         if scipy.sparse.issparse(X):
             X = scipy.sparse.hstack([X, predicted_features])
