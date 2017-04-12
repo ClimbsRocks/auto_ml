@@ -774,7 +774,11 @@ class Predictor(object):
             try:
                 category_trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, relevant_X, relevant_y)
             except ValueError as e:
-                if 'BinomialDeviance requires 2 classes' in e.message:
+                print(e)
+                print(type(e))
+                for thing in e:
+                    print(thing)
+                if 'BinomialDeviance requires 2 classes' in str(e) or 'BinomialDeviance requires 2 classes' in e.get('message', None):
                     print('Found a category with only one label')
                     print('category: ' + str(category) + ', label: ' + str(relevant_y[0]))
                     print('We will put in place a weak estimator trained on only this category/single-label, but consider some feature engineering work to combine this with a different category, or remove it altogether and use the default category when getting predictions for this category.')
