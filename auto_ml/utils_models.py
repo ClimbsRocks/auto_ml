@@ -51,7 +51,7 @@ def get_model_from_name(model_name, training_params=None):
 
     # For Keras
     epochs = 250
-    if 'is_test_suite' in sys.argv:
+    if os.environ.get('is_test_suite', 0) == 'True':
         print('Heard that this is the test suite. Limiting epochs to 10, which will increase training speed dramatically at the expense of model accuracy')
         epochs = 85
 
@@ -467,7 +467,7 @@ def get_search_params(model_name):
 
     # Some of these are super expensive to compute. So if we're running this in a test suite, let's make sure the structure works, but reduce the compute time
     params = grid_search_params[model_name]
-    if 'is_test_suite' in sys.argv:
+    if os.environ.get('is_test_suite', 0) == 'True':
         simplified_params = {}
         for k, v in params.items():
             # Grab the first two items for each thing we want to test

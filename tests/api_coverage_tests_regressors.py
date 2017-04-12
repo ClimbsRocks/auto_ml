@@ -157,28 +157,6 @@ def test_compare_all_models_regression():
 #     assert -3.2 < test_score < -2.8
 
 
-def test_all_algos_regression():
-    # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
-    np.random.seed(0)
-
-    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
-
-    column_descriptions = {
-        'MEDV': 'output'
-        , 'CHAS': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
-
-    ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor'])
-
-    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
-
-    print('test_score')
-    print(test_score)
-
-    assert -3.25 < test_score < -2.8
-
 # If the user passes in X_test and y_test, we will use those to determine the best model, rather than CV scores
 # def test_select_from_multiple_regression_models_using_X_test_and_y_test():
 #     np.random.seed(0)
