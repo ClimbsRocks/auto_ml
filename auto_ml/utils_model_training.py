@@ -310,9 +310,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         #     print(X)
         #     raise(e)
 
-        if isinstance(prediction, int) or isinstance(prediction, str) or isinstance(prediction, float):
-            return prediction
-        elif (isinstance(prediction, np.ndarray) and prediction.shape[0] == 1) or len(prediction) == 1:
+        if self.model_name[:12] == 'DeepLearning' or isinstance(prediction, np.ndarray):
+            prediction = list(prediction)
+
+        if len(prediction) == 1:
             return prediction[0]
         else:
             return prediction
