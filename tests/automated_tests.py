@@ -22,26 +22,28 @@ training_parameters = {
 
 # Make this an OrderedDict so that we run the tests in a consistent order
 test_names = OrderedDict([
-    ('optimize_final_model_classification', classifier_tests.optimize_final_model_classification),
-    ('perform_feature_selection_true_classification', classifier_tests.perform_feature_selection_true_classification),
-    ('perform_feature_selection_false_classification', classifier_tests.perform_feature_selection_false_classification),
-    ('perform_feature_scaling_true_classification', classifier_tests.perform_feature_scaling_true_classification),
-    ('perform_feature_scaling_false_classification', classifier_tests.perform_feature_scaling_false_classification),
-    ('user_input_func_classification', classifier_tests.user_input_func_classification),
-    ('binary_classification_predict_on_Predictor_instance', classifier_tests.binary_classification_predict_on_Predictor_instance),
-    ('multilabel_classification_predict_on_Predictor_instance', classifier_tests.multilabel_classification_predict_on_Predictor_instance),
-    ('binary_classification_predict_proba_on_Predictor_instance', classifier_tests.binary_classification_predict_proba_on_Predictor_instance),
-    ('getting_single_predictions_classification', classifier_tests.getting_single_predictions_classification),
-    ('feature_learning_getting_single_predictions_classification', classifier_tests.feature_learning_getting_single_predictions_classification),
-    ('getting_single_predictions_nlp_date_multilabel_classification', classifier_tests.getting_single_predictions_nlp_date_multilabel_classification),
+    # ('optimize_final_model_classification', classifier_tests.optimize_final_model_classification),
+    # ('perform_feature_selection_true_classification', classifier_tests.perform_feature_selection_true_classification),
+    # ('perform_feature_selection_false_classification', classifier_tests.perform_feature_selection_false_classification),
+    # ('perform_feature_scaling_true_classification', classifier_tests.perform_feature_scaling_true_classification),
+    # ('perform_feature_scaling_false_classification', classifier_tests.perform_feature_scaling_false_classification),
+    # ('user_input_func_classification', classifier_tests.user_input_func_classification),
+    # ('binary_classification_predict_on_Predictor_instance', classifier_tests.binary_classification_predict_on_Predictor_instance),
+    # ('multilabel_classification_predict_on_Predictor_instance', classifier_tests.multilabel_classification_predict_on_Predictor_instance),
+    # ('binary_classification_predict_proba_on_Predictor_instance', classifier_tests.binary_classification_predict_proba_on_Predictor_instance),
+    # ('getting_single_predictions_classification', classifier_tests.getting_single_predictions_classification),
+    # ('feature_learning_getting_single_predictions_classification', classifier_tests.feature_learning_getting_single_predictions_classification),
+    # ('getting_single_predictions_nlp_date_multilabel_classification', classifier_tests.getting_single_predictions_nlp_date_multilabel_classification),
+    ('categorical_ensembling_classification', classifier_tests.categorical_ensembling_classification),
 
-    ('optimize_final_model_regression', regressor_tests.optimize_final_model_regression),
-    ('perform_feature_selection_true_regression', regressor_tests.perform_feature_selection_true_regression),
-    ('perform_feature_selection_false_regression', regressor_tests.perform_feature_selection_false_regression),
-    ('perform_feature_scaling_true_regression', regressor_tests.perform_feature_scaling_true_regression),
-    ('perform_feature_scaling_false_regression', regressor_tests.perform_feature_scaling_false_regression),
-    ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression),
-    ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression)
+    # ('optimize_final_model_regression', regressor_tests.optimize_final_model_regression),
+    # ('perform_feature_selection_true_regression', regressor_tests.perform_feature_selection_true_regression),
+    # ('perform_feature_selection_false_regression', regressor_tests.perform_feature_selection_false_regression),
+    # ('perform_feature_scaling_true_regression', regressor_tests.perform_feature_scaling_true_regression),
+    # ('perform_feature_scaling_false_regression', regressor_tests.perform_feature_scaling_false_regression),
+    # ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression),
+    # ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression)
+    ('categorical_ensembling_regression', regressor_tests.categorical_ensembling_regression),
 ])
 
 

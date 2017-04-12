@@ -67,6 +67,29 @@ def perform_feature_selection_true_classification(model_name=None):
     assert -0.225 < test_score < -0.17
 
 
+def categorical_ensembling_classification(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train_categorical_ensemble(df_titanic_train, model_names=model_name, categorical_column='embarked')
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.225 < test_score < -0.17
+
+
 def perform_feature_selection_false_classification(model_name=None):
     np.random.seed(0)
 
