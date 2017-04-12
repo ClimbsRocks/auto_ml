@@ -40,7 +40,7 @@ test_names = OrderedDict([
     ('perform_feature_selection_false_regression', regressor_tests.perform_feature_selection_false_regression),
     ('perform_feature_scaling_true_regression', regressor_tests.perform_feature_scaling_true_regression),
     ('perform_feature_scaling_false_regression', regressor_tests.perform_feature_scaling_false_regression),
-    ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression)
+    ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression),
     ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression)
 ])
 
