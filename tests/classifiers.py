@@ -15,6 +15,34 @@ from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
 
+def optimize_final_model_classification(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, optimize_final_model=True, model_names=model_name)
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    # Small sample sizes mean there's a fair bit of noise here
+    lower_bound = -0.215
+
+    if model_name == 'DeepLearningClassifier':
+        lower_bound = -0.23
+
+    assert lower_bound < test_score < -0.17
+
 
 def perform_feature_selection_true_classification(model_name=None):
     np.random.seed(0)

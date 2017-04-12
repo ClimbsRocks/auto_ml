@@ -13,7 +13,34 @@ from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
 
+def optimize_final_model_regression(model_name=None):
+    np.random.seed(0)
 
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, optimize_final_model=True, model_names=model_name)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    # the random seed gets a score of -3.21 on python 3.5
+    # There's a ton of noise here, due to small sample sizes
+    lower_bound = -3.4
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -8.7
+    if model_name == 'LGBMRegressor':
+        lower_bound = -5.5
+
+    assert lower_bound < test_score < -2.8
 
 def perform_feature_selection_true_regression(model_name=None):
     np.random.seed(0)

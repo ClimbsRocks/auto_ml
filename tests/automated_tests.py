@@ -22,6 +22,7 @@ training_parameters = {
 
 # Make this an OrderedDict so that we run the tests in a consistent order
 test_names = OrderedDict([
+    ('optimize_final_model_classification', classifier_tests.optimize_final_model_classification),
     ('perform_feature_selection_true_classification', classifier_tests.perform_feature_selection_true_classification),
     ('perform_feature_selection_false_classification', classifier_tests.perform_feature_selection_false_classification),
     ('perform_feature_scaling_true_classification', classifier_tests.perform_feature_scaling_true_classification),
@@ -33,6 +34,7 @@ test_names = OrderedDict([
     ('getting_single_predictions_classification', classifier_tests.getting_single_predictions_classification),
     ('getting_single_predictions_nlp_date_multilabel_classification', classifier_tests.getting_single_predictions_nlp_date_multilabel_classification),
 
+    ('optimize_final_model_regression', regressor_tests.optimize_final_model_regression),
     ('perform_feature_selection_true_regression', regressor_tests.perform_feature_selection_true_regression),
     ('perform_feature_selection_false_regression', regressor_tests.perform_feature_selection_false_regression),
     ('perform_feature_scaling_true_regression', regressor_tests.perform_feature_scaling_true_regression),
