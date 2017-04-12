@@ -2,7 +2,7 @@ from collections import OrderedDict
 import os
 import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
-sys.argv.append('is_test_suite')
+os.environ['is_test_suite'] = 'True'
 
 import classifiers as classifier_tests
 import regressors as regressor_tests

@@ -589,6 +589,9 @@ class Predictor(object):
         else:
             grid_search_verbose = 0
 
+        n_jobs = -1
+        if os.environ.get('is_test_suite', 0) == 'True':
+            n_jobs = 1
 
         gs = GridSearchCV(
             # Fit on the pipeline.
@@ -597,7 +600,7 @@ class Predictor(object):
             cv=self.cv,
             param_grid=gs_params,
             # Train across all cores.
-            n_jobs=-1,
+            n_jobs=n_jobs,
             # Be verbose (lots of printing).
             verbose=grid_search_verbose,
             # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
