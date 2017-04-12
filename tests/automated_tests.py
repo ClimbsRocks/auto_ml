@@ -10,15 +10,11 @@ import regressors as regressor_tests
 # Remaining TODOs:
 # 3. Figure out which tests only need to be run once, and reorganize them into the appropriate file
 # 5. handle train_categorical_ensemble
-# 6. adjust bounds for categorical_ensemble
 # 7. Make sure categorical_ensembling works with feature_learning!
 
 # Feature TODOs:
-# 1. Remove nans from categorical_column (replace with None?)
-# 2. don't try to use nan as a key. instead, use our default category
 # 3. verify feature_learning passes all the tests
 # 4. add minimum category size as a param (otherwise, just use default- if the user wants to make these their own small category, totally on them)
-# 5. check to make sure a category has more than 1 label if training classifier
 
 
 training_parameters = {
