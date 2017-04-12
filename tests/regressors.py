@@ -299,7 +299,7 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
 
     lower_bound = -3.2
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -8.8
+        lower_bound = -9.0
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
 
