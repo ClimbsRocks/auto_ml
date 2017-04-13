@@ -78,6 +78,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
 
 
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
+
+
     def fit(self, X, y=None):
         """Learn a list of column_name -> indices mappings.
 

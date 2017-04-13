@@ -37,7 +37,7 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
             predicted_labels.append(0)
     print(format(accuracy_score(y_true=actuals, y_pred=predicted_labels) * 100, '.1f') + '%')
 
-    
+
     print('\nHere is a confusion matrix showing predictions and actuals by label')
     #it would make sense to use sklearn's confusion_matrix here but it apparently has no labels
     #took this idea instead from: http://stats.stackexchange.com/a/109015
@@ -204,6 +204,13 @@ class RegressionScorer(object):
         self.scoring_method = scoring_method
 
 
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
+
+
     def score(self, estimator, X, y, took_log_of_y=False, advanced_scoring=False, verbose=2, name=None):
         X, y = utils.drop_missing_y_vals(X, y, output_column=None)
 
@@ -251,6 +258,13 @@ class ClassificationScorer(object):
             self.scoring_func = scoring_method
         else:
             self.scoring_func = scoring_name_function_map[scoring_method]
+
+
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
 
 
     def clean_probas(self, probas):

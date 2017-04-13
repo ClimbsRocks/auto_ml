@@ -19,14 +19,14 @@ import regressors as regressor_tests
 
 training_parameters = {
     'model_names': ['GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
-    # 'model_names': ['DeepLearning']
+    # 'model_names': ['LGBM']
     # , 'train_categorical_ensemble': [True, False]
 }
 
 
 # Make this an OrderedDict so that we run the tests in a consistent order
 test_names = OrderedDict([
-    # ('optimize_final_model_classification', classifier_tests.optimize_final_model_classification),
+    ('optimize_final_model_classification', classifier_tests.optimize_final_model_classification),
     ('getting_single_predictions_classification', classifier_tests.getting_single_predictions_classification),
     ('feature_learning_getting_single_predictions_classification', classifier_tests.feature_learning_getting_single_predictions_classification),
     ('getting_single_predictions_multilabel_classification', classifier_tests.getting_single_predictions_multilabel_classification),

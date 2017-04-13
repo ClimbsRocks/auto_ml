@@ -39,7 +39,7 @@ def optimize_final_model_classification(model_name=None):
     lower_bound = -0.215
 
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.23
+        lower_bound = -0.24
 
     assert lower_bound < test_score < -0.17
 
@@ -70,7 +70,7 @@ def categorical_ensembling_classification(model_name=None):
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.24
     if model_name == 'XGBClassifier':
-        lower_bound = -0.23
+        lower_bound = -0.235
     if model_name == 'LGBMClassifier':
         lower_bound = -0.22
     if model_name == 'GradientBoostingClassifier':
@@ -309,7 +309,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     if model_name == 'LGBMClassifier':
         lower_bound = -0.221
     if model_name == 'XGBClassifier':
-        lower_bound = -0.235
+        lower_bound = -0.24
 
     assert lower_bound < first_score < -0.17
 
@@ -370,11 +370,11 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
 
     file_name = ml_predictor.save(str(random.random()))
 
-    with open(file_name, 'rb') as read_file:
-        saved_ml_pipeline = dill.load(read_file)
-    # from auto_ml.utils_models import load_keras_model
+    # with open(file_name, 'rb') as read_file:
+    #     saved_ml_pipeline = dill.load(read_file)
+    from auto_ml.utils_models import load_ml_model
 
-    # saved_ml_pipeline = load_keras_model(file_name)
+    saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
 
