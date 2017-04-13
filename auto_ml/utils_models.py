@@ -52,8 +52,8 @@ def get_model_from_name(model_name, training_params=None):
     # For Keras
     epochs = 250
     if os.environ.get('is_test_suite', 0) == 'True' and model_name[:12] == 'DeepLearning':
-        print('Heard that this is the test suite. Limiting epochs to 10, which will increase training speed dramatically at the expense of model accuracy')
-        epochs = 85
+        print('Heard that this is the test suite. Limiting number of epochs, which will increase training speed dramatically at the expense of model accuracy')
+        epochs = 30
 
     all_model_params = {
         'LogisticRegression': {'n_jobs': -2},
@@ -476,10 +476,11 @@ def get_search_params(model_name):
 
     return params
 
+def load_ml_model(file_name):
+    from keras.models import load_model as keras_load_model
 
-def load_keras_model(file_name):
-    from keras.models import load_model
-
+    print('file_name')
+    print(file_name)
     with open(file_name, 'rb') as read_file:
         base_pipeline = dill.load(read_file)
 
@@ -492,7 +493,7 @@ def load_keras_model(file_name):
                 random_name = pipeline_step.model
                 # Load the Keras model here
                 keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
-                model = load_model(keras_file_name)
+                model = keras_load_model(keras_file_name)
                 # model = model_name_map[random_name]
 
                 # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
@@ -508,6 +509,9 @@ def load_keras_model(file_name):
     # base_pipeline.named_steps['final_model'].model = keras_model
 
     return base_pipeline
+
+def load_keras_model(file_name):
+    return load_ml_model(file_name)
 
 
 def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False):

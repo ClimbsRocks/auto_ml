@@ -7,6 +7,7 @@ class CategoricalEnsembler(object):
         self.categorical_column = categorical_column
         self.transformation_pipeline = transformation_pipeline
         self.default_category = default_category
+        self.is_categorical_ensembler = True
 
 
     def predict(self, data):
@@ -20,6 +21,8 @@ class CategoricalEnsembler(object):
         predictions = []
         for row in data:
             category = row[self.categorical_column]
+            if str(category) == 'nan':
+                category = 'nan'
             try:
                 model = self.trained_models[category]
             except KeyError as e:
@@ -49,7 +52,14 @@ class CategoricalEnsembler(object):
             category = row[self.categorical_column]
             if str(category) == 'nan':
                 category = 'nan'
-            model = self.trained_models[category]
+
+            try:
+                model = self.trained_models[category]
+            except KeyError as e:
+                if self.default_category == '_RAISE_ERROR':
+                    raise(e)
+                model = self.trained_models[self.default_category]
+
             transformed_row = self.transformation_pipeline.transform(row)
             prediction = model.predict_proba(transformed_row)
             predictions.append(prediction)

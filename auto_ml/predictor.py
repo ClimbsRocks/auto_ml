@@ -1036,118 +1036,7 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
-        # TODO: figure out how to save what could be multiple deep_learning models scattered throughout the pipeline (like for feature_learning, and eventually, ensembling)
-        # Thoughts:
-            # Iterate through each step
-            # see if that step has a model_name, and if
-        used_deep_learning = False
-
-        # This is where we will store all of our Keras models by their name, so we can put them back in place once we've taken them out and saved the rest of the pipeline
-        model_name_map = {}
-        for step in self.trained_pipeline.named_steps:
-            pipeline_step = self.trained_pipeline.named_steps[step]
-            try:
-                if pipeline_step.model_name[:12] == 'DeepLearning':
-                    used_deep_learning = True
-
-                    random_name = str(random.random())
-
-                    keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
-
-                    # Save a reference to this so we can put it back in place later
-                    keras_wrapper = pipeline_step.model
-                    model_name_map[random_name] = keras_wrapper
-
-                    # Save the Keras model (which we have to extract from the sklearn wrapper)
-                    try:
-                        pipeline_step.model.save(keras_file_name)
-                    except AttributeError as e:
-                        # I'm not entirely clear why, but sometimes we need to access the ".model" property within a KerasRegressor or KerasClassifier, and sometimes we don't
-                        pipeline_step.model.model.save(keras_file_name)
-
-                    # Now that we've saved the keras model, set that spot in the pipeline to our random name, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
-                    # Using the random_name allows us to find the right model later if we have several (or several thousand) models to put back into place in the pipeline when we save this later
-                    pipeline_step.model = random_name
-
-
-                    # save this model to a .h5 file following a consistent and predictable naming schema
-                        # Probably using the step name we're iterating through
-                    # remove this model property from the trained pipeline
-            except AttributeError as e:
-                pass
-
-        if used_deep_learning == True:
-            # Save the rest of the pipeline without the deep learning models
-            with open(file_name, 'wb') as open_file_name:
-                dill.dump(self.trained_pipeline, open_file_name)
-
-            # Now add the deep learning models back in so we can use the pipeline that's already loaded in memory, rather than having to load back in the saved pipeline
-            for step in self.trained_pipeline.named_steps:
-                pipeline_step = self.trained_pipeline.named_steps[step]
-                try:
-                    if pipeline_step.model_name[:12] == 'DeepLearning':
-
-                        # This is where we saved the random_name for this model
-                        random_name = pipeline_step.model
-                        model = model_name_map[random_name]
-
-                        # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
-                        pipeline_step.model = model
-                except AttributeError:
-                    pass
-
-            # Save the whole pipeline
-            # Lots of logging
-            # Then we have to figure out how to load it (ideally in a way that's compatible with ensembles)
-
-            # TODO: user logging
-            if verbose:
-                print('\n\nSaved the Keras model to it\'s own file(s). For instance:')
-                print(keras_file_name)
-                print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
-                print('from auto_ml.utils_models import load_keras_model')
-                print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
-                print('\nIt is also important to keep all files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both/all of these files, and keep the same name:')
-                print(file_name)
-                print('And all of the Keras files, such as:')
-                print(keras_file_name)
-
-
-        else:
-            # Perform logic for non-keras models here
-
-
-        # is_deep_learning = False
-        # try:
-        #     if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
-        #         is_deep_learning = True
-        # except:
-        #     pass
-
-        # if is_deep_learning == True:
-        #     keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
-
-        #     keras_wrapper = self.trained_pipeline.named_steps['final_model'].model
-        #     self.trained_pipeline.named_steps['final_model'].model.model.save(keras_file_name)
-
-        #     # Now that we've saved the keras model, set that spot in the pipeline to None, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
-        #     self.trained_pipeline.named_steps['final_model'].model = None
-        #     with open(file_name, 'wb') as open_file_name:
-        #         dill.dump(self.trained_pipeline, open_file_name)
-
-        #     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
-        #     self.trained_pipeline.named_steps['final_model'].model = keras_wrapper
-        #     if verbose:
-        #         print('\n\nSaved the Keras model to it\'s own file:')
-        #         print(keras_file_name)
-        #         print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
-        #         print('from auto_ml.utils_models import load_keras_model')
-        #         print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
-        #         print('\nIt is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
-        #         print(file_name)
-        #         print(keras_file_name)
-
-        # else:
+        try:
             with open(file_name, 'wb') as open_file_name:
                 dill.dump(self.trained_pipeline, open_file_name)
 
@@ -1166,5 +1055,136 @@ class Predictor(object):
 
                 print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
                 print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
+        except RuntimeError as e:
+            # TODO: figure out how to save what could be multiple deep_learning models scattered throughout the pipeline (like for feature_learning, and eventually, ensembling)
+            # Thoughts:
+                # Iterate through each step
+                # see if that step has a model_name, and if
+            used_deep_learning = False
+
+            # This is where we will store all of our Keras models by their name, so we can put them back in place once we've taken them out and saved the rest of the pipeline
+            model_name_map = {}
+            for step in self.trained_pipeline.named_steps:
+                pipeline_step = self.trained_pipeline.named_steps[step]
+                try:
+                    if pipeline_step.model_name[:12] == 'DeepLearning':
+                        used_deep_learning = True
+
+                        random_name = str(random.random())
+
+                        keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
+
+                        # Save a reference to this so we can put it back in place later
+                        keras_wrapper = pipeline_step.model
+                        model_name_map[random_name] = keras_wrapper
+
+                        # Save the Keras model (which we have to extract from the sklearn wrapper)
+                        try:
+                            pipeline_step.model.save(keras_file_name)
+                        except AttributeError as e:
+                            # I'm not entirely clear why, but sometimes we need to access the ".model" property within a KerasRegressor or KerasClassifier, and sometimes we don't
+                            pipeline_step.model.model.save(keras_file_name)
+
+                        # Now that we've saved the keras model, set that spot in the pipeline to our random name, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
+                        # Using the random_name allows us to find the right model later if we have several (or several thousand) models to put back into place in the pipeline when we save this later
+                        pipeline_step.model = random_name
+
+
+                        # save this model to a .h5 file following a consistent and predictable naming schema
+                            # Probably using the step name we're iterating through
+                        # remove this model property from the trained pipeline
+                except AttributeError as e:
+                    pass
+
+            if used_deep_learning == True:
+                # Save the rest of the pipeline without the deep learning models
+                with open(file_name, 'wb') as open_file_name:
+                    dill.dump(self.trained_pipeline, open_file_name)
+
+                # Now add the deep learning models back in so we can use the pipeline that's already loaded in memory, rather than having to load back in the saved pipeline
+                for step in self.trained_pipeline.named_steps:
+                    pipeline_step = self.trained_pipeline.named_steps[step]
+                    try:
+                        if pipeline_step.model_name[:12] == 'DeepLearning':
+
+                            # This is where we saved the random_name for this model
+                            random_name = pipeline_step.model
+                            model = model_name_map[random_name]
+
+                            # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
+                            pipeline_step.model = model
+                    except AttributeError:
+                        pass
+
+                # Save the whole pipeline
+                # Lots of logging
+                # Then we have to figure out how to load it (ideally in a way that's compatible with ensembles)
+
+                # TODO: user logging
+                if verbose:
+                    print('\n\nSaved the Keras model to it\'s own file(s). For instance:')
+                    print(keras_file_name)
+                    print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
+                    print('from auto_ml.utils_models import load_keras_model')
+                    print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
+                    print('\nIt is also important to keep all files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both/all of these files, and keep the same name:')
+                    print(file_name)
+                    print('And all of the Keras files, such as:')
+                    print(keras_file_name)
+
+
+        # else:
+        #     # Perform logic for non-keras models here
+
+
+        # # is_deep_learning = False
+        # # try:
+        # #     if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
+        # #         is_deep_learning = True
+        # # except:
+        # #     pass
+
+        # # if is_deep_learning == True:
+        # #     keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+
+        # #     keras_wrapper = self.trained_pipeline.named_steps['final_model'].model
+        # #     self.trained_pipeline.named_steps['final_model'].model.model.save(keras_file_name)
+
+        # #     # Now that we've saved the keras model, set that spot in the pipeline to None, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
+        # #     self.trained_pipeline.named_steps['final_model'].model = None
+        # #     with open(file_name, 'wb') as open_file_name:
+        # #         dill.dump(self.trained_pipeline, open_file_name)
+
+        # #     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
+        # #     self.trained_pipeline.named_steps['final_model'].model = keras_wrapper
+        # #     if verbose:
+        # #         print('\n\nSaved the Keras model to it\'s own file:')
+        # #         print(keras_file_name)
+        # #         print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
+        # #         print('from auto_ml.utils_models import load_keras_model')
+        # #         print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
+        # #         print('\nIt is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
+        # #         print(file_name)
+        # #         print(keras_file_name)
+
+        # # else:
+        #     with open(file_name, 'wb') as open_file_name:
+        #         dill.dump(self.trained_pipeline, open_file_name)
+
+        #     if verbose:
+        #         print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
+        #         print('It is saved in the directory: ')
+        #         print(os.getcwd())
+        #         print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
+        #         print('`with open("' + file_name + '", "rb") as read_file:`')
+        #         print('`    trained_ml_pipeline = dill.load(read_file)`')
+        #         print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
+
+        #         print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
+        #         print('This version of Python is:')
+        #         print(sys.version_info)
+
+        #         print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
+        #         print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
 
         return os.path.join(os.getcwd(), file_name)
