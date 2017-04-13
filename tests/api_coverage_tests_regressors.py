@@ -18,7 +18,31 @@ import utils_testing as utils
 # Tests on regression models:
 
 # Right now this hangs when I run it locally. Some kind of parallelization bug with scikit-learn's GridSearchCV, since we have already run GridSearchCV for classifiers
-def test_optimize_final_model_regression():
+# def test_optimize_final_model_regression():
+#     np.random.seed(0)
+
+#     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+#     column_descriptions = {
+#         'MEDV': 'output'
+#         , 'CHAS': 'categorical'
+#     }
+
+#     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+#     ml_predictor.train(df_boston_train, optimize_final_model=True)
+
+#     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+#     print('test_score')
+#     print(test_score)
+
+#     # the random seed gets a score of -3.21 on python 3.5
+#     # There's a ton of noise here, due to small sample sizes
+#     assert -3.8 < test_score < -2.6
+
+
+def test_perform_feature_selection_true_regression(model_name=None):
     np.random.seed(0)
 
     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
@@ -30,18 +54,99 @@ def test_optimize_final_model_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, optimize_final_model=True)
+    ml_predictor.train(df_boston_train, perform_feature_selection=True, model_names=model_name)
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
     print('test_score')
     print(test_score)
 
-    # the random seed gets a score of -3.21 on python 3.5
-    # There's a ton of noise here, due to small sample sizes
-    assert -3.8 < test_score < -2.6
+    # Bumping this up since without these features our score drops
+    lower_bound = -4.0
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -14.5
+    if model_name == 'LGBMRegressor':
+        lower_bound = -4.95
 
 
+    assert lower_bound < test_score < -2.8
+
+
+def test_perform_feature_selection_false_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_selection=False, model_names=model_name)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    lower_bound = -3.2
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -11.9
+    if model_name == 'LGBMRegressor':
+        lower_bound = -4.95
+
+
+    assert lower_bound < test_score < -2.8
+
+def test_perform_feature_scaling_true_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_scaling=True)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    assert -3.2 < test_score < -2.8
+
+def test_perform_feature_scaling_false_regression(model_name=None):
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=model_name)
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    lower_bound = -3.2
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -8.8
+    if model_name == 'LGBMRegressor':
+        lower_bound = -4.95
+
+    assert lower_bound < test_score < -2.8
 
 def test_compare_all_models_regression():
     np.random.seed(0)
