@@ -259,12 +259,12 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
 
     file_name = ml_predictor.save(str(random.random()))
 
-    # from auto_ml.utils_models import load_keras_model
+    from auto_ml.utils_models import load_ml_model
 
-    # saved_ml_pipeline = load_keras_model(file_name)
+    saved_ml_pipeline = load_ml_model(file_name)
 
-    with open(file_name, 'rb') as read_file:
-        saved_ml_pipeline = dill.load(read_file)
+    # with open(file_name, 'rb') as read_file:
+    #     saved_ml_pipeline = dill.load(read_file)
     os.remove(file_name)
 
 
@@ -283,7 +283,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
 
     lower_bound = -3.2
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -9.0
+        lower_bound = -20.5
     if model_name == 'LGBMRegressor':
         lower_bound = -5.1
     if model_name == 'XGBRegressor':

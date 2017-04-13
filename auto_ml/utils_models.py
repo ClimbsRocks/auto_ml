@@ -2,6 +2,8 @@ import dill
 import os
 import sys
 
+from auto_ml import utils_categorical_ensembling
+
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
@@ -35,6 +37,7 @@ try:
     from keras.layers import Dense, Dropout
     from keras.layers.advanced_activations import LeakyReLU, PReLU
     from keras.models import Sequential
+    from keras.models import load_model as keras_load_model
     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
     keras_installed = True
 except ImportError as e:
@@ -476,40 +479,73 @@ def get_search_params(model_name):
 
     return params
 
-def load_ml_model(file_name):
-    from keras.models import load_model as keras_load_model
 
-    print('file_name')
-    print(file_name)
+def insert_deep_learning_model(pipeline_step, file_name):
+    # This is where we saved the random_name for this model
+    random_name = pipeline_step.model
+    # Load the Keras model here
+    keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
+
+    model = keras_load_model(keras_file_name)
+    # model = model_name_map[random_name]
+
+    # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
+    return model
+
+def load_ml_model(file_name):
+
     with open(file_name, 'rb') as read_file:
         base_pipeline = dill.load(read_file)
 
-    for step in base_pipeline.named_steps:
-        pipeline_step = base_pipeline.named_steps[step]
-        try:
-            if pipeline_step.model_name[:12] == 'DeepLearning':
+    print('inside load_ml_model')
+    if isinstance(base_pipeline, utils_categorical_ensembling.CategoricalEnsembler):
+        print('heard CategoricalEnsembler')
+        for step in base_pipeline.transformation_pipeline.named_steps:
+            print('step in base_pipeline.transformation_pipeline.named_steps')
+            print(step)
+            pipeline_step = base_pipeline.transformation_pipeline.named_steps[step]
 
-                # This is where we saved the random_name for this model
-                random_name = pipeline_step.model
-                # Load the Keras model here
-                keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
-                model = keras_load_model(keras_file_name)
-                # model = model_name_map[random_name]
+            if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
 
-                # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
-                pipeline_step.model = model
-        except AttributeError as e:
-            pass
+        for step in base_pipeline.trained_models:
+            print('step in base_pipeline.trained_models')
+            print(step)
+            pipeline_step = base_pipeline.trained_models[step]
 
+            if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
 
-    # keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+    else:
 
-    # keras_model = load_model(keras_file_name)
+        for step in base_pipeline.named_steps:
+            pipeline_step = base_pipeline.named_steps[step]
+            if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
 
-    # base_pipeline.named_steps['final_model'].model = keras_model
 
     return base_pipeline
 
+    # if isinstance(base_pipeline, utils_categorical_ensembling.CategoricalEnsembler):
+
+    # for step in base_pipeline.named_steps:
+    #     pipeline_step = base_pipeline.named_steps[step]
+    #     # try:
+    #     if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+    #         pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
+    #     # except AttributeError as e:
+    #     #     pass
+
+
+    # # keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+
+    # # keras_model = load_model(keras_file_name)
+
+    # # base_pipeline.named_steps['final_model'].model = keras_model
+
+    # return base_pipeline
+
+# Keeping this here for legacy support
 def load_keras_model(file_name):
     return load_ml_model(file_name)
 

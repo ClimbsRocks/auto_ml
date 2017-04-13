@@ -66,6 +66,13 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
         self.perform_feature_scaling = perform_feature_scaling
 
 
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
+
+
     def fit(self, X, y=None):
         self.column_ranges = {}
         self.cols_to_ignore = []

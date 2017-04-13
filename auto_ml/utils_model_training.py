@@ -46,6 +46,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self._scorer = scoring_method
 
 
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
+
+
     def fit(self, X, y):
         self.model_name = get_name_from_model(self.model)
 

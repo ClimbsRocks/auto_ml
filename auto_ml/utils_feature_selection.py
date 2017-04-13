@@ -39,6 +39,13 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         self.feature_selection_model = feature_selection_model
 
 
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
+
+
     def fit(self, X, y=None):
 
 

@@ -10,6 +10,13 @@ class CategoricalEnsembler(object):
         self.is_categorical_ensembler = True
 
 
+    def get(self, prop_name, default=None):
+        try:
+            return getattr(self, prop_name)
+        except AttributeError:
+            return default
+
+
     def predict(self, data):
         # For now, we are assuming that data is a list of dictionaries, so if we have a single dict, put it in a list
         if isinstance(data, dict):
