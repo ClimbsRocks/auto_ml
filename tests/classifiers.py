@@ -39,7 +39,7 @@ def optimize_final_model_classification(model_name=None):
     lower_bound = -0.215
 
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.23
+        lower_bound = -0.24
 
     assert lower_bound < test_score < -0.17
 
