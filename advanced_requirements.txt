@@ -1,5 +1,4 @@
 tensorflow
 keras
-yaml
+pyyaml
 h5py
-tables

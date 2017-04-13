@@ -1,7 +1,7 @@
 dill
+h5py
 scikit-learn
 scipy
 python-dateutil
 pandas
 pathos
-tables
