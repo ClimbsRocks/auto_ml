@@ -70,7 +70,7 @@ def categorical_ensembling_classification(model_name=None):
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.24
     if model_name == 'XGBClassifier':
-        lower_bound = -0.23
+        lower_bound = -0.235
     if model_name == 'LGBMClassifier':
         lower_bound = -0.22
     if model_name == 'GradientBoostingClassifier':
@@ -309,7 +309,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     if model_name == 'LGBMClassifier':
         lower_bound = -0.221
     if model_name == 'XGBClassifier':
-        lower_bound = -0.235
+        lower_bound = -0.239
 
     assert lower_bound < first_score < -0.17
 

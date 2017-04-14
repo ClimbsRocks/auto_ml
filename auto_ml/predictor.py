@@ -8,6 +8,7 @@ import warnings
 import dill
 import pathos
 
+import numpy as np
 import pandas as pd
 
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
@@ -322,6 +323,7 @@ class Predictor(object):
         self.cv = cv
 
         self.perform_feature_selection = perform_feature_selection
+
         self.feature_learning = feature_learning
         if self.feature_learning == True:
             if fl_data is None:
@@ -391,6 +393,63 @@ class Predictor(object):
         return X_df, y, estimator_names
 
 
+    def fit_feature_learning_and_transformation_pipeline(self, X_df, fl_data, y):
+        fl_data_cleaned, fl_y, _ = self._clean_data_and_prepare_for_training(fl_data, self.scoring)
+
+        len_X_df = len(X_df)
+        combined_training_data = pd.concat([X_df, fl_data_cleaned], axis=0)
+        combined_y = y + fl_y
+
+        if self.type_of_estimator == 'classifier':
+            fl_estimator_names = ['DeepLearningClassifier']
+        elif self.type_of_estimator == 'regressor':
+            fl_estimator_names = ['DeepLearningRegressor']
+
+        combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, fl_estimator_names[0])
+
+        # TODO: if feature_learning, then fit the transformation pipeline on the combined dataset
+        # Then, for MVP, transform the fl_data in a different step
+        # THEN, after we've fit our feature_learning step, transform the X_df through the entire transformation pipeline which includes the feature_learning features
+        # else, do our normal workflow
+        # We both fit the transformation pipeline, and transform X_df in this step
+
+        # For performance reasons, I believe it is critical to only have one transformation pipeline, no matter how many estimators we eventually build on top. Getting predictions from a trained estimator is typically super quick. We can easily get predictions from 10 trained models in a production-ready amount of time.But the transformation pipeline is not so quick that we can duplicate it 10 times.
+        # Simplified approach: we do not fit the transformation_pipeline on the fl_data. This reduces computation time somewhat, and everything that's in fl_data should be a subset of what's in our X_df data
+        # We can change this in v2, but this is a conscious design decision for now
+        # FUTURE IMPROVEMENT: just grab our already_transformed fl_data and X_df
+        fl_data = self.transformation_pipeline.transform(fl_data)
+
+
+        # fit a train_final_estimator
+        feature_learning_step = self.train_ml_estimator(fl_estimator_names, self._scorer, fl_data, fl_y, feature_learning=True)
+
+        # Split off the final layer/find a way to get the output from the penultimate layer
+        fl_model = feature_learning_step.model
+
+        feature_output_model = Model(inputs=fl_model.model.input, outputs=fl_model.model.get_layer('penultimate_layer').output)
+        feature_learning_step.model = feature_output_model
+
+        # Make sure I know how many neurons are in that final layer- settled on 10 always
+
+        # Add those to the list in our DV so we know what to do with them for analytics purposes
+        feature_learning_names = []
+        for idx in range(10):
+            feature_learning_names.append('feature_learning_' + str(idx + 1))
+
+        self.transformation_pipeline.named_steps['dv'].feature_names_ += feature_learning_names
+        # modify FinalModelATC so it has a transform function that passes through all of X and just hstacks a few new columns on the end
+
+        # add the estimator to the end of our transformation pipeline
+        self.transformation_pipeline = self._construct_pipeline(trained_pipeline=self.transformation_pipeline, final_model=feature_learning_step, final_model_step_name='feature_learning_model')
+
+        # FUTURE IMPROVEMENT: don't pass this back through the entire transformation_pipeline. instead, grab the X_df we've already transformed above, and pass it through only the feature_learning_step.transform() method, since that's the only computation we haven't done on it yet, and what's below is a lot of duplicate computation
+        indices = [i for i in range(len_X_df)]
+        X_df_transformed = combined_transformed_data[indices]
+        X_df = feature_learning_step.transform(X_df_transformed)
+
+        return X_df
+
+
     def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None):
 
         self.set_params_and_defaults(user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data)
@@ -403,56 +462,7 @@ class Predictor(object):
         X_df, y, estimator_names = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
 
         if self.feature_learning == True:
-            fl_data_cleaned, fl_y, _ = self._clean_data_and_prepare_for_training(fl_data, scoring)
-
-            combined_training_data = pd.concat([X_df, fl_data_cleaned], axis=0)
-            combined_y = y + fl_y
-            combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, estimator_names[0])
-
-            # TODO: if feature_learning, then fit the transformation pipeline on the combined dataset
-            # Then, for MVP, transform the fl_data in a different step
-            # THEN, after we've fit our feature_learning step, transform the X_df through the entire transformation pipeline which includes the feature_learning features
-            # else, do our normal workflow
-            # We both fit the transformation pipeline, and transform X_df in this step
-
-            # For performance reasons, I believe it is critical to only have one transformation pipeline, no matter how many estimators we eventually build on top. Getting predictions from a trained estimator is typically super quick. We can easily get predictions from 10 trained models in a production-ready amount of time.But the transformation pipeline is not so quick that we can duplicate it 10 times.
-            # Simplified approach: we do not fit the transformation_pipeline on the fl_data. This reduces computation time somewhat, and everything that's in fl_data should be a subset of what's in our X_df data
-            # We can change this in v2, but this is a conscious design decision for now
-            # FUTURE IMPROVEMENT: just grab our already_transformed fl_data and X_df
-            fl_data = self.transformation_pipeline.transform(fl_data)
-
-            # TODO:
-            if self.type_of_estimator == 'classifier':
-                fl_estimator_names = ['DeepLearningClassifier']
-            elif self.type_of_estimator == 'regressor':
-                fl_estimator_names = ['DeepLearningRegressor']
-
-            # fit a train_final_estimator
-            feature_learning_step = self.train_ml_estimator(fl_estimator_names, self._scorer, fl_data, fl_y, feature_learning=feature_learning)
-
-            # Split off the final layer/find a way to get the output from the penultimate layer
-            fl_model = feature_learning_step.model
-
-            feature_output_model = Model(inputs=fl_model.model.input, outputs=fl_model.model.get_layer('penultimate_layer').output)
-            feature_learning_step.model = feature_output_model
-
-            # Make sure I know how many neurons are in that final layer- settled on 10 always
-
-            # Add those to the list in our DV so we know what to do with them for analytics purposes
-            feature_learning_names = []
-            for idx in range(10):
-                feature_learning_names.append('feature_learning_' + str(idx + 1))
-
-            self.transformation_pipeline.named_steps['dv'].feature_names_ += feature_learning_names
-            # modify FinalModelATC so it has a transform function that passes through all of X and just hstacks a few new columns on the end
-
-            # add the estimator to the end of our transformation pipeline
-            self.transformation_pipeline = self._construct_pipeline(trained_pipeline=self.transformation_pipeline, final_model=feature_learning_step, final_model_step_name='feature_learning_model')
-
-            # FUTURE IMPROVEMENT: don't pass this back through the entire transformation_pipeline. instead, grab the X_df we've already transformed above, and pass it through only the feature_learning_step.transform() method, since that's the only computation we haven't done on it yet, and what's below is a lot of duplicate computation
-            X_df = self.transformation_pipeline.transform(X_df)
-
-
+            X_df = self.fit_feature_learning_and_transformation_pipeline(X_df, fl_data, y)
         else:
             X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
@@ -730,10 +740,11 @@ class Predictor(object):
         return relevant_X, relevant_y
 
 
-    def train_categorical_ensemble(self, data, categorical_column, default_category=None, **kwargs):
+    def train_categorical_ensemble(self, data, categorical_column, default_category=None, min_category_size=5, **kwargs):
         self.categorical_column = categorical_column
         self.trained_category_models = {}
         self.column_descriptions[categorical_column] = 'categorical'
+        self.min_category_size = min_category_size
 
         self.default_category = default_category
         if self.default_category is None:
@@ -741,6 +752,11 @@ class Predictor(object):
             self.len_largest_category = 0
         else:
             self.search_for_default_category = False
+
+        # print('kwargs')
+        # print(kwargs)
+        # print('fl_data')
+        # print(fl_data)
 
         self.set_params_and_defaults(**kwargs)
 
@@ -750,25 +766,83 @@ class Predictor(object):
         X_df = utils_categorical_ensembling.clean_categorical_definitions(X_df, categorical_column)
 
         print('Now fitting a single feature transformation pipeline that will be shared by all of our categorical estimators for the sake of space efficiency when saving the model')
-        X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+        if self.feature_learning == True:
+            # For simplicity's sake, we are training one feature_learning model on all of the data, across all categories
+            # Deep Learning models love a ton of data, so we're giving all of it to the model
+            # This also makes stuff like serializing the model and the transformation pipeline and the saved file size all better
+            # Then, each categorical model will determine which features (if any) are useful for it's particular category
+            X_df_transformed = self.fit_feature_learning_and_transformation_pipeline(X_df, kwargs['fl_data'], y)
+        else:
+            X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+
+        # X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
         unique_categories = X_df[categorical_column].unique()
 
-        def train_one_categorical_model(category):
+        # Iterate through categories to find:
+        # 1. index positions of that category within X_df (and thus, X_df_transformed, and y)
+        # 2. some sorting (either alphabetical, size of category, or ideally, sorted by magnitude of y value)
+            # 3. size of category would be most efficient. if we have 8 cores and 13 categories, we don't want to save the largest category for the last one, even if from an analytics perspective that's the one we would want last
+        # 4. create a map from category name to indexes
+        # 5. sort by len(indices)
+        # 6. iterate through that, creating a new mapping from category_name to the relevant data for that category
+            # pull that data from X_df_transformed
+        # 7. map over that list to train a new predictor for each category!
+
+        categories_and_indices = []
+        # print('unique_categories')
+        # print(unique_categories)
+        for category in unique_categories:
+            # print('category')
+            # print(category)
+            rel_column = X_df[self.categorical_column]
+            # print('rel_column')
+            # print(rel_column)
+            indices = list(np.flatnonzero(X_df[self.categorical_column] == category))
+            # print(indices)
+            categories_and_indices.append([category, indices])
+
+        categories_and_data = []
+        for pair in sorted(categories_and_indices, key=lambda x: len(x[1])):
+            category = pair[0]
+            # print(pair[0])
+            # print(pair[1])
+            indices = pair[1]
+
+            if len(indices) > self.min_category_size:
+                relevant_transformed_rows = X_df_transformed[indices]
+                # print(relevant_transformed_rows)
+
+                # print('type(y)')
+                # print(type(y))
+                # print('y')
+                # print(y)
+                # print('indices')
+                # print(indices)
+                # print('type(indices)')
+                # print(type(indices))
+                relevant_y = [y[idx_val] for idx_val in indices]
+                # relevant_y = y[indices]
+                categories_and_data.append([category, relevant_transformed_rows, relevant_y])
+
+
+
+
+        def train_one_categorical_model(category, relevant_X, relevant_y):
             print('\n\nNow training a new estimator for the category: ' + str(category))
 
-            relevant_X, relevant_y = self.get_relevant_categorical_rows(X_df, y, category)
+            # relevant_X, relevant_y = self.get_relevant_categorical_rows(X_df, y, category)
 
-            if len(relevant_X) == 0:
-                return {
-                    'trained_category_model': None
-                    , 'category': None
-                    , 'len_relevant_X': None
-                }
+            # if (scipy.sparse.issparse(relevant_X) and relevant_X.shape[0] < self.min_category_size) or (scipy.sparse.issparse(relevant_X) == False and len(relevant_X) < self.min_category_size):
+            #     return {
+            #         'trained_category_model': None
+            #         , 'category': None
+            #         , 'len_relevant_X': None
+            #     }
             print('Some stats on the y values for this category: ' + str(category))
             print(pd.Series(relevant_y).describe(include='all'))
 
-            relevant_X = self.transformation_pipeline.transform(relevant_X)
+            # relevant_X = self.transformation_pipeline.transform(relevant_X)
 
 
             try:
@@ -806,10 +880,20 @@ class Predictor(object):
             pool.restart()
         except AssertionError as e:
             pass
+
+        # results = list(map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
         if os.environ.get('is_test_suite', False) == 'True':
-            results = list(map(train_one_categorical_model, unique_categories))
+            results = list(map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
         else:
-            results = list(pool.map(train_one_categorical_model, unique_categories))
+            try:
+                results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
+            except RuntimeError:
+                # We might
+                original_recursion_limit = sys.getrecursionlimit()
+                sys.setrecursionlimit(10000)
+                results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
+                # results = list(pool.map(train_one_categorical_model, unique_categories))
+                sys.setrecursionlimit(original_recursion_limit)
 
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
@@ -1120,7 +1204,8 @@ class Predictor(object):
 
                     try:
                         model_name = pipeline_step.model
-                        pipeline_step.model = model_name_map[model_name]
+                        if isinstance(model_name, str):
+                            pipeline_step.model = model_name_map[model_name]
                     except AttributeError:
                         pass
 
@@ -1142,8 +1227,8 @@ class Predictor(object):
             print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
             print('`from auto_ml.utils_models import load_ml_model')
             print('`trained_ml_pipeline = load_ml_model("' + file_name + '")')
-            print('`with open("' + file_name + '", "rb") as read_file:`')
-            print('`    trained_ml_pipeline = dill.load(read_file)`')
+            # print('`with open("' + file_name + '", "rb") as read_file:`')
+            # print('`    trained_ml_pipeline = dill.load(read_file)`')
             print('`trained_ml_pipeline.predict(data)`\n\n')
 
             if used_deep_learning == True:
