@@ -309,7 +309,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     if model_name == 'LGBMClassifier':
         lower_bound = -0.221
     if model_name == 'XGBClassifier':
-        lower_bound = -0.239
+        lower_bound = -0.24
 
     assert lower_bound < first_score < -0.17
 

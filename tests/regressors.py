@@ -65,7 +65,7 @@ def categorical_ensembling_regression(model_name=None):
     # Bumping this up since without these features our score drops
     lower_bound = -4.0
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -16.5
+        lower_bound = -17
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
 

@@ -1,4 +1,3 @@
-import datetime
 import os
 
 import numpy as np
@@ -330,12 +329,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     # transform is initially designed to be used with feature_learning
     def transform(self, X):
-        start_time = datetime.datetime.now()
         predicted_features = self.predict(X)
-        end_time = datetime.datetime.now()
-        prediction_length = start_time - end_time
-        print('prediction_length')
-        print(prediction_length)
         predicted_features = list(predicted_features)
         # print('predicted_features')
         # print(predicted_features)
