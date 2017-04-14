@@ -263,8 +263,10 @@ def test_nlp_multilabel_classification(model_name=None):
     print(test_score)
     assert 0.67 < test_score < 0.79
 
-# For some reason, this test errors on travis when run on python 3.5.
-# It appears to be an environment issue (possibly cuased by running too many parallelized things, which only happens in a test suite), not an issue with auto_ml. So we'll run this test, but only on some environments
+# For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
+# home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
+# It didn't error previously
+# It appears to be an environment issue (possibly cuased by running too many parallelized things, which only happens in a test suite), not an issue with auto_ml. So we'll run this test to make sure the library functionality works, but only on some environments
 if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
     def test_compare_all_models_classification(model_name=None):
         np.random.seed(0)
@@ -416,97 +418,98 @@ def test_list_of_single_model_name_classification(model_name=None):
 
     assert -0.215 < test_score < -0.17
 
-def test_getting_single_predictions_nlp_date_multilabel_classification(model_name=None):
-    # auto_ml does not support multilabel classification for deep learning at the moment
-    if model_name == 'DeepLearningClassifier':
-        return
+if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
+    def test_getting_single_predictions_nlp_date_multilabel_classification(model_name=None):
+        # auto_ml does not support multilabel classification for deep learning at the moment
+        if model_name == 'DeepLearningClassifier':
+            return
 
-    np.random.seed(0)
+        np.random.seed(0)
 
-    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+        df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
 
-    column_descriptions = {
-        'airline_sentiment': 'output'
-        , 'airline': 'categorical'
-        , 'text': 'nlp'
-        , 'tweet_location': 'categorical'
-        , 'user_timezone': 'categorical'
-        , 'tweet_created': 'date'
-    }
+        column_descriptions = {
+            'airline_sentiment': 'output'
+            , 'airline': 'categorical'
+            , 'text': 'nlp'
+            , 'tweet_location': 'categorical'
+            , 'user_timezone': 'categorical'
+            , 'tweet_created': 'date'
+        }
 
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-    ml_predictor.train(df_twitter_train, model_names=model_name)
+        ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+        ml_predictor.train(df_twitter_train, model_names=model_name)
 
-    file_name = ml_predictor.save(str(random.random()))
+        file_name = ml_predictor.save(str(random.random()))
 
-    if model_name == 'DeepLearningClassifier':
-        from auto_ml.utils_models import load_keras_model
+        if model_name == 'DeepLearningClassifier':
+            from auto_ml.utils_models import load_keras_model
 
-        saved_ml_pipeline = load_keras_model(file_name)
-    else:
-        with open(file_name, 'rb') as read_file:
-            saved_ml_pipeline = dill.load(read_file)
+            saved_ml_pipeline = load_keras_model(file_name)
+        else:
+            with open(file_name, 'rb') as read_file:
+                saved_ml_pipeline = dill.load(read_file)
 
-    os.remove(file_name)
+        os.remove(file_name)
 
-    df_twitter_test_dictionaries = df_twitter_test.to_dict('records')
+        df_twitter_test_dictionaries = df_twitter_test.to_dict('records')
 
-    # 1. make sure the accuracy is the same
+        # 1. make sure the accuracy is the same
 
-    predictions = []
-    for row in df_twitter_test_dictionaries:
-        predictions.append(saved_ml_pipeline.predict(row))
+        predictions = []
+        for row in df_twitter_test_dictionaries:
+            predictions.append(saved_ml_pipeline.predict(row))
 
-    print('predictions')
-    print(predictions)
+        print('predictions')
+        print(predictions)
 
-    first_score = accuracy_score(df_twitter_test.airline_sentiment, predictions)
-    print('first_score')
-    print(first_score)
-    # Make sure our score is good, but not unreasonably good
-    lower_bound = 0.67
-    if model_name == 'LGBMClassifier':
-        lower_bound = 0.655
-    assert lower_bound < first_score < 0.79
+        first_score = accuracy_score(df_twitter_test.airline_sentiment, predictions)
+        print('first_score')
+        print(first_score)
+        # Make sure our score is good, but not unreasonably good
+        lower_bound = 0.67
+        if model_name == 'LGBMClassifier':
+            lower_bound = 0.655
+        assert lower_bound < first_score < 0.79
 
-    # 2. make sure the speed is reasonable (do it a few extra times)
-    data_length = len(df_twitter_test_dictionaries)
-    start_time = datetime.datetime.now()
-    for idx in range(1000):
-        row_num = idx % data_length
-        saved_ml_pipeline.predict(df_twitter_test_dictionaries[row_num])
-    end_time = datetime.datetime.now()
-    duration = end_time - start_time
+        # 2. make sure the speed is reasonable (do it a few extra times)
+        data_length = len(df_twitter_test_dictionaries)
+        start_time = datetime.datetime.now()
+        for idx in range(1000):
+            row_num = idx % data_length
+            saved_ml_pipeline.predict(df_twitter_test_dictionaries[row_num])
+        end_time = datetime.datetime.now()
+        duration = end_time - start_time
 
-    print('duration.total_seconds()')
-    print(duration.total_seconds())
+        print('duration.total_seconds()')
+        print(duration.total_seconds())
 
-    # It's very difficult to set a benchmark for speed that will work across all machines.
-    # On my 2013 bottom of the line 15" MacBook Pro, this runs in about 0.8 seconds for 1000 predictions
-    # That's about 1 millisecond per prediction
-    # Assuming we might be running on a test box that's pretty weak, multiply by 3
-    # Also make sure we're not running unreasonably quickly
-    time_upper_bound = 3
-    if model_name == 'XGBClassifier':
-        time_upper_bound = 4
-    assert 0.2 < duration.total_seconds() < time_upper_bound
+        # It's very difficult to set a benchmark for speed that will work across all machines.
+        # On my 2013 bottom of the line 15" MacBook Pro, this runs in about 0.8 seconds for 1000 predictions
+        # That's about 1 millisecond per prediction
+        # Assuming we might be running on a test box that's pretty weak, multiply by 3
+        # Also make sure we're not running unreasonably quickly
+        time_upper_bound = 3
+        if model_name == 'XGBClassifier':
+            time_upper_bound = 4
+        assert 0.2 < duration.total_seconds() < time_upper_bound
 
 
-    # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
+        # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
 
-    predictions = []
-    for row in df_twitter_test_dictionaries:
-        predictions.append(saved_ml_pipeline.predict(row))
+        predictions = []
+        for row in df_twitter_test_dictionaries:
+            predictions.append(saved_ml_pipeline.predict(row))
 
-    print('predictions')
-    print(predictions)
-    print('df_twitter_test_dictionaries')
-    print(df_twitter_test_dictionaries)
-    second_score = accuracy_score(df_twitter_test.airline_sentiment, predictions)
-    print('second_score')
-    print(second_score)
-    # Make sure our score is good, but not unreasonably good
-    assert lower_bound < second_score < 0.79
+        print('predictions')
+        print(predictions)
+        print('df_twitter_test_dictionaries')
+        print(df_twitter_test_dictionaries)
+        second_score = accuracy_score(df_twitter_test.airline_sentiment, predictions)
+        print('second_score')
+        print(second_score)
+        # Make sure our score is good, but not unreasonably good
+        assert lower_bound < second_score < 0.79
 
 
 
