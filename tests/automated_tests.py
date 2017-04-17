@@ -18,7 +18,8 @@ import regressors as regressor_tests
 
 
 training_parameters = {
-    'model_names': ['GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
+    # 'model_names': ['GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
+    'model_names': ['GradientBoosting', 'DeepLearning']
     # 'model_names': ['LGBM']
     # , 'train_categorical_ensemble': [True, False]
 }
