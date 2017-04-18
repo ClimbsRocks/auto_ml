@@ -64,7 +64,7 @@ install:
 
 # Command to run tests
 # script: nosetests -v --with-coverage --cover-package auto_ml tests
-script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests python setup.py nosetests
+script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:0.0.1 python setup.py nosetests
 
 after_success:
   coveralls
