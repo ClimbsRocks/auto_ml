@@ -1,16 +1,16 @@
 sudo: required
 dist: trusty
 language: python
-cache:
-  pip: true
+# cache:
+#   pip: true
   # directories:
   #   - 'xgboost/python-package'
   #   - 'lightgbm/python-package'
 
 python:
   - "2.7"
-  - "3.5"
-  - "3.6"
+  # - "3.5"
+  # - "3.6"
 
 # Command to install dependencies
 install:
