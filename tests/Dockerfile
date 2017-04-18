@@ -22,3 +22,8 @@ RUN sed -i "s/httpredir.debian.org/debian.uchicago.edu/" /etc/apt/sources.list &
 
 
 RUN pip install dill h5py scikit-learn scipy python-dateutil pandas pathos keras coveralls nose
+
+# To update this image and upload it:
+# docker build -t testdocker .
+# docker tag testdocker climbsrocks/auto_ml_tests:0.0.2
+# docker push climbsrocks/auto_ml_tests:0.0.2
