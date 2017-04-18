@@ -451,6 +451,11 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
                 saved_ml_pipeline = dill.load(read_file)
 
         os.remove(file_name)
+        try:
+            keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+            os.remove(keras_file_name)
+        except:
+            pass
 
         df_twitter_test_dictionaries = df_twitter_test.to_dict('records')
 
