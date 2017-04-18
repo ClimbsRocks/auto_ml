@@ -16,8 +16,10 @@ python:
 
 # Command to install dependencies
 install:
-  - docker pull kaggle/python
-  - kpython(){docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python "$@"}
+  # - docker pull kaggle/python
+  - kpython(){
+      docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python "$@"
+    }
   # - TEST_DIR=$PWD
   # - sudo apt-get update
 
