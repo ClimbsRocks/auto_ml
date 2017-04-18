@@ -16,10 +16,10 @@ python:
 
 # Command to install dependencies
 install:
-  # - docker pull kaggle/python
-  - kpython(){
-      docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python "$@"
-    }
+  - docker pull kaggle/python
+  # - kpython(){
+  #     docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python "$@"
+  #   }
   # - TEST_DIR=$PWD
   # - sudo apt-get update
 
@@ -64,7 +64,7 @@ install:
 
 # Command to run tests
 # script: nosetests -v --with-coverage --cover-package auto_ml tests
-script: kpython setup.py nosetests
+script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python setup.py nosetests
 
 after_success:
   coveralls
