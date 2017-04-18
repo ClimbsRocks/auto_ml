@@ -105,6 +105,12 @@ def getting_single_predictions_classification(model_name=None):
             saved_ml_pipeline = dill.load(read_file)
 
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
 
@@ -199,6 +205,12 @@ def getting_single_predictions_multilabel_classification(model_name=None):
             saved_ml_pipeline = dill.load(read_file)
 
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     df_twitter_test_dictionaries = df_twitter_test.to_dict('records')
 
@@ -284,6 +296,12 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     saved_ml_pipeline = load_keras_model(file_name)
 
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
 
@@ -309,7 +327,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     if model_name == 'LGBMClassifier':
         lower_bound = -0.221
     if model_name == 'XGBClassifier':
-        lower_bound = -0.24
+        lower_bound = -0.245
 
     assert lower_bound < first_score < -0.17
 
@@ -377,6 +395,12 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
 

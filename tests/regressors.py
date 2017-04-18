@@ -101,6 +101,12 @@ def getting_single_predictions_regression(model_name=None):
             saved_ml_pipeline = dill.load(read_file)
 
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     df_boston_test_dictionaries = df_boston_test.to_dict('records')
 
@@ -186,6 +192,12 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
     saved_ml_pipeline = load_keras_model(file_name)
 
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
 
     df_boston_test_dictionaries = df_boston_test.to_dict('records')
@@ -268,6 +280,12 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     # with open(file_name, 'rb') as read_file:
     #     saved_ml_pipeline = dill.load(read_file)
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
 
     df_boston_test_dictionaries = df_boston_test.to_dict('records')

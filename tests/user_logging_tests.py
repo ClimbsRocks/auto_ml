@@ -119,6 +119,12 @@ def test_verify_features_does_not_work_by_default():
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     with warnings.catch_warnings(record=True) as w:
 
@@ -153,6 +159,12 @@ def test_verify_features_finds_missing_prediction_features():
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
     # Remove the "age" column from our prediction data
     df_titanic_test = df_titanic_test.drop('age', axis=1)
@@ -196,6 +208,12 @@ def test_verify_features_finds_missing_training_features():
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
     os.remove(file_name)
+    try:
+        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        os.remove(keras_file_name)
+    except:
+        pass
+
 
 
     missing_features = saved_ml_pipeline.named_steps['final_model'].verify_features(df_titanic_test)
