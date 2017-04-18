@@ -55,6 +55,7 @@ install:
   #   fi
   - pip install keras
   - pip install h5py
+
 # Command to run tests
 script: nosetests -v --with-coverage --cover-package auto_ml tests
 
