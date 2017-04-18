@@ -39,6 +39,8 @@ def optimize_final_model_regression(model_name=None):
         lower_bound = -20
     if model_name == 'LGBMRegressor':
         lower_bound = -5.5
+    if model_name == 'GradientBoostingRegressor':
+        lower_bound = -3.5
 
     assert lower_bound < test_score < -2.8
 

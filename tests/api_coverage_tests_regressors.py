@@ -167,7 +167,7 @@ def test_compare_all_models_regression():
     print('test_score')
     print(test_score)
 
-    assert -3.2 < test_score < -2.8
+    assert -3.35 < test_score < -2.8
 
 
 

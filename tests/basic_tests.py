@@ -394,7 +394,7 @@ def test_all_algos_regression():
     print('test_score')
     print(test_score)
 
-    assert -3.25 < test_score < -2.8
+    assert -3.35 < test_score < -2.8
 
 
 
