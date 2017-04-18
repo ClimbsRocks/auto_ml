@@ -1,6 +1,11 @@
 sudo: required
 dist: trusty
 language: python
+cache:
+  pip: true
+  # directories:
+  #   - 'xgboost/python-package'
+  #   - 'lightgbm/python-package'
 
 python:
   - "2.7"
