@@ -12,7 +12,7 @@ auto_ml
   :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'``, ``'date'``, ``'ignore'``, or ``'categorical'``. See below for more details.
   :type column_descriptions: dictionary, where each attribute name represents a column of data in the training data, and each value describes that column as being either ['categorical', 'output', 'nlp', 'date', 'ignore']. Note that 'continuous' data does not need to be labeled as such (all columns are assumed to be continuous unless labeled otherwise).
 
-.. py:method:: ml_predictor.train(raw_training_data, user_input_func=None, optimize_final_model=False, perform_feature_selection=None, verbose=True, ml_for_analytics=True, model_names='GradientBoosting', perform_feature_scaling=True, calibrate_final_model=False, verify_features=False, cv=2)
+.. py:method:: ml_predictor.train(raw_training_data, user_input_func=None, optimize_final_model=False, perform_feature_selection=None, verbose=True, ml_for_analytics=True, model_names='GradientBoosting', perform_feature_scaling=True, calibrate_final_model=False, verify_features=False, cv=2, feature_learning=False, fl_data=None)
 
   :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
 
@@ -46,6 +46,25 @@ auto_ml
   :param calibrate_final_model: [default- False] Whether to calibrate the probability predictions coming from the final trained classifier. Usefulness depends on your scoring metric, and model. The default auto_ml settings mean that the model does not necessarily need to be calibrated. If True, you must pass in values for X_test and y_test as well. This is the dataset we will calibrate the model to. Note that this means you cannot use this as your test dataset once the model has been calibrated to them.
 
   :param verify_features: [default- False] Allows you to verify that all the same features are present in a prediction dataset as the training datset. False by default because it increases serialized model size by around 1MB, depending on your dataset. In order to check whether a prediction dataset has the same features, invoke ``trained_ml_pipeline.named_steps['final_model'].verify_features(prediction_data)``. Kind of a clunky UI, but a useful feature smashed into the constraints of a sklearn pipeline.
+
+  :param feature_learning: [default- False] Whether or not to use Deep Learning to learn features from the data. The learned features are then predicted for every row in the training data, and fed into a final model (by default, gradient boosting) to turn those features and the original features into the most accurate predictions possible. If True, you must pass in fl_data as well. For more details, please visit the feature_learning page in these docs.
+
+  :param fl_data: If feature_learning=True, then this is the dataset we will fit the deep learning model on. This dataset should be different than your df_train dataset.
+
+
+.. py:method:: ml_predictor.train_categorical_ensemble(df_train, categorical_column, min_category_size=5, default_category='most_frequently_occurring_category')
+
+  :param df_train: Same as for .train
+
+  :param categorical_column: The column of data that holds the category you want to train each model on. If you want to train a model for each market you operate in, `categorical_column='market_name'`.
+
+  :param min_category_size: [default- 5] The minimum size of a category in the training data. If a category has fewer than this number of observations, we will not train a model for it.
+
+  :param default_category: [Default- most frequently occurring category in the training data] When getting predictions for a category that was not in our training data, which category should we use? By default, uses the largest category from the training data. Can also take on the value "_RAISE_ERROR", which will predictably raise an error.
+
+  For more details, please visit the "categorical_ensembling" page in the docs.
+
+  :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
 
 
 .. py:method:: ml_predictor.predict(prediction_rows)
