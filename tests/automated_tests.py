@@ -7,21 +7,9 @@ os.environ['is_test_suite'] = 'True'
 import classifiers as classifier_tests
 import regressors as regressor_tests
 
-# Remaining TODOs:
-# 3. Figure out which tests only need to be run once, and reorganize them into the appropriate file
-# 5. handle train_categorical_ensemble
-# 7. Make sure categorical_ensembling works with feature_learning!
-
-# Feature TODOs:
-# 3. verify feature_learning passes all the tests
-# 4. add minimum category size as a param (otherwise, just use default- if the user wants to make these their own small category, totally on them)
-
 
 training_parameters = {
     'model_names': ['GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
-    # 'model_names': ['GradientBoosting', 'DeepLearning']
-    # 'model_names': ['LGBM']
-    # , 'train_categorical_ensemble': [True, False]
 }
 
 

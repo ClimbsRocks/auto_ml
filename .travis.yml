@@ -3,69 +3,20 @@ dist: trusty
 language: python
 services:
   - docker
-# cache:
-#   pip: true
-  # directories:
-  #   - 'xgboost/python-package'
-  #   - 'lightgbm/python-package'
 
 python:
   - "2.7"
   # - "3.5"
   # - "3.6"
+  # Right now we're using Docker, which only has Python 2 installed by default. Over time we can certainly create a more complicated docker that has multiple versions of Python installed, and programmatically determine which one to use
 
 # Command to install dependencies
 install:
   - docker pull climbsrocks/auto_ml_tests:0.0.1
   - pip install coveralls
-  # - kpython(){
-  #     docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python "$@"
-  #   }
-  # - TEST_DIR=$PWD
-  # - sudo apt-get update
-
-  #  Install LightGBM
-  # - sudo apt-get install -y libopenmpi-dev openmpi-bin build-essential libtcmalloc-minimal4 ocl-icd-opencl-dev
-  # - export LD_PRELOAD="/usr/lib/libtcmalloc_minimal.so.4"
-  # - git clone --recursive https://github.com/Microsoft/LightGBM LightGBM
-  # - cd LightGBM && mkdir build && cd build && cmake .. && make -j
-  # # Exit out of the build dir up a level to where python-package is
-  # - cd ..
-
-  # # We need scipy installed to get the python version of lightgbm.
-  # - pip install --upgrade pip
-  # - pip install --only-binary=numpy,scipy numpy scipy
-
-  # # Install the python part of LightGBM now that we have scipy
-  # - cd python-package
-  # - python setup.py install
-  # # Move back to the directory we want to run our tests in, out of the LightGBM build directories
-  # - cd $TEST_DIR
-
-  # # Install XGBoost
-  # - git clone --recursive https://github.com/dmlc/xgboost
-  # - cd xgboost; make -j4
-  # - cd python-package
-  # - python setup.py install
-  # - cd $TEST_DIR
-
-
-  # - pip install coveralls
-  # - pip install -r requirements.txt
-  # - pip install tensorflow
-  # - if [[ "$TRAVIS_PYTHON_VERSION" == "2.7" ]]; then
-  #     pip install --upgrade https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.1-cp27-none-linux_x86_64.whl;
-  #   elif [[ "$TRAVIS_PYTHON_VERSION" == "3.5" ]]; then
-  #     pip install --upgrade https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.1-cp35-cp35m-linux_x86_64.whl;
-  #   elif [[ "$TRAVIS_PYTHON_VERSION" == "3.6" ]]; then
-  #     pip install --upgrade https://storage.googleapis.com/tensorflow/linux/cpu/tensorflow-1.0.1-cp36-cp36m-linux_x86_64.whl;
-  #   fi
-  # - pip install keras
-  # - pip install h5py
 
 # Command to run tests
-# script: nosetests -v --with-coverage --cover-package auto_ml tests
 script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:0.0.1 python setup.py nosetests
 
 after_success:
-  coveralls
+  - coveralls

@@ -67,69 +67,6 @@ def calculate_brier_score_loss(actuals, probas):
     return -1 * brier_score_loss(actuals, probas)
 
 
-def make_titanic_ensemble(df_titanic_train, method='median'):
-    column_descriptions = {
-        'survived': 'output'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-
-    ensemble_list = [
-        {
-            'column_descriptions': column_descriptions
-            , 'name': 'LogisticRegression'
-            , 'model_names': ['LogisticRegression']
-        }
-
-        , {
-            'column_descriptions': column_descriptions
-            , 'name': 'GradientBoostingClassifier'
-            , 'model_names': ['GradientBoostingClassifier']
-        }
-
-        # , {
-        #     'column_descriptions': column_descriptions
-        #     , 'name': 'Perceptron'
-        #     , 'model_names': ['Perceptron']
-        # }
-
-        , {
-            'column_descriptions': column_descriptions
-            , 'name': 'RandomForestClassifier'
-            , 'model_names': ['RandomForestClassifier']
-        }
-
-        # , {
-        #     'column_descriptions': column_descriptions
-        #     , 'name': 'PassiveAggressiveClassifier'
-        #     , 'model_names': ['PassiveAggressiveClassifier']
-        # }
-
-        # , {
-        #     'column_descriptions': column_descriptions
-        #     , 'name': 'RidgeClassifier'
-        #     , 'model_names': ['RidgeClassifier']
-        # }
-
-        , {
-            'column_descriptions': column_descriptions
-            , 'name': 'AdaBoostClassifier'
-            , 'model_names': ['AdaBoostClassifier']
-        }
-
-        , {
-            'column_descriptions': column_descriptions
-            , 'name': 'ExtraTreesClassifier'
-            , 'model_names': ['ExtraTreesClassifier']
-        }
-    ]
-
-    ml_predictor.train_ensemble(data=df_titanic_train, ensemble_training_list=ensemble_list, ensemble_method=method)
-
-    return ml_predictor
-
 
 def get_twitter_sentiment_multilabel_classification_dataset():
 
