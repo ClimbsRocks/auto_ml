@@ -327,21 +327,26 @@ class Predictor(object):
         self.feature_learning = feature_learning
         if self.feature_learning == True:
             if fl_data is None:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('Saw that feature_learning is True, but there is no data passed in for fl_data, which is needed to train the feature_learning estimator')
                 warnings.warn('Please pass in fl_data which is the dataset that will be used to train the feature_learning estimator.')
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 raise ValueError('The data passed in for fl_data is missing')
             self.fl_data = fl_data
 
             if self.perform_feature_scaling == False:
-                print('Heard that we should not perform feature_scaling, but we should include feature_learning. Note that feature_scaling is typically useful for deep learning, which is what we use for feature_learning. If you want a little more model accuracy from the feature_learning step, consider not passing in perform_feature_scaling=True')
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print('Heard that we should not perform feature_scaling, but we should perform feature_learning. Note that feature_scaling is typically useful for deep learning, which is what we use for feature_learning. If you want a little more model accuracy from the feature_learning step, consider not passing in perform_feature_scaling=False')
                 warnings.warn('Consider allowing auto_ml to perform_feature_scaling in conjunction with feature_learning')
 
             if self.perform_feature_selection == True:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('We are not currently supporting perform_feature_selection with this release of feature_learning. We will override perform_feature_selection to False and continue with training.')
                 warnigns.warn('perform_feature_selection=True is not currently supported with feature_learning.')
             self.perform_feature_selection = False
 
             if (isinstance(X_df, pd.DataFrame) and X_df.equals(fl_data)) or (isinstance(X_df, list) and X_df == fl_data):
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('You must pass in different data for fl_data and your training data. This is true both philosophically (you are much more likely to overfit if fl_data == training_data), and logistically (we remove the y column from both datasets, which will throw an error)')
                 print('If you are looking for a quick and easy way of splitting the data, use scikit-learn\'s train_test_split: df_train, fl_data = train_test_split(df_train, test_size=0.33)  ')
                 print('Or, if you insist on using the same dataset for both, you must at least copy it:')
@@ -349,6 +354,7 @@ class Predictor(object):
                 warnings.warn('Your fl_data and df_train must be different datasets. Use train_test_split, or at least copy the data for your fl_data')
 
             if keras_installed != True:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('feature_learning requires Keras to be installed.')
                 print('When we tried to import Model from Keras, we ran into the following error:')
                 print(keras_import_error)
