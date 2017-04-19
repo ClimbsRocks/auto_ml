@@ -17,6 +17,7 @@ python:
 # Command to install dependencies
 install:
   - docker pull climbsrocks/auto_ml_tests:0.0.1
+  - pip install coveralls
   # - kpython(){
   #     docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it kaggle/python python "$@"
   #   }
