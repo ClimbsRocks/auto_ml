@@ -18,3 +18,4 @@ xgboost/*
 *.dill
 .coverage*
 LightGBM/
+.eggs/*
