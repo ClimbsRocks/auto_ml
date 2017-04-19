@@ -765,7 +765,7 @@ class Predictor(object):
         # print('fl_data')
         # print(fl_data)
 
-        self.set_params_and_defaults(**kwargs)
+        self.set_params_and_defaults(data, **kwargs)
 
 
         X_df, y, estimator_names = self._clean_data_and_prepare_for_training(data, self.scoring)
