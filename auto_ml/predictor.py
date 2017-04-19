@@ -294,7 +294,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -327,21 +327,34 @@ class Predictor(object):
         self.feature_learning = feature_learning
         if self.feature_learning == True:
             if fl_data is None:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('Saw that feature_learning is True, but there is no data passed in for fl_data, which is needed to train the feature_learning estimator')
                 warnings.warn('Please pass in fl_data which is the dataset that will be used to train the feature_learning estimator.')
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 raise ValueError('The data passed in for fl_data is missing')
             self.fl_data = fl_data
 
-            if self.perform_feature_scaling == True:
-                print('Heard that we should not perform feature_scaling, but we should include feature_learning. Note that feature_scaling is typically useful for deep learning, which is what we use for feature_learning. If you want a little more model accuracy from the feature_learning step, consider not passing in perform_feature_scaling=True')
+            if self.perform_feature_scaling == False:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print('Heard that we should not perform feature_scaling, but we should perform feature_learning. Note that feature_scaling is typically useful for deep learning, which is what we use for feature_learning. If you want a little more model accuracy from the feature_learning step, consider not passing in perform_feature_scaling=False')
                 warnings.warn('Consider allowing auto_ml to perform_feature_scaling in conjunction with feature_learning')
 
             if self.perform_feature_selection == True:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('We are not currently supporting perform_feature_selection with this release of feature_learning. We will override perform_feature_selection to False and continue with training.')
                 warnigns.warn('perform_feature_selection=True is not currently supported with feature_learning.')
             self.perform_feature_selection = False
 
+            if (isinstance(X_df, pd.DataFrame) and X_df.equals(fl_data)) or (isinstance(X_df, list) and X_df == fl_data):
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print('You must pass in different data for fl_data and your training data. This is true both philosophically (you are much more likely to overfit if fl_data == training_data), and logistically (we remove the y column from both datasets, which will throw an error)')
+                print('If you are looking for a quick and easy way of splitting the data, use scikit-learn\'s train_test_split: df_train, fl_data = train_test_split(df_train, test_size=0.33)  ')
+                print('Or, if you insist on using the same dataset for both, you must at least copy it:')
+                print('ml_predictor.train(df_train, feature_learning=True, fl_data=df_train.copy())')
+                warnings.warn('Your fl_data and df_train must be different datasets. Use train_test_split, or at least copy the data for your fl_data')
+
             if keras_installed != True:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('feature_learning requires Keras to be installed.')
                 print('When we tried to import Model from Keras, we ran into the following error:')
                 print(keras_import_error)
@@ -452,7 +465,7 @@ class Predictor(object):
 
     def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None):
 
-        self.set_params_and_defaults(user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -758,7 +771,7 @@ class Predictor(object):
         # print('fl_data')
         # print(fl_data)
 
-        self.set_params_and_defaults(**kwargs)
+        self.set_params_and_defaults(data, **kwargs)
 
 
         X_df, y, estimator_names = self._clean_data_and_prepare_for_training(data, self.scoring)
