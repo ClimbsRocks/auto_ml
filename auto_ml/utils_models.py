@@ -13,7 +13,6 @@ from sklearn.cluster import MiniBatchKMeans
 xgb_installed = False
 try:
     from xgboost import XGBClassifier, XGBRegressor
-    # import xgboost as xgb
     xgb_installed = True
 except ImportError:
     pass
@@ -487,7 +486,6 @@ def insert_deep_learning_model(pipeline_step, file_name):
     keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
 
     model = keras_load_model(keras_file_name)
-    # model = model_name_map[random_name]
 
     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
     return model
@@ -527,25 +525,6 @@ def load_ml_model(file_name):
                 pass
 
     return base_pipeline
-
-    # if isinstance(base_pipeline, utils_categorical_ensembling.CategoricalEnsembler):
-
-    # for step in base_pipeline.named_steps:
-    #     pipeline_step = base_pipeline.named_steps[step]
-    #     # try:
-    #     if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
-    #         pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
-    #     # except AttributeError as e:
-    #     #     pass
-
-
-    # # keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
-
-    # # keras_model = load_model(keras_file_name)
-
-    # # base_pipeline.named_steps['final_model'].model = keras_model
-
-    # return base_pipeline
 
 # Keeping this here for legacy support
 def load_keras_model(file_name):
