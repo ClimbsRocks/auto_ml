@@ -341,7 +341,7 @@ class Predictor(object):
                 warnigns.warn('perform_feature_selection=True is not currently supported with feature_learning.')
             self.perform_feature_selection = False
 
-            if X_df.equals(fl_data):
+            if (isinstance(X_df, pd.DataFrame) and X_df.equals(fl_data)) or (isinstance(X_df, list) and X_df == fl_data):
                 print('You must pass in different data for fl_data and your training data. This is true both philosophically (you are much more likely to overfit if fl_data == training_data), and logistically (we remove the y column from both datasets, which will throw an error)')
                 print('If you are looking for a quick and easy way of splitting the data, use scikit-learn\'s train_test_split: df_train, fl_data = train_test_split(df_train, test_size=0.33)  ')
                 print('Or, if you insist on using the same dataset for both, you must at least copy it:')
