@@ -216,29 +216,6 @@ def test_binary_classification_predict_proba_on_Predictor_instance(model_name=No
     assert -0.215 < test_score < -0.17
 
 
-def test_nlp_multilabel_classification(model_name=None):
-    np.random.seed(0)
-
-    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
-
-    column_descriptions = {
-        'airline_sentiment': 'output'
-        , 'airline': 'categorical'
-        , 'text': 'nlp'
-        , 'tweet_location': 'categorical'
-        , 'user_timezone': 'categorical'
-        , 'tweet_created': 'date'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-    ml_predictor.train(df_twitter_train, model_names=model_name)
-
-    test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment)
-
-    # Make sure our score is good, but not unreasonably good
-    print('test_score')
-    print(test_score)
-    assert 0.67 < test_score < 0.79
 
 # For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
 # home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
@@ -449,9 +426,9 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         print('first_score')
         print(first_score)
         # Make sure our score is good, but not unreasonably good
-        lower_bound = 0.67
-        if model_name == 'LGBMClassifier':
-            lower_bound = 0.655
+        lower_bound = 0.73
+        # if model_name == 'LGBMClassifier':
+        #     lower_bound = 0.655
         assert lower_bound < first_score < 0.79
 
         # 2. make sure the speed is reasonable (do it a few extra times)
@@ -492,3 +469,28 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         print(second_score)
         # Make sure our score is good, but not unreasonably good
         assert lower_bound < second_score < 0.79
+
+
+def test_nlp_multilabel_classification(model_name=None):
+    np.random.seed(0)
+
+    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+
+    column_descriptions = {
+        'airline_sentiment': 'output'
+        , 'airline': 'categorical'
+        , 'text': 'nlp'
+        , 'tweet_location': 'categorical'
+        , 'user_timezone': 'categorical'
+        , 'tweet_created': 'date'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+    ml_predictor.train(df_twitter_train, model_names=model_name)
+
+    test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment)
+
+    # Make sure our score is good, but not unreasonably good
+    print('test_score')
+    print(test_score)
+    assert 0.73 < test_score < 0.79
