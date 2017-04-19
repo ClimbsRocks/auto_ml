@@ -110,6 +110,19 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 text_col = X_df[key].astype(str, raise_on_error=False)
                 self.text_columns[key].fit(text_col)
 
+                col_names = self.text_columns[key].get_feature_names()
+
+                # Make weird characters play nice, or just ignore them :)
+                for idx, word in enumerate(col_names):
+                    try:
+                        col_names[idx] = str(word)
+                    except:
+                        col_names[idx] = 'non_ascii_word_' + str(idx)
+
+                col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
+
+                self.text_columns[key].cleaned_feature_names = col_names
+
         return self
 
     def transform(self, X, y=None):
@@ -141,11 +154,37 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     dict_copy.update(date_feature_dict)
                 elif col_desc == 'categorical':
                     dict_copy[key] = val
-                # elif key in self.text_columns:
-                    # Add in logic to handle nlp columns here
+                elif key in self.text_columns:
+
+                    col_names = self.text_columns[key].cleaned_feature_names
+
+                    try:
+                        text_val = str(X[key])
+                    except UnicodeEncodeError:
+                        text_val = X[key].encode('ascii', 'ignore').decode('ascii')
+
+                    # the transform function expects a list
+                    text_val = [text_val]
+
+                    nlp_matrix = self.text_columns[key].transform(text_val)
+
+                    # From here, it's all about transforming the output from the tf-idf transform into a dictionary
+                    # Borrowed from: http://stackoverflow.com/a/40696119/3823857
+                    # it outputs a sparse csr matrics
+                    # first, we transform to coo
+                    nlp_matrix = nlp_matrix.tocoo()
+                    # Then, we grab the relevant column names
+                    relevant_col_names = []
+                    for col_idx in nlp_matrix.col:
+                        relevant_col_names.append(col_names[col_idx])
+
+                    # Then we zip together the relevant columns and the sparse data into a dictionary
+                    relevant_nlp_cols = {k:v for k,v in zip(relevant_col_names, nlp_matrix.data)}
+
+                    dict_copy.update(relevant_nlp_cols)
+
                 elif col_desc in vals_to_drop:
                     pass
-                    # del X[key]
             return dict_copy
 
         else:
@@ -202,17 +241,18 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                 elif key in self.text_columns:
 
-                    col_names = self.text_columns[key].get_feature_names()
+                    col_names = self.text_columns[key].cleaned_feature_names
 
-                    # Make weird characters play nice, or just ignore them :)
-                    for idx, word in enumerate(col_names):
-                        try:
-                            col_names[idx] = str(word)
-                        except:
-                            col_names[idx] = 'non_ascii_word_' + str(idx)
+                    # # Make weird characters play nice, or just ignore them :)
+                    # for idx, word in enumerate(col_names):
+                    #     try:
+                    #         col_names[idx] = str(word)
+                    #     except:
+                    #         col_names[idx] = 'non_ascii_word_' + str(idx)
 
-                    col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
+                    # col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
 
+                    X[key].fillna('nan', inplace=True)
                     nlp_matrix = self.text_columns[key].transform(X[key].astype(str, raise_on_error=False))
                     nlp_matrix = nlp_matrix.toarray()
 
