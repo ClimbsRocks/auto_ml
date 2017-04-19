@@ -7,7 +7,7 @@ from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifi
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
 
-bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf', 'np.nan', 'numpy.nan'])
 
 def advanced_scoring_classifiers(probas, actuals, name=None):
     # pandas Series don't play nice here. Make sure our actuals list is indeed a list
@@ -138,7 +138,6 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
 
     # 5. pos and neg differences
     calculate_and_print_differences(predictions=predictions, actuals=actuals, name=name)
-    # 6.
 
     actuals_preds = list(zip(actuals, predictions))
     # Sort by PREDICTED value, since this is what what we will know at the time we make a prediction

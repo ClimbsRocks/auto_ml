@@ -13,59 +13,6 @@ bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf
 
 
 class DataFrameVectorizer(BaseEstimator, TransformerMixin):
-    """Transforms a DataFrame to vectors.
-
-    Just like scikit-learn's DictVectorizer, but adjusted to take a DataFrame as input, instead of a list of dictionaries.
-
-    This transformer turns a DataFrame into Numpy arrays or scipy.sparse matrices for use
-    with scikit-learn estimators.
-
-    When feature values are strings, this transformer will do a binary one-hot
-    (aka one-of-K) coding: one boolean-valued feature is constructed for each
-    of the possible string values that the feature can take on. For instance,
-    a feature "f" that can take on the values "ham" and "spam" will become two
-    features in the output, one signifying "f=ham", the other "f=spam".
-
-    However, note that this transformer will only do a binary one-hot encoding
-    when feature values are of type string. If categorical features are
-    represented as numeric values such as int, the DictVectorizer can be
-    followed by OneHotEncoder to complete binary one-hot encoding.
-
-    Features that do not occur in a row will have a zero value
-    in the resulting array/matrix.
-
-    Read more in the :ref:`User Guide <dict_feature_extraction>`.
-
-    Parameters
-    ----------
-    dtype : callable, optional
-        The type of feature values. Passed to Numpy array/scipy.sparse matrix
-        constructors as the dtype argument.
-    separator : string, optional
-        Separator string used when constructing new features for one-hot
-        coding.
-    sparse : boolean, optional.
-        Whether transform should produce scipy.sparse matrices.
-        True by default.
-    sort : boolean, optional.
-        Whether ``feature_names_`` and ``vocabulary_`` should be sorted when fitting.
-        True by default.
-
-    Attributes
-    ----------
-    vocabulary_ : dict
-        A dictionary mapping feature names to feature indices.
-
-    feature_names_ : list
-        A list of length n_features containing the feature names (e.g., "f=ham"
-        and "f=spam").
-
-    See also
-    --------
-    FeatureHasher : performs vectorization using only a hash function.
-    sklearn.preprocessing.OneHotEncoder : handles nominal/categorical features
-      encoded as columns of integers.
-    """
 
     def __init__(self, column_descriptions=None, dtype=np.float32, separator="=", sparse=True, sort=True):
         self.dtype = dtype
@@ -86,17 +33,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
-        """Learn a list of column_name -> indices mappings.
-
-        Parameters
-        ----------
-        X : DataFrame
-        y : (ignored)
-
-        Returns
-        -------
-        self
-        """
         feature_names = []
         vocab = {}
 
@@ -200,63 +136,16 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         result_matrix = sp.csr_matrix((values, indices, indptr),
                                       shape=shape, dtype=dtype)
 
-        # # Sort everything if asked
-        # if fitting and self.sort:
-        #     feature_names.sort()
-        #     map_index = np.empty(len(feature_names), dtype=np.int32)
-        #     for new_val, f in enumerate(feature_names):
-        #         map_index[new_val] = vocab[f]
-        #         vocab[f] = new_val
-        #     result_matrix = result_matrix[:, map_index]
-
         if self.sparse:
             result_matrix.sort_indices()
         else:
             result_matrix = result_matrix.toarray()
 
-        # if fitting:
-        #     self.feature_names_ = feature_names
-        #     self.vocabulary_ = vocab
         return result_matrix
 
 
     def transform(self, X, y=None):
-        """Transform DataFrame to array or sparse matrix.
-
-        Columns (or string values in categorical columns) not encountered during fit will be
-        silently ignored.
-
-        Parameters
-        ----------
-        X : DataFrame where all values are strings or convertible to dtype.
-        y : (ignored)
-
-        Returns
-        -------
-        Xa : {array, sparse matrix}
-            Feature vectors; always 2-d.
-        """
         return self._transform(X)
-        # if self.sparse:
-        #     return self._transform(X)
-
-        # else:
-        #     dtype = self.dtype
-        #     vocab = self.vocabulary_
-        #     X = _tosequence(X)
-        #     Xa = np.zeros((len(X), len(vocab)), dtype=dtype)
-
-        #     for i, x in enumerate(X):
-        #         for f, v in six.iteritems(x):
-        #             if isinstance(v, six.string_types):
-        #                 f = "%s%s%s" % (f, self.separator, v)
-        #                 v = 1
-        #             try:
-        #                 Xa[i, vocab[f]] = dtype(v)
-        #             except KeyError:
-        #                 pass
-
-        #     return Xa
 
     def get_feature_names(self):
         """Returns a list of feature names, ordered by their indices.
@@ -271,33 +160,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
         This function modifies the estimator in-place.
 
-        Parameters
-        ----------
-        support : array-like
-            Boolean mask or list of indices (as returned by the get_support
-            member of feature selectors).
-        indices : boolean, optional
-            Whether support is a list of indices.
-
-        Returns
-        -------
-        self
-
-        Examples
-        --------
-        >>> from sklearn.feature_extraction import DictVectorizer
-        >>> from sklearn.feature_selection import SelectKBest, chi2
-        >>> v = DictVectorizer()
-        >>> D = [{'foo': 1, 'bar': 2}, {'foo': 3, 'baz': 1}]
-        >>> X = v.fit_transform(D)
-        >>> support = SelectKBest(chi2, k=2).fit(X, [0, 1])
-        >>> v.get_feature_names()
-        ['bar', 'baz', 'foo']
-        >>> v.restrict(support.get_support()) # doctest: +ELLIPSIS
-        DictVectorizer(dtype=..., separator='=', sort=True,
-                sparse=True)
-        >>> v.get_feature_names()
-        ['bar', 'foo']
         """
         if not indices:
             support = np.where(support)[0]

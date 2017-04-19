@@ -306,16 +306,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         prediction = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
         # It makes a cleaner interface just to get just the single prediction back, rather than a list with the prediction hidden inside.
-        # try:
-        #     len(prediction)
-        # except TypeError as e:
-        #     print('Heard an error')
-        #     print('Here is our prediction')
-        #     print(prediction)
-        #     print(type(prediction))
-        #     print('X')
-        #     print(X)
-        #     raise(e)
 
         if isinstance(prediction, np.ndarray):
             prediction = prediction.tolist()
@@ -331,13 +321,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def transform(self, X):
         predicted_features = self.predict(X)
         predicted_features = list(predicted_features)
-        # print('predicted_features')
-        # print(predicted_features)
-        # print('type(predicted_features)')
-        # print(type(predicted_features))
-        # print('predicted_features.shape')
-        # print(predicted_features.shape)
-
 
         if scipy.sparse.issparse(X):
             X = scipy.sparse.hstack([X, predicted_features], format='csr')
