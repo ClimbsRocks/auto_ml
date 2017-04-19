@@ -152,7 +152,6 @@ class Predictor(object):
                 pipeline_list.append(('feature_selection', utils_feature_selection.FeatureSelectionTransformer(type_of_estimator=self.type_of_estimator, column_descriptions=self.column_descriptions, feature_selection_model='SelectFromModel') ))
 
         if trained_pipeline is not None:
-            # TODO:
             # First, check and see if we have any steps with some version of keyword matching on something like 'intermediate_model_predictions' or 'feature_learning_model' or 'ensemble_model' or something like that in them.
             # add all of those steps
             # then try to add in the final_model that was passed in as a param
@@ -418,23 +417,14 @@ class Predictor(object):
         elif self.type_of_estimator == 'regressor':
             fl_estimator_names = ['DeepLearningRegressor']
 
+        # For performance reasons, I believe it is critical to only have one transformation pipeline, no matter how many estimators we eventually build on top. Getting predictions from a trained estimator is typically super quick. We can easily get predictions from 10 trained models in a production-ready amount of time.But the transformation pipeline is not so quick that we can duplicate it 10 times.
         combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, fl_estimator_names[0])
 
-        # TODO: if feature_learning, then fit the transformation pipeline on the combined dataset
-        # Then, for MVP, transform the fl_data in a different step
-        # THEN, after we've fit our feature_learning step, transform the X_df through the entire transformation pipeline which includes the feature_learning features
-        # else, do our normal workflow
-        # We both fit the transformation pipeline, and transform X_df in this step
-
-        # For performance reasons, I believe it is critical to only have one transformation pipeline, no matter how many estimators we eventually build on top. Getting predictions from a trained estimator is typically super quick. We can easily get predictions from 10 trained models in a production-ready amount of time.But the transformation pipeline is not so quick that we can duplicate it 10 times.
-        # Simplified approach: we do not fit the transformation_pipeline on the fl_data. This reduces computation time somewhat, and everything that's in fl_data should be a subset of what's in our X_df data
-        # We can change this in v2, but this is a conscious design decision for now
-        # FUTURE IMPROVEMENT: just grab our already_transformed fl_data and X_df
-        fl_data = self.transformation_pipeline.transform(fl_data)
-
+        fl_indices = [i for i in range(len_X_df, combined_transformed_data.shape[0])]
+        fl_data_transformed = combined_transformed_data[fl_indices]
 
         # fit a train_final_estimator
-        feature_learning_step = self.train_ml_estimator(fl_estimator_names, self._scorer, fl_data, fl_y, feature_learning=True)
+        feature_learning_step = self.train_ml_estimator(fl_estimator_names, self._scorer, fl_data_transformed, fl_y, feature_learning=True)
 
         # Split off the final layer/find a way to get the output from the penultimate layer
         fl_model = feature_learning_step.model
@@ -442,20 +432,17 @@ class Predictor(object):
         feature_output_model = Model(inputs=fl_model.model.input, outputs=fl_model.model.get_layer('penultimate_layer').output)
         feature_learning_step.model = feature_output_model
 
-        # Make sure I know how many neurons are in that final layer- settled on 10 always
-
         # Add those to the list in our DV so we know what to do with them for analytics purposes
         feature_learning_names = []
         for idx in range(10):
             feature_learning_names.append('feature_learning_' + str(idx + 1))
 
         self.transformation_pipeline.named_steps['dv'].feature_names_ += feature_learning_names
-        # modify FinalModelATC so it has a transform function that passes through all of X and just hstacks a few new columns on the end
 
         # add the estimator to the end of our transformation pipeline
         self.transformation_pipeline = self._construct_pipeline(trained_pipeline=self.transformation_pipeline, final_model=feature_learning_step, final_model_step_name='feature_learning_model')
 
-        # FUTURE IMPROVEMENT: don't pass this back through the entire transformation_pipeline. instead, grab the X_df we've already transformed above, and pass it through only the feature_learning_step.transform() method, since that's the only computation we haven't done on it yet, and what's below is a lot of duplicate computation
+        # Pass our already-transformed X_df just through the feature_learning_step.transform. This avoids duplicate computationn
         indices = [i for i in range(len_X_df)]
         X_df_transformed = combined_transformed_data[indices]
         X_df = feature_learning_step.transform(X_df_transformed)
@@ -748,7 +735,6 @@ class Predictor(object):
                 relevant_y.append(y[idx])
 
         relevant_X = X_df.iloc[relevant_indices]
-        # relevant_y = y[relevant_indices]
 
         return relevant_X, relevant_y
 
@@ -765,11 +751,6 @@ class Predictor(object):
             self.len_largest_category = 0
         else:
             self.search_for_default_category = False
-
-        # print('kwargs')
-        # print(kwargs)
-        # print('fl_data')
-        # print(fl_data)
 
         self.set_params_and_defaults(data, **kwargs)
 
@@ -788,8 +769,6 @@ class Predictor(object):
         else:
             X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
-        # X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
-
         unique_categories = X_df[categorical_column].unique()
 
         # Iterate through categories to find:
@@ -803,59 +782,27 @@ class Predictor(object):
         # 7. map over that list to train a new predictor for each category!
 
         categories_and_indices = []
-        # print('unique_categories')
-        # print(unique_categories)
         for category in unique_categories:
-            # print('category')
-            # print(category)
             rel_column = X_df[self.categorical_column]
-            # print('rel_column')
-            # print(rel_column)
             indices = list(np.flatnonzero(X_df[self.categorical_column] == category))
-            # print(indices)
             categories_and_indices.append([category, indices])
 
         categories_and_data = []
         for pair in sorted(categories_and_indices, key=lambda x: len(x[1])):
             category = pair[0]
-            # print(pair[0])
-            # print(pair[1])
             indices = pair[1]
 
             if len(indices) > self.min_category_size:
                 relevant_transformed_rows = X_df_transformed[indices]
-                # print(relevant_transformed_rows)
-
-                # print('type(y)')
-                # print(type(y))
-                # print('y')
-                # print(y)
-                # print('indices')
-                # print(indices)
-                # print('type(indices)')
-                # print(type(indices))
                 relevant_y = [y[idx_val] for idx_val in indices]
-                # relevant_y = y[indices]
                 categories_and_data.append([category, relevant_transformed_rows, relevant_y])
-
-
 
 
         def train_one_categorical_model(category, relevant_X, relevant_y):
             print('\n\nNow training a new estimator for the category: ' + str(category))
 
-            # relevant_X, relevant_y = self.get_relevant_categorical_rows(X_df, y, category)
-
-            # if (scipy.sparse.issparse(relevant_X) and relevant_X.shape[0] < self.min_category_size) or (scipy.sparse.issparse(relevant_X) == False and len(relevant_X) < self.min_category_size):
-            #     return {
-            #         'trained_category_model': None
-            #         , 'category': None
-            #         , 'len_relevant_X': None
-            #     }
             print('Some stats on the y values for this category: ' + str(category))
             print(pd.Series(relevant_y).describe(include='all'))
-
-            # relevant_X = self.transformation_pipeline.transform(relevant_X)
 
 
             try:
@@ -894,18 +841,17 @@ class Predictor(object):
         except AssertionError as e:
             pass
 
-        # results = list(map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
         if os.environ.get('is_test_suite', False) == 'True':
+            # If this is the test_suite, do not run things in parallel
             results = list(map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
         else:
             try:
                 results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
             except RuntimeError:
-                # We might
+                # Deep Learning models require a ton of recursion. I've tried to work around it, but sometimes we just need to brute force the solution here
                 original_recursion_limit = sys.getrecursionlimit()
                 sys.setrecursionlimit(10000)
                 results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
-                # results = list(pool.map(train_one_categorical_model, unique_categories))
                 sys.setrecursionlimit(original_recursion_limit)
 
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
@@ -1132,11 +1078,6 @@ class Predictor(object):
 
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
-        # TODO: reorder, so we have saving the deep learning components first
-        # then, save the pipeline
-        # then, if we did deep learning, add the components back in
-        # then, do the logging
-            # should be similar, with just one or two lines added in for used_deep_learning talking about how you need all the models, not just one
 
         def save_one_step(pipeline_step, used_deep_learning):
             try:
@@ -1163,9 +1104,6 @@ class Predictor(object):
                     pipeline_step.model = random_name
 
 
-                    # save this model to a .h5 file following a consistent and predictable naming schema
-                        # Probably using the step name we're iterating through
-                    # remove this model property from the trained pipeline
             except AttributeError as e:
                 pass
 
@@ -1240,8 +1178,6 @@ class Predictor(object):
             print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
             print('`from auto_ml.utils_models import load_ml_model')
             print('`trained_ml_pipeline = load_ml_model("' + file_name + '")')
-            # print('`with open("' + file_name + '", "rb") as read_file:`')
-            # print('`    trained_ml_pipeline = dill.load(read_file)`')
             print('`trained_ml_pipeline.predict(data)`\n\n')
 
             if used_deep_learning == True:
@@ -1255,102 +1191,5 @@ class Predictor(object):
 
             print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
             print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
-
-        # except RuntimeError as e:
-        #     # TODO: figure out how to save what could be multiple deep_learning models scattered throughout the pipeline (like for feature_learning, and eventually, ensembling)
-        #     # Thoughts:
-        #         # Iterate through each step
-        #         # see if that step has a model_name, and if
-
-        #     if used_deep_learning == True:
-        #         # Save the rest of the pipeline without the deep learning models
-        #         with open(file_name, 'wb') as open_file_name:
-        #             dill.dump(self.trained_pipeline, open_file_name)
-
-        #         # Now add the deep learning models back in so we can use the pipeline that's already loaded in memory, rather than having to load back in the saved pipeline
-        #         for step in self.trained_pipeline.named_steps:
-        #             pipeline_step = self.trained_pipeline.named_steps[step]
-        #             try:
-        #                 if pipeline_step.model_name[:12] == 'DeepLearning':
-
-        #                     # This is where we saved the random_name for this model
-        #                     random_name = pipeline_step.model
-        #                     model = model_name_map[random_name]
-
-        #                     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
-        #                     pipeline_step.model = model
-        #             except AttributeError:
-        #                 pass
-
-        #         # Save the whole pipeline
-        #         # Lots of logging
-        #         # Then we have to figure out how to load it (ideally in a way that's compatible with ensembles)
-
-        #         # TODO: user logging
-        #         if verbose:
-        #             print('\n\nSaved the Keras model to it\'s own file(s). For instance:')
-        #             print(keras_file_name)
-        #             print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
-        #             print('from auto_ml.utils_models import load_keras_model')
-        #             print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
-        #             print('\nIt is also important to keep all files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both/all of these files, and keep the same name:')
-        #             print(file_name)
-        #             print('And all of the Keras files, such as:')
-        #             print(keras_file_name)
-
-
-        # else:
-        #     # Perform logic for non-keras models here
-
-
-        # # is_deep_learning = False
-        # # try:
-        # #     if self.trained_pipeline.named_steps['final_model'].model_name[:12] == 'DeepLearning':
-        # #         is_deep_learning = True
-        # # except:
-        # #     pass
-
-        # # if is_deep_learning == True:
-        # #     keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
-
-        # #     keras_wrapper = self.trained_pipeline.named_steps['final_model'].model
-        # #     self.trained_pipeline.named_steps['final_model'].model.model.save(keras_file_name)
-
-        # #     # Now that we've saved the keras model, set that spot in the pipeline to None, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
-        # #     self.trained_pipeline.named_steps['final_model'].model = None
-        # #     with open(file_name, 'wb') as open_file_name:
-        # #         dill.dump(self.trained_pipeline, open_file_name)
-
-        # #     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
-        # #     self.trained_pipeline.named_steps['final_model'].model = keras_wrapper
-        # #     if verbose:
-        # #         print('\n\nSaved the Keras model to it\'s own file:')
-        # #         print(keras_file_name)
-        # #         print('To load the entire trained pipeline with the Keras deep learning model from disk, we will need to load it specifically using a dedicated function in auto_ml:\n\n')
-        # #         print('from auto_ml.utils_models import load_keras_model')
-        # #         print('trained_ml_pipeline = load_keras_model(' + file_name + ')')
-        # #         print('\nIt is also important to keep both files auto_ml needs in the same directory. If you transfer this to a different prod machine, be sure to transfer both of these files, and keep the same name:')
-        # #         print(file_name)
-        # #         print(keras_file_name)
-
-        # # else:
-        #     with open(file_name, 'wb') as open_file_name:
-        #         dill.dump(self.trained_pipeline, open_file_name)
-
-        #     if verbose:
-        #         print('\n\nWe have saved the trained pipeline to a filed called "' + file_name + '"')
-        #         print('It is saved in the directory: ')
-        #         print(os.getcwd())
-        #         print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
-        #         print('`with open("' + file_name + '", "rb") as read_file:`')
-        #         print('`    trained_ml_pipeline = dill.load(read_file)`')
-        #         print('`trained_ml_pipeline.predict(list_of_dicts_with_same_data_as_training_data)`\n\n')
-
-        #         print('Note that this pickle/dill file can only be loaded in an environment with the same modules installed, and running the same Python version.')
-        #         print('This version of Python is:')
-        #         print(sys.version_info)
-
-        #         print('\n\nWhen passing in new data to get predictions on, columns that were not present (or were not found to be useful) in the training data will be silently ignored.')
-        #         print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
 
         return os.path.join(os.getcwd(), file_name)
