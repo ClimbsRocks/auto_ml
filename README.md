@@ -98,6 +98,31 @@ Depending on your machine, they can occasionally be difficult to install, so the
 Binary and multiclass classification are both supported. Note that for now, labels must be integers (0 and 1 for binary classification). auto_ml will automatically detect if it is a binary or multiclass classification problem- you just have to pass in `ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)`
 
 
+## Feature Learning
+
+Also known as "finally found a way to make this deep learning stuff useful for my business". Deep Learning is great at learning important features from your data. But the way it turns these learned features into a final prediction is relatively basic. Gradient boosting is great at turning features into accurate predictions, but it doesn't do any feature learning.
+
+In auto_ml, you can now automatically use both types of models for what they're great at. If you pass `feature_learning=True, fl_data=some_dataframe` to `.train()`, we will do exactly that: train a deep learning model on your `fl_data`. We won't ask it for predictions (standard stacking approach), instead, we'll use it's penultimate layer to get it's 10 most useful features. Then we'll train a gradient boosted model (or any other model of your choice) on those features plus all the original features.
+
+Across some problems, we've witnessed this lead to a 5% gain in accuracy, while still making predictions in 1-4 milliseconds, depending on model complexity.
+
+`ml_predictor.train(df_train, feature_learning=True, fl_data=df_fl_data)`
+
+
+## Categorical Ensembling
+
+Ever wanted to train one market for every store/customer, but didn't want to maintain hundreds of thousands of independent models? With `ml_predictor.train_categorical_ensemble()`, we will handle that for you. You'll still have just one consistent API, `ml_predictor.predict(data)`, but behind this single API will be one model for each category you included in your training data.
+
+Just tell us which column holds the category you want to split on, and we'll handle the rest. As always, saving the model, loading it in a different environment, and getting speedy predictions live in production is baked right in.
+
+`ml_predictor.train_categorical_ensemble(df_train, categorical_column='store_name')`
+
+
+### More details available in the docs
+
+http://auto-ml.readthedocs.io/en/latest/
+
+
 ### Advice
 
 Before you go any further, try running the code. Load up some data (either a DataFrame, or a list of dictionaries, where each dictionary is a row of data). Make a `column_descriptions` dictionary that tells us which attribute name in each row represents the value we're trying to predict. Pass all that into `auto_ml`, and see what happens!
