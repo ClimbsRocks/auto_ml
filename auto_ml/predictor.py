@@ -1164,10 +1164,13 @@ class Predictor(object):
 
                 for step in self.trained_pipeline.named_steps:
                     pipeline_step = self.trained_pipeline.named_steps[step]
-                    if pipeline_step.get('model_name', 'nonsensicallongstring')[:12] == 'DeepLearning':
+                    try:
+                        if pipeline_step.get('model_name', 'nonsensicallongstring')[:12] == 'DeepLearning':
 
-                        model_name = pipeline_step.model
-                        pipeline_step.model = model_name_map[model_name]
+                            model_name = pipeline_step.model
+                            pipeline_step.model = model_name_map[model_name]
+                    except AttributeError as e:
+                        pass
 
 
 
