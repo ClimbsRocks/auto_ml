@@ -19,4 +19,5 @@ install:
 script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:0.0.1 python setup.py nosetests
 
 after_success:
+  - docker cp climbsrocks/auto_ml_tests:0.0.1:/.coverage
   - coveralls
