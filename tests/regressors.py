@@ -154,7 +154,7 @@ def getting_single_predictions_regression(model_name=None):
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    assert 0.1 < duration.total_seconds() / 1.0 < 10
+    assert 0.1 < duration.total_seconds() / 1.0 < 15
 
 
     # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
@@ -220,6 +220,8 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
         lower_bound = -23
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
+    if model_name == 'XGBRegressor':
+        lower_bound = -3.3
 
     assert lower_bound < first_score < -2.8
 
@@ -240,7 +242,7 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    assert 0.2 < duration.total_seconds() / 1.0 < 10
+    assert 0.2 < duration.total_seconds() / 1.0 < 15
 
 
     # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
@@ -332,7 +334,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    assert 0.2 < duration.total_seconds() / 1.0 < 10
+    assert 0.2 < duration.total_seconds() / 1.0 < 15
 
 
     # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)

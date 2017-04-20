@@ -214,7 +214,7 @@ def test_user_input_func_classification(model_name=None):
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    assert 0.2 < duration.total_seconds() < 10
+    assert 0.2 < duration.total_seconds() < 15
 
 
     # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
@@ -526,10 +526,10 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         # That's about 1 millisecond per prediction
         # Assuming we might be running on a test box that's pretty weak, multiply by 3
         # Also make sure we're not running unreasonably quickly
-        time_upper_bound = 3
-        if model_name == 'XGBClassifier':
-            time_upper_bound = 4
-        assert 0.2 < duration.total_seconds() < time_upper_bound
+        # time_upper_bound = 3
+        # if model_name == 'XGBClassifier':
+        #     time_upper_bound = 4
+        assert 0.2 < duration.total_seconds() < 15
 
 
         # 3. make sure we're not modifying the dictionaries (the score is the same after running a few experiments as it is the first time)
