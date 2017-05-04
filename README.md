@@ -37,9 +37,9 @@ ml_predictor.score(df_test, df_test.MEDV)
 auto_ml is designed for production. Here's an example that includes serializing and loading the trained model, then getting predictions on single dictionaries, roughly the process you'd likely follow to deploy the trained model.
 
 ```python
-import dill
 from auto_ml import Predictor
 from auto_ml.utils import get_boston_dataset
+from auto_ml.utils_models import load_ml_model
 
 # Load data
 df_train, df_test = get_boston_dataset()
@@ -65,9 +65,7 @@ test_score = ml_predictor.score(df_test, df_test.MEDV)
 # Here we will demonstrate saving the trained model, and loading it again
 file_name = ml_predictor.save()
 
-# dill is a drop-in replacement for pickle that handles functions better
-with open (file_name, 'rb') as read_file:
-    trained_model = dill.load(read_file)
+trained_model = load_ml_model(file_name)
 
 # .predict and .predict_proba take in either:
 # A pandas DataFrame
