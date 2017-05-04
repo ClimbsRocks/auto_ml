@@ -8,6 +8,7 @@ import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 
 from auto_ml import Predictor
+from auto_ml.utils_models import load_ml_model
 
 import dill
 import numpy as np
@@ -159,13 +160,14 @@ def test_user_input_func_classification(model_name=None):
 
     file_name = ml_predictor.save(str(random.random()))
 
-    if model_name == 'DeepLearningClassifier':
-        from auto_ml.utils_models import load_keras_model
+    # if model_name == 'DeepLearningClassifier':
+    #     from auto_ml.utils_models import load_keras_model
 
-        saved_ml_pipeline = load_keras_model(file_name)
-    else:
-        with open(file_name, 'rb') as read_file:
-            saved_ml_pipeline = dill.load(read_file)
+    #     saved_ml_pipeline = load_keras_model(file_name)
+    # else:
+    #     with open(file_name, 'rb') as read_file:
+    #         saved_ml_pipeline = dill.load(read_file)
+    saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
     try:
@@ -474,13 +476,14 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
 
         file_name = ml_predictor.save(str(random.random()))
 
-        if model_name == 'DeepLearningClassifier':
-            from auto_ml.utils_models import load_keras_model
+        # if model_name == 'DeepLearningClassifier':
+        #     from auto_ml.utils_models import load_keras_model
 
-            saved_ml_pipeline = load_keras_model(file_name)
-        else:
-            with open(file_name, 'rb') as read_file:
-                saved_ml_pipeline = dill.load(read_file)
+        #     saved_ml_pipeline = load_keras_model(file_name)
+        # else:
+        #     with open(file_name, 'rb') as read_file:
+        #         saved_ml_pipeline = dill.load(read_file)
+        saved_ml_pipeline = load_ml_model(file_name)
 
         os.remove(file_name)
         try:
