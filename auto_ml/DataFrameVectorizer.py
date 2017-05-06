@@ -23,6 +23,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             column_descriptions = {}
         self.column_descriptions = column_descriptions
         self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
+        self.is_first_transform = True
 
 
     def get(self, prop_name, default=None):
@@ -33,6 +34,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
+        print('Fitting our DataFrameVectorizer')
         feature_names = []
         vocab = {}
 
@@ -111,18 +113,20 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             # same time
             for row_idx, row in X.iterrows():
                 for col_idx, val in enumerate(row):
-                    f = X.columns[col_idx]
 
-                    if isinstance(val, six.string_types):
-                        f = f + self.separator + val
-                        val = 1
+                    if str(val) not in bad_vals_as_strings:
+                        f = X.columns[col_idx]
 
-                    # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
-                    if f in vocab and str(val) not in bad_vals_as_strings:
-                        # Get the index position from vocab, then append that index position to indices
-                        indices.append(vocab[f])
-                        # Convert the val to the correct dtype, then append to our values list
-                        values.append(dtype(val))
+                        if isinstance(val, six.string_types):
+                            f = f + self.separator + val
+                            val = 1
+
+                        # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
+                        if f in vocab and str(val) not in bad_vals_as_strings:
+                            # Get the index position from vocab, then append that index position to indices
+                            indices.append(vocab[f])
+                            # Convert the val to the correct dtype, then append to our values list
+                            values.append(dtype(val))
 
                 indptr.append(len(indices))
 
@@ -145,6 +149,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
     def transform(self, X, y=None):
+        if self.is_first_transform:
+            print('Transforming inside DataFrameVectorizer')
+            self.is_first_transform = False
         return self._transform(X)
 
     def get_feature_names(self):

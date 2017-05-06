@@ -74,6 +74,7 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
+        print('Fitting our feature scaler')
         self.column_ranges = {}
         self.cols_to_ignore = []
 

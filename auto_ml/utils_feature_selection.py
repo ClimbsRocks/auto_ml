@@ -47,6 +47,7 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
+        print('Fitting our feature selector')
 
 
         self.selector = get_feature_selection_model_from_name(self.type_of_estimator, self.feature_selection_model)
