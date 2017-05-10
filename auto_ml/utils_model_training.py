@@ -28,7 +28,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=False):
 
         self.model = model
         self.model_name = model_name
@@ -38,6 +38,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.training_features = training_features
         self.column_descriptions = column_descriptions
         self.feature_learning = feature_learning
+        self.uncertainty_model = uncertainty_model
 
 
         if self.type_of_estimator == 'classifier':
@@ -87,6 +88,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
+            elif self.uncertainty_model == True:
+                from sklearn.metrics import median_absolute_error
+                self.model.set('fobj', median_absolute_error)
+                self.model.fit(X_fit, y)
             else:
                 self.model.fit(X_fit, y)
 
