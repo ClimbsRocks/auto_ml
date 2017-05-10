@@ -75,7 +75,7 @@ predictions = trained_model.predict(df_test)
 print(predictions)
 ```
 
-## XGBoost, Deep Leaarning with TensorFlow & Keras, and LightGBM
+## XGBoost, Deep Learning with TensorFlow & Keras, and LightGBM
 
 auto_ml has all three of these awesome libraries integrated!
 Generally, just pass one of them in for model_names.
