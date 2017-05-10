@@ -109,12 +109,14 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
         else:
+            if self.is_first_transform:
+                print('about to iterate through the rows of the dataframe')
             # collect all the possible feature names and build sparse matrix at
             # same time
             for row_idx, row in X.iterrows():
                 for col_idx, val in enumerate(row):
 
-                    if str(val) not in bad_vals_as_strings:
+                    if isinstance(val, six.string_types) or str(val) not in bad_vals_as_strings:
                         f = X.columns[col_idx]
 
                         if isinstance(val, six.string_types):
@@ -133,6 +135,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             if len(indptr) == 1:
                 raise ValueError('The DataFrame passed into DataFrameVectorizer is empty')
 
+        if self.is_first_transform:
+            print('Now transforming the data into a matrix')
+
         indices = frombuffer_empty(indices, dtype=np.intc)
         indptr = np.frombuffer(indptr, dtype=np.intc)
         shape = (len(indptr) - 1, len(vocab))
@@ -145,13 +150,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         else:
             result_matrix = result_matrix.toarray()
 
+        self.is_first_transform = False
         return result_matrix
 
 
     def transform(self, X, y=None):
         if self.is_first_transform:
             print('Transforming inside DataFrameVectorizer')
-            self.is_first_transform = False
         return self._transform(X)
 
     def get_feature_names(self):
