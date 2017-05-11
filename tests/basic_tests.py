@@ -87,6 +87,32 @@ def test_all_algos_regression():
 
     assert -3.35 < test_score < -2.8
 
+def test_input_df_unmodified():
+    np.random.seed(42)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    df_shape = df_boston_train.shape
+    ml_predictor.train(df_boston_train)
+
+    training_shape = df_boston_train.shape
+    assert training_shape[0] == df_shape[0]
+    assert training_shape[1] == df_shape[1]
+
+
+    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+
+    print('test_score')
+    print(test_score)
+
+    assert -3.35 < test_score < -2.8
 
 
 
