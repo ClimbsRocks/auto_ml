@@ -21,7 +21,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, RandomizedSearchCV
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -228,7 +228,8 @@ class Predictor(object):
                 pass
 
         # Remove the output column from the dataset, and store it into the y varaible
-        y = list(X_df.pop(self.output_column))
+        y = list(X_df[self.output_column])
+        X_df = X_df.drop(self.output_column, axis=1)
 
         # Drop all rows that have an empty value for our output column
         # User logging so they can adjust if they pass in a bunch of bad values:
@@ -293,7 +294,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, num_search_iterations=50):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -320,6 +321,7 @@ class Predictor(object):
             self.optimize_final_model = True
         self.compare_all_models = compare_all_models
         self.cv = cv
+        self.num_search_iterations = num_search_iterations
 
         self.perform_feature_selection = perform_feature_selection
 
@@ -450,9 +452,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, num_search_iterations=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, num_search_iterations=None)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -644,6 +646,75 @@ class Predictor(object):
 
         return gs
 
+    def fit_randomized_search(self, X_df, y, gs_params, feature_learning=False):
+
+        model = gs_params['model']
+        # Sometimes we're optimizing just one model, sometimes we're comparing a bunch of non-optimized models.
+        if isinstance(model, list):
+            model = model[0]
+
+        if len(gs_params['model']) == 1:
+            # Delete this so it doesn't show up in our logging
+            del gs_params['model']
+        model_name = utils_models.get_name_from_model(model)
+
+        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning)
+        ppl = full_pipeline.named_steps['final_model']
+
+        if self.verbose:
+            grid_search_verbose = 5
+        else:
+            grid_search_verbose = 0
+
+        n_jobs = -1
+        if os.environ.get('is_test_suite', 0) == 'True':
+            n_jobs = 1
+
+        print('gs_params')
+        print(gs_params)
+        rscv = RandomizedSearchCV(
+            # Fit on the pipeline.
+            ppl,
+            # Two splits of cross-validation, by default
+            cv=self.cv,
+            param_distributions=gs_params,
+            n_iter=self.num_search_iterations,
+            # Train across all cores.
+            n_jobs=n_jobs,
+            # Be verbose (lots of printing).
+            verbose=grid_search_verbose,
+            # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+            # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+            error_score=-1000000000,
+            # TODO (FUTURE): make sure this works if the user passes in their own custom scoring metric
+            scoring=self._scorer.score,
+            # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
+            pre_dispatch='1.5*n_jobs'
+        )
+
+        if self.verbose:
+            print('\n\n********************************************************************************************')
+            if self.optimize_final_model == True:
+                print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+            else:
+                print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
+                # Note that we will only report analytics results on the final model that ultimately gets selected, and trained on the entire dataset
+
+        rscv.fit(X_df, y)
+
+        if self.write_gs_param_results_to_file:
+            utils.write_gs_param_results_to_file(rscv, self.gs_param_file_name)
+
+        if self.verbose:
+            self.print_training_summary(rscv)
+
+        self.trained_final_model = rscv.best_estimator_
+        if 'model' in rscv.best_params_:
+            model_name = rscv.best_params_['model']
+            self.print_results(model_name)
+
+        return rscv
+
 
     def create_gs_params(self, model_name):
         grid_search_params = {}
@@ -703,7 +774,7 @@ class Predictor(object):
                 # grid_search_params['model_name'] = model_name
                 self.grid_search_params = grid_search_params
 
-                gscv_results = self.fit_grid_search(X_df, y, grid_search_params, feature_learning=feature_learning)
+                gscv_results = self.fit_randomized_search(X_df, y, grid_search_params, feature_learning=feature_learning)
 
                 all_gs_results.append(gscv_results)
 
