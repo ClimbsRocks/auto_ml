@@ -228,7 +228,8 @@ class Predictor(object):
                 pass
 
         # Remove the output column from the dataset, and store it into the y varaible
-        y = list(X_df.pop(self.output_column))
+        y = list(X_df[self.output_column])
+        X_df = X_df.drop(self.output_column, axis=1)
 
         # Drop all rows that have an empty value for our output column
         # User logging so they can adjust if they pass in a bunch of bad values:
