@@ -293,7 +293,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -322,8 +322,35 @@ class Predictor(object):
         self.cv = cv
 
         self.perform_feature_selection = perform_feature_selection
+
         self.train_uncertainty_model = train_uncertainty_model
+        if self.train_uncertainty_model == True and self.type_of_estimator == 'classifier':
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('Right now uncertainty predictions are only supported for regressors. The ".predict_proba()" method of classifiers is a reasonable workaround if you are looking for uncertainty predictions for a classifier')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('train_uncertainty_model is only supported for regressors')
         self.need_to_train_uncertainty_model = train_uncertainty_model
+        self.uncertainty_data = uncertainty_data
+
+        if uncertainty_delta is not None:
+            if uncertainty_delta_units is None:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print('We received an uncertainty_delta, but do not know the units this is measured in. Please pass in one of ["absolute", "percentage"]')
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                raise ValueError('We received a value for uncertainty_delta, but the data passed in for uncertainty_delta_units is missing')
+            self.uncertainty_delta = uncertainty_delta
+            self.uncertainty_delta_units = uncertainty_delta_units
+        else:
+            self.uncertainty_delta = 'std'
+            self.uncertainty_delta_units = 'absolute'
+
+        if self.train_uncertainty_model == True and self.uncertainty_data is None:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('Saw that train_uncertainty_model is True, but there is no data passed in for uncertainty_data, which is needed to train the uncertainty estimator')
+            warnings.warn('Please pass in uncertainty_data which is the dataset that will be used to train the uncertainty estimator.')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('The data passed in for uncertainty_data is missing')
+
 
         self.feature_learning = feature_learning
         if self.feature_learning == True:
@@ -452,9 +479,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -472,11 +499,76 @@ class Predictor(object):
         self.trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
 
         if self.need_to_train_uncertainty_model == True:
-            if self.type_of_estimator == 'regressor':
-                uncertainty_estimator_names = ['LGBMRegressor']
-            elif self.type_of_estimator == 'classifier':
-                uncertainty_estimator_names = ['LGBMClassifier']
-            self.uncertainty_model = self.train_ml_estimator(uncertainty_estimator_names, self._scorer, X_df, y)
+        # TODO:
+            # 1. Add base_prediction to our dv for analytics purposes
+            # Note that we will have to be cautious that things all happen in the exact same order as we expand what we do post-DV over time
+            self.transformation_pipeline.named_steps['dv'].feature_names_.append('base_prediction')
+            # 2. Get predictions from our base predictor on our uncertainty data
+                # transform our uncertainty_data
+                # Do we want to do this in FinalModelATC, or in Predictor? I think Predictor. We've already got access to all the components we need, and I like this pattern of advanced features being included as part of Predictor, and keeping our pipeline itself as relatively pure as possible
+            # y_uncertainty = uncertainty_data[self.output_column]
+            uncertainty_data, y_uncertainty, _ = self._clean_data_and_prepare_for_training(uncertainty_data, scoring)
+
+            uncertainty_data_transformed = self.transformation_pipeline.transform(uncertainty_data)
+
+            base_predictions = self.trained_final_model.predict(uncertainty_data_transformed)
+            base_predictions = [[val] for val in base_predictions]
+            base_predictions = np.array(base_predictions)
+            uncertainty_data_transformed = scipy.sparse.hstack([uncertainty_data_transformed, base_predictions], format='csr')
+
+            # 2A. Grab the user's definition of uncertainty, and create the output values 'is_uncertain_prediction'
+                # post-mvp: allow the user to pass in stuff like 1.5*std
+            if self.uncertainty_delta == 'std':
+                # How do we define std? is it std of our predictions, or std of our y values?
+                # probably of our y values
+                # which is less cheating- y values from our X_df data, or our uncertainty_data? it seems almost certainly less messy to get it from our X_df data, since we're not using that for anything else at this point
+                y_std = np.std(y)
+                self.uncertainty_delta = y_std
+
+            is_uncertain_predictions = []
+
+            for idx, y_val in enumerate(y_uncertainty):
+
+                base_prediction_for_row = base_predictions[idx]
+                delta = abs(y_val - base_prediction_for_row)
+
+                if self.uncertainty_delta_units == 'absolute':
+                    if delta > self.uncertainty_delta:
+                        is_uncertain_predictions.append(1)
+                    else:
+                        is_uncertain_predictions.append(0)
+                elif self.uncertainty_delta_units == 'percentage':
+                    if delta / y_val > self.uncertainty_delta:
+                        is_uncertain_predictions.append(1)
+                    else:
+                        is_uncertain_predictions.append(0)
+
+            # 3. train our uncertainty predictor
+            uncertainty_estimator_names = ['GradientBoostingClassifier']
+
+            self.trained_uncertainty_model = self.train_ml_estimator(uncertainty_estimator_names, self._scorer, uncertainty_data_transformed, is_uncertain_predictions)
+
+            print('self.trained_uncertainty_model')
+            print(self.trained_uncertainty_model)
+            print('self.trained_final_model')
+            print(self.trained_final_model)
+
+            # 4. grab the entire uncertainty FinalModelATC object, and put it as a property on our base predictor's FinalModelATC (something like .trained_uncertainty_model). It's important to grab this entire object, for all of the edge-case handling we've built in.
+            self.trained_final_model.uncertainty_model = self.trained_uncertainty_model.model
+            print('self.trained_final_model')
+            print(self.trained_final_model)
+
+            # 5. Build a new method onto FinalModelATC that's something like .predict_uncertainty(). Make sure this works for both DataFrames and single instances.
+                # by this time, we're just dealing with scipy sparse matrices, so we just need to be prepared to deal with them in multiple lengths
+                # get prediction(s) from our base_predictor on the data
+                # hstack these predictions onto the scipy sparse matrix
+                # feed the combined data into our uncertainty predictor, and get a prediction
+                # MVP: return a dictionary with two fields: base_prediction, uncertainty_prediction
+            # POST-MVP:
+                # Translate each level of predicted proba uncertainty into the same base units as the original regressor
+                # i.e., a probability of 20% translates to a median absolute error of 3 minutes, while a probability of 50 % translates to a mae of 7 minutes
+            # Way post-mvp: allow the user to define multiple different uncertainty definitions they want to try. otherwise we duplicate a lot of computing forcing them to retrain the base predictor and transformation pipeline just to try a different definition and uncertainty model
+            # TODO TODO: figure out how to extend sklearn's Pipeline class to have .predict_uncertainty() capabilities
             self.need_to_train_uncertainty_model = False
 
         # Calibrate the probability predictions from our final model
@@ -1048,6 +1140,22 @@ class Predictor(object):
         if self.took_log_of_y:
             for idx, val in predicted_vals:
                 predicted_vals[idx] = math.exp(val)
+
+        return predicted_vals
+
+    def predict_uncertainty(self, prediction_data):
+        # if isinstance(prediction_data, list):
+        #     prediction_data = pd.DataFrame(prediction_data)
+        prediction_data = prediction_data.copy()
+
+        # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
+        # For some reason, turning it into a list here does not work.
+        recursionlimit = sys.getrecursionlimit()
+        print(self.trained_pipeline.named_steps['final_model'])
+        predicted_vals = self.trained_pipeline.predict_uncertainty(prediction_data)
+        # if self.took_log_of_y:
+        #     for idx, val in predicted_vals:
+        #         predicted_vals[idx] = math.exp(val)
 
         return predicted_vals
 

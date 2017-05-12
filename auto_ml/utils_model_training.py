@@ -28,7 +28,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=False):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None):
 
         self.model = model
         self.model_name = model_name
@@ -300,7 +300,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             return predictions
 
-    def predict(self, X, verbose=False):
+    def predict(self, X, verbose=False, predict_uncertainty=False):
+        if predict_uncertainty == True:
+            return self.predict_uncertainty
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()
@@ -335,3 +337,33 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('If you see this message, please file a bug at https://github.com/ClimbsRocks/auto_ml')
 
         return X
+
+    def predict_uncertainty(self, X):
+        if self.uncertainty_model is None:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('This model was not trained to predict uncertainties')
+            print('Please follow the documentation to tell this model at training time to learn how to predict uncertainties')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('This model was not told at training time to learn how to predict uncertainties')
+
+        base_predictions = self.model.predict(X)
+
+        X_combined = scipy.sparse.hstack([X_combined, base_predictions], format='csr')
+
+        uncertainty_predictions = self.uncertainty_model.predict_proba(X_combined)
+
+        if len(base_predictions) == 1:
+            base_predictions = base_predictions[0]
+            uncertainty_predictions = uncertainty_predictions[0]
+
+        results = {
+            'base_prediction': base_predictions
+            , 'uncertainty_predictions': uncertainty_predictions
+        }
+
+        return results
+
+
+
+
+

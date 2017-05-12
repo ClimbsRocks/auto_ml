@@ -24,24 +24,28 @@ def test_basic_predict_uncertainty(model_name=None):
         , 'CHAS': 'categorical'
     }
 
+    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
+
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=True, model_names=model_name, train_uncertainty_model=True)
+    ml_predictor.train(df_boston_train, perform_feature_selection=True, model_names=model_name, train_uncertainty_model=True, uncertainty_data=uncertainty_data)
 
-    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
+    ml_predictor.predict_uncertainty(df_boston_test)
 
-    print('test_score')
-    print(test_score)
+    # test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
-    # Bumping this up since without these features our score drops
-    lower_bound = -4.0
-    if model_name == 'DeepLearningRegressor':
-        lower_bound = -14.5
-    if model_name == 'LGBMRegressor':
-        lower_bound = -4.95
+    # print('test_score')
+    # print(test_score)
+
+    # # Bumping this up since without these features our score drops
+    # lower_bound = -4.0
+    # if model_name == 'DeepLearningRegressor':
+    #     lower_bound = -14.5
+    # if model_name == 'LGBMRegressor':
+    #     lower_bound = -4.95
 
 
-    assert lower_bound < test_score < -2.8
+    # assert lower_bound < test_score < -2.8
 
-    ml_predictor.get_uncertainty_prediction(df_boston_test)
+    # ml_predictor.get_uncertainty_prediction(df_boston_test)
 
