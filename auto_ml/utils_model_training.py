@@ -88,12 +88,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
-            elif self.uncertainty_model == True:
-                from sklearn.metrics import median_absolute_error
-                self.model.set('fobj', median_absolute_error)
-                self.model.fit(X_fit, y)
-            else:
-                self.model.fit(X_fit, y)
+            # elif self.uncertainty_model == True:
+            #     from sklearn.metrics import median_absolute_error
+            #     self.model.set_params('fobj', median_absolute_error)
+            #     self.model.fit(X_fit, y)
+            # else:
+            self.model.fit(X_fit, y)
 
         except TypeError as e:
             if scipy.sparse.issparse(X_fit):

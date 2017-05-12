@@ -168,7 +168,7 @@ class Predictor(object):
             #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer, feature_learning=feature_learning)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model)))
 
         constructed_pipeline = Pipeline(pipeline_list)
         return constructed_pipeline
@@ -293,7 +293,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, predict_uncertainty=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -322,7 +322,8 @@ class Predictor(object):
         self.cv = cv
 
         self.perform_feature_selection = perform_feature_selection
-        self.predict_uncertainty = predict_uncertainty
+        self.train_uncertainty_model = train_uncertainty_model
+        self.need_to_train_uncertainty_model = train_uncertainty_model
 
         self.feature_learning = feature_learning
         if self.feature_learning == True:
@@ -451,9 +452,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, predict_uncertainty=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, predict_uncertainty=predict_uncertainty)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -467,11 +468,16 @@ class Predictor(object):
         else:
             X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
-        if self.predict_uncertainty == True:
-            self.uncertainty_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
-
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
+
+        if self.need_to_train_uncertainty_model == True:
+            if self.type_of_estimator == 'regressor':
+                uncertainty_estimator_names = ['LGBMRegressor']
+            elif self.type_of_estimator == 'classifier':
+                uncertainty_estimator_names = ['LGBMClassifier']
+            self.uncertainty_model = self.train_ml_estimator(uncertainty_estimator_names, self._scorer, X_df, y)
+            self.need_to_train_uncertainty_model = False
 
         # Calibrate the probability predictions from our final model
         if self.calibrate_final_model is True:
