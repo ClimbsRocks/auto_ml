@@ -4,6 +4,9 @@ import os
 
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
+from sklearn.pipeline import Pipeline
+from sklearn.utils.metaestimators import if_delegate_has_method
+
 
 import pandas as pd
 
@@ -137,3 +140,28 @@ def drop_missing_y_vals(df, y, output_column=None):
 
 
     return df, y
+
+class ExtendedPipeline(Pipeline):
+
+    def __init__(self, steps):
+        super(self.__class__, self).__init__(steps)
+
+
+    @if_delegate_has_method(delegate='_final_estimator')
+    def predict_uncertainty(self, X):
+        Xt = X
+        for name, transform in self.steps[:-1]:
+            if transform is not None:
+                Xt = transform.transform(Xt)
+        return self.steps[-1][-1].predict_uncertainty(Xt)
+
+
+    @if_delegate_has_method(delegate='_final_estimator')
+    def score_uncertainty(self, X):
+        Xt = X
+        for name, transform in self.steps[:-1]:
+            if transform is not None:
+                Xt = transform.transform(Xt)
+        return self.steps[-1][-1].score_uncertainty(Xt)
+
+
