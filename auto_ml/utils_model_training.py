@@ -1,3 +1,4 @@
+from collections import Iterable
 import os
 
 import numpy as np
@@ -346,22 +347,35 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             raise ValueError('This model was not told at training time to learn how to predict uncertainties')
 
-        base_predictions = self.model.predict(X)
+        base_predictions = self.predict(X)
 
-        X_combined = scipy.sparse.hstack([X_combined, base_predictions], format='csr')
+        if isinstance(base_predictions, Iterable):
+            base_predictions_col = [[val] for val in base_predictions]
+            base_predictions_col = np.array(base_predictions_col)
+        else:
+            base_predictions_col = [base_predictions]
+
+        X_combined = scipy.sparse.hstack([X, base_predictions_col], format='csr')
 
         uncertainty_predictions = self.uncertainty_model.predict_proba(X_combined)
-
-        if len(base_predictions) == 1:
-            base_predictions = base_predictions[0]
-            uncertainty_predictions = uncertainty_predictions[0]
 
         results = {
             'base_prediction': base_predictions
             , 'uncertainty_predictions': uncertainty_predictions
         }
 
+        if isinstance(base_predictions, Iterable):
+
+            results['uncertainty_predictions'] = [row[1] for row in results['uncertainty_predictions']]
+            results = pd.DataFrame.from_dict(results, orient='columns')
+
+
         return results
+
+
+    def score_uncertainty(self, X, y, verbose=False):
+        return self.uncertainty_model.score(X, y, verbose=False)
+
 
 
 
