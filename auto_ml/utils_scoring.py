@@ -25,7 +25,8 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
     except:
         pass
 
-    print(format(brier_score_loss(actuals, probas), '.4f'))
+    brier_score = brier_score_loss(actuals, probas)
+    print(format(brier_score, '.4f'))
 
 
     print('\nHere is the trained estimator\'s overall accuracy (when it predicts a label, how frequently is that the correct label?)')
@@ -62,11 +63,13 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
             actual = sum(v) * 1.0 / len(v)
 
             # Format into a prettier number
-            actual = round(actual * 100, 0)
+            actual = round(actual * 100, 1)
             print('Actual: ' + str(actual) + '%')
             print('# preds: ' + str(len(v)) + '\n')
 
     print('\n\n')
+    return brier_score
+
 
 def calculate_and_print_differences(predictions, actuals, name=None):
     pos_differences = []
@@ -105,7 +108,8 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
 
     # 1. overall RMSE
     print('Here is the overall RMSE for these predictions:')
-    print(mean_squared_error(actuals, predictions)**0.5)
+    rmse = mean_squared_error(actuals, predictions)**0.5
+    print(rmse)
 
     # 2. overall avg predictions
     print('\nHere is the average of the predictions:')
@@ -167,6 +171,7 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
 
     print('')
     print('\n***********************************************\n\n')
+    return rmse
 
 def rmse_func(y, predictions):
     return mean_squared_error(y, predictions)**0.5
