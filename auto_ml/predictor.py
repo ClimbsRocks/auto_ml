@@ -23,7 +23,7 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import GridSearchCV
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
-from sklearn.pipeline import Pipeline
+# from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
 
 
@@ -170,7 +170,7 @@ class Predictor(object):
             final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, scoring_method=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model)))
 
-        constructed_pipeline = Pipeline(pipeline_list)
+        constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
 
 
@@ -546,15 +546,17 @@ class Predictor(object):
             # 3. train our uncertainty predictor
             uncertainty_estimator_names = ['GradientBoostingClassifier']
 
+            print('self.trained_final_model before TRAINING uncertainty model')
+            print(self.trained_final_model)
             self.trained_uncertainty_model = self.train_ml_estimator(uncertainty_estimator_names, self._scorer, uncertainty_data_transformed, is_uncertain_predictions)
 
             print('self.trained_uncertainty_model')
             print(self.trained_uncertainty_model)
-            print('self.trained_final_model')
+            print('self.trained_final_model before setting uncertainty model')
             print(self.trained_final_model)
 
             # 4. grab the entire uncertainty FinalModelATC object, and put it as a property on our base predictor's FinalModelATC (something like .trained_uncertainty_model). It's important to grab this entire object, for all of the edge-case handling we've built in.
-            self.trained_final_model.uncertainty_model = self.trained_uncertainty_model.model
+            self.trained_final_model.uncertainty_model = self.trained_uncertainty_model
             print('self.trained_final_model')
             print(self.trained_final_model)
 
@@ -653,8 +655,8 @@ class Predictor(object):
             print('Total training time:')
             print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
-        self.trained_final_model = ppl
-        self.print_results(model_name)
+        # self.trained_final_model = ppl
+        self.print_results(model_name, ppl)
 
         return ppl
 
@@ -673,12 +675,12 @@ class Predictor(object):
         return X_df
 
 
-    def print_results(self, model_name):
+    def print_results(self, model_name, model):
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            self._print_ml_analytics_results_linear_model()
+            self._print_ml_analytics_results_linear_model(model)
 
         elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
-            self._print_ml_analytics_results_random_forest()
+            self._print_ml_analytics_results_random_forest(model)
 
 
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False):
@@ -739,10 +741,10 @@ class Predictor(object):
         if self.verbose:
             self.print_training_summary(gs)
 
-        self.trained_final_model = gs.best_estimator_
+        # self.trained_final_model = gs.best_estimator_
         if 'model' in gs.best_params_:
             model_name = gs.best_params_['model']
-            self.print_results(model_name)
+            self.print_results(model_name, gs.best_estimator_)
 
         return gs
 
@@ -810,7 +812,7 @@ class Predictor(object):
                 all_gs_results.append(gscv_results)
 
             # Grab the first one by default
-            self.trained_final_model = all_gs_results[0].best_estimator_
+            # self.trained_final_model = all_gs_results[0].best_estimator_
             trained_final_model = all_gs_results[0].best_estimator_
             best_score = all_gs_results[0].best_score_
 
@@ -1025,11 +1027,11 @@ class Predictor(object):
             print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
 
-    def _print_ml_analytics_results_random_forest(self):
+    def _print_ml_analytics_results_random_forest(self, trained_model_for_analytics):
         try:
-            final_model_obj = self.trained_final_model.named_steps['final_model']
+            final_model_obj = trained_model_for_analytics.named_steps['final_model']
         except:
-            final_model_obj = self.trained_final_model
+            final_model_obj = trained_model_for_analytics
 
         print('\n\nHere are the results from our ' + final_model_obj.model_name)
         if self.name is not None:
@@ -1069,11 +1071,11 @@ class Predictor(object):
         return trained_feature_names
 
 
-    def _print_ml_analytics_results_linear_model(self):
+    def _print_ml_analytics_results_linear_model(self, trained_model_for_analytics):
         try:
-            final_model_obj = self.trained_final_model.named_steps['final_model']
+            final_model_obj = trained_model_for_analytics.named_steps['final_model']
         except:
-            final_model_obj = self.trained_final_model
+            final_model_obj = trained_model_for_analytics
         print('\n\nHere are the results from our ' + final_model_obj.model_name + ' model')
 
         trained_feature_names = self._get_trained_feature_names()
@@ -1150,8 +1152,8 @@ class Predictor(object):
 
         # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
         # For some reason, turning it into a list here does not work.
-        recursionlimit = sys.getrecursionlimit()
-        print(self.trained_pipeline.named_steps['final_model'])
+        # recursionlimit = sys.getrecursionlimit()
+        # print(self.trained_pipeline.named_steps['final_model'])
         predicted_vals = self.trained_pipeline.predict_uncertainty(prediction_data)
         # if self.took_log_of_y:
         #     for idx, val in predicted_vals:
@@ -1193,6 +1195,16 @@ class Predictor(object):
                     return self._scorer.score(self.trained_pipeline, X_test, y_test, advanced_scoring=advanced_scoring)
         else:
             return self.trained_pipeline.score(X_test, y_test)
+
+
+    def score_uncertainty(self, X, y, advanced_scoring=True, verbose=2):
+
+        df_uncertainty_predictions = self.predict_uncertainty(X)
+
+        if advanced_scoring == True:
+            score = utils_scoring.advanced_scoring_classifiers(df_uncertainty_predictions.uncertainty_predictions, y)
+
+        return score
 
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
