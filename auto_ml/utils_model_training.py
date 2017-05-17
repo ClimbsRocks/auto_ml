@@ -29,7 +29,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
 
         self.model = model
         self.model_name = model_name
@@ -40,6 +40,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.column_descriptions = column_descriptions
         self.feature_learning = feature_learning
         self.uncertainty_model = uncertainty_model
+        self.uc_results = uc_results
 
 
         if self.type_of_estimator == 'classifier':
@@ -301,9 +302,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             return predictions
 
-    def predict(self, X, verbose=False, predict_uncertainty=False):
-        if predict_uncertainty == True:
-            return self.predict_uncertainty
+    def predict(self, X, verbose=False):
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()
@@ -345,7 +344,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('This model was not trained to predict uncertainties')
             print('Please follow the documentation to tell this model at training time to learn how to predict uncertainties')
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-            raise ValueError('This model was not told at training time to learn how to predict uncertainties')
+            raise ValueError('This model was not trained to predict uncertainties')
 
         base_predictions = self.predict(X)
 
@@ -361,13 +360,46 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         results = {
             'base_prediction': base_predictions
-            , 'uncertainty_predictions': uncertainty_predictions
+            , 'uncertainty_prediction': uncertainty_predictions
         }
+
+
 
         if isinstance(base_predictions, Iterable):
 
-            results['uncertainty_predictions'] = [row[1] for row in results['uncertainty_predictions']]
+            results['uncertainty_prediction'] = [row[1] for row in results['uncertainty_prediction']]
+
             results = pd.DataFrame.from_dict(results, orient='columns')
+
+            if self.uc_results is not None:
+                calibration_results = {}
+                # grab the relevant properties from our uc_results, and make them each their own list in calibration_results
+                for key, value in self.uc_results[1].items():
+                    calibration_results[key] = []
+
+                for proba in results['uncertainty_prediction']:
+                    for bucket_name, bucket_result in self.uc_results.items():
+                        if proba > bucket_result['max_proba']:
+                            break
+                        calibration_result = bucket_result
+                    for key, value in calibration_result.items():
+                        calibration_results[key].append(value)
+                # TODO: grab the uncertainty_calibration data for DataFrames
+                df_calibration_results = pd.DataFrame.from_dict(calibration_results, orient='columns')
+                del df_calibration_results['max_proba']
+
+                results = pd.concat([results, df_calibration_results], axis=1)
+
+        else:
+            if self.uc_results is not None:
+                # TODO: grab the uncertainty_calibration data for dictionaries
+                for bucket_name, bucket_result in self.uc_results.items():
+                    if proba > bucket_result['max_proba']:
+                        break
+                    results.update(bucket_result)
+                    del results['max_proba']
+
+
 
 
         return results
