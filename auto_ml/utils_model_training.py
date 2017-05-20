@@ -378,10 +378,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     calibration_results[key] = []
 
                 for proba in results['uncertainty_prediction']:
-                    for bucket_name, bucket_result in self.uc_results.items():
-                        if proba > bucket_result['max_proba']:
-                            break
-                        calibration_result = bucket_result
+                    max_bucket_proba = 0
+                    bucket_num = 1
+                    while proba > max_bucket_proba:
+                        calibration_result = self.uc_results[bucket_num]
+                        max_bucket_proba = self.uc_results[bucket_num]['max_proba']
+                        bucket_num += 1
+
                     for key, value in calibration_result.items():
                         calibration_results[key].append(value)
                 # TODO: grab the uncertainty_calibration data for DataFrames

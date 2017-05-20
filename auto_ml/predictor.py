@@ -1,3 +1,4 @@
+from collections import OrderedDict
 import datetime
 import math
 import os
@@ -293,7 +294,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both'):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -322,10 +323,14 @@ class Predictor(object):
         self.cv = cv
         self.calibrate_uncertainty = calibrate_uncertainty
         self.uncertainty_calibration_data = uncertainty_calibration_data
+        self.uncertainty_delta_direction = uncertainty_delta_direction.lower()
+        if self.uncertainty_delta_direction not in ['both', 'directional']:
+            raise ValueError('Please pass in either "both" or "directional" for uncertainty_delta_direction')
+
         if uncertainty_calibration_settings is None:
             self.uncertainty_calibration_settings = {
                 'num_buckets': 10
-                , 'percentiles': [10, 25, 75]
+                , 'percentiles': [10, 25, 50, 75, 90]
             }
         else:
             self.uncertainty_calibration_settings = uncertainty_calibration_settings
@@ -492,9 +497,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -538,23 +543,29 @@ class Predictor(object):
                 y_std = np.std(y)
                 self.uncertainty_delta = y_std
 
-            is_uncertain_predictions = []
+            # is_uncertain_predictions = []
 
-            for idx, y_val in enumerate(y_uncertainty):
+            # for idx, y_val in enumerate(y_uncertainty):
 
-                base_prediction_for_row = base_predictions[idx]
-                delta = abs(y_val - base_prediction_for_row)
+            #     base_prediction_for_row = base_predictions[idx]
+            #     delta = abs(y_val - base_prediction_for_row)
 
-                if self.uncertainty_delta_units == 'absolute':
-                    if delta > self.uncertainty_delta:
-                        is_uncertain_predictions.append(1)
-                    else:
-                        is_uncertain_predictions.append(0)
-                elif self.uncertainty_delta_units == 'percentage':
-                    if delta / y_val > self.uncertainty_delta:
-                        is_uncertain_predictions.append(1)
-                    else:
-                        is_uncertain_predictions.append(0)
+            #     if self.uncertainty_delta_units == 'absolute':
+            #         if delta > self.uncertainty_delta:
+            #             is_uncertain_predictions.append(1)
+            #         else:
+            #             is_uncertain_predictions.append(0)
+            #     elif self.uncertainty_delta_units == 'percentage':
+            #         if delta / y_val > self.uncertainty_delta:
+            #             is_uncertain_predictions.append(1)
+            #         else:
+            #             is_uncertain_predictions.append(0)
+            is_uncertain_predictions = self.define_uncertain_predictions(base_predictions, y_uncertainty)
+
+            analytics_results = pd.Series(is_uncertain_predictions)
+            print('\n\nHere is the percentage of values in our uncertainty training data that are classified as uncertain:')
+            print(sum(is_uncertain_predictions) * 1.0 / len(is_uncertain_predictions))
+            # print(analytics_results.describe(include='all'))
 
             # 3. train our uncertainty predictor
             uncertainty_estimator_names = ['GradientBoostingClassifier']
@@ -591,14 +602,13 @@ class Predictor(object):
                 uncertainty_calibration_predictions['bucket_num'] = bucket_results
 
 
-                uc_results = {}
+                uc_results = OrderedDict()
                 for bucket in bucket_labels:
                     dataset = uncertainty_calibration_predictions[uncertainty_calibration_predictions['bucket_num'] == bucket]
 
                     deltas = dataset['actual_deltas']
-                    uc_results[bucket] = {
-                        'bucket_num': bucket
-                    }
+                    uc_results[bucket] = OrderedDict()
+                    uc_results[bucket]['bucket_num'] = bucket
                     # TODO: add in rmse and maybe something like median_ae
                     # TODO: add in max_value for each bucket
                     uc_results[bucket]['max_proba'] = np.max(dataset['uncertainty_prediction'])
@@ -607,10 +617,11 @@ class Predictor(object):
                         delta_at_percentile = np.percentile(deltas, perc)
                         uc_results[bucket]['percentile_' + str(perc) + '_delta'] = delta_at_percentile
 
-                # TODO: make the max_proba of our last bucket 1
+                # make the max_proba of our last bucket 1
                 uc_results[bucket_labels[-1]]['max_proba'] = 1
-                print('uc_results')
-                print(uc_results)
+                print('Here are the uncertainty_calibration results, for each bucket of predicted probabilities')
+                for num in uc_results:
+                    print(uc_results[num])
 
                 self.trained_final_model.uc_results = uc_results
                 # TODO: add this uc_results dict to our final_model
@@ -1256,28 +1267,85 @@ class Predictor(object):
             return self.trained_pipeline.score(X_test, y_test)
 
 
-    def score_uncertainty(self, X, y, advanced_scoring=True, verbose=2):
-
-        df_uncertainty_predictions = self.predict_uncertainty(X)
-        base_predictions = list(df_uncertainty_predictions['base_prediction'])
+    def define_uncertain_predictions(self, base_predictions, y):
+        base_predictions = list(base_predictions)
 
         is_uncertain_predictions = []
 
         for idx, y_val in enumerate(y):
 
             base_prediction_for_row = base_predictions[idx]
-            delta = abs(y_val - base_prediction_for_row)
+            delta = base_prediction_for_row - y_val
 
             if self.uncertainty_delta_units == 'absolute':
-                if delta > self.uncertainty_delta:
-                    is_uncertain_predictions.append(1)
+                if self.uncertainty_delta_direction == 'both':
+                    if abs(delta) > self.uncertainty_delta:
+                        is_uncertain_predictions.append(1)
+                    else:
+                        is_uncertain_predictions.append(1)
+
+
                 else:
-                    is_uncertain_predictions.append(0)
+                    # This is now the case of single-directional deltas (we only care if our predictions are higher, not lower, or lower and not higher)
+                    if self.uncertainty_delta > 0:
+                        if delta > self.uncertainty_delta:
+                            is_uncertain_predictions.append(1)
+                        else:
+                            is_uncertain_predictions.append(0)
+                    else:
+                        # This is the case where we have directional deltas, and the uncertainty_delta < 0
+                        if delta < self.uncertainty_delta:
+                            is_uncertain_predictions.append(1)
+                        else:
+                            is_uncertain_predictions.append(0)
+
             elif self.uncertainty_delta_units == 'percentage':
-                if delta / y_val > self.uncertainty_delta:
-                    is_uncertain_predictions.append(1)
+                if self.uncertainty_delta_direction == 'both':
+                    if abs(delta) / y_val > self.uncertainty_delta:
+                        is_uncertain_predictions.append(1)
+                    else:
+                        is_uncertain_predictions.append(0)
                 else:
-                    is_uncertain_predictions.append(0)
+                    # This is now the case of single-directional deltas (we only care if our predictions are higher, not lower, or lower and not higher)
+                    if self.uncertainty_delta > 0:
+                        if delta / y_val > self.uncertainty_delta:
+                            is_uncertain_predictions.append(1)
+                        else:
+                            is_uncertain_predictions.append(0)
+                    else:
+                        # This is the case where we have directional deltas, and the uncertainty_delta < 0
+                        if delta / y_val < self.uncertainty_delta:
+                            is_uncertain_predictions.append(1)
+                        else:
+                            is_uncertain_predictions.append(0)
+
+        return is_uncertain_predictions
+
+
+
+    def score_uncertainty(self, X, y, advanced_scoring=True, verbose=2):
+
+        df_uncertainty_predictions = self.predict_uncertainty(X)
+        # base_predictions = list(df_uncertainty_predictions['base_prediction'])
+
+        # is_uncertain_predictions = []
+
+        # for idx, y_val in enumerate(y):
+
+        #     base_prediction_for_row = base_predictions[idx]
+        #     delta = abs(y_val - base_prediction_for_row)
+
+        #     if self.uncertainty_delta_units == 'absolute':
+        #         if delta > self.uncertainty_delta:
+        #             is_uncertain_predictions.append(1)
+        #         else:
+        #             is_uncertain_predictions.append(0)
+        #     elif self.uncertainty_delta_units == 'percentage':
+        #         if delta / y_val > self.uncertainty_delta:
+        #             is_uncertain_predictions.append(1)
+        #         else:
+        #             is_uncertain_predictions.append(0)
+        is_uncertain_predictions = self.define_uncertain_predictions(df_uncertainty_predictions.base_prediction, y)
 
         # if advanced_scoring == True:
         score = utils_scoring.advanced_scoring_classifiers(df_uncertainty_predictions.uncertainty_prediction, is_uncertain_predictions)
