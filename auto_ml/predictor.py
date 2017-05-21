@@ -331,6 +331,7 @@ class Predictor(object):
             'percent_rows': 0.1
             , 'min_rows': 10000
             , 'cols_to_ignore': []
+            , 'file_name': 'auto_ml_analytics_results_' + self.output_column + '.csv'
         }
         if analytics_config is None:
             self.analytics_config = default_analytics_config
@@ -592,6 +593,7 @@ class Predictor(object):
         return X_df
 
     def create_feature_responses(self, model, X_transformed, y):
+        print('Calculating feature responses, for advanced analytics.')
 
         # figure out how many rows to keep
         orig_row_count = X_transformed.shape[0]
@@ -617,7 +619,7 @@ class Predictor(object):
             col_result = {}
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name:
-                print('Getting feature response for: ' + str(col_name))
+                # print('Getting feature response for: ' + str(col_name))
 
                 # print('np.mean at the start')
                 # print(np.mean(X[:, idx]))
@@ -659,8 +661,8 @@ class Predictor(object):
             all_results.append(col_result)
 
         df_all_results = pd.DataFrame(all_results)
-        print('df_all_results')
-        print(tabulate(df_all_results, headers='keys'))
+        # print('df_all_results')
+        # print(tabulate(df_all_results, headers='keys'))
         return df_all_results
 
 
@@ -1016,11 +1018,38 @@ class Predictor(object):
             feature_infos.append([feature_name, feat_importance])
 
         sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+        df = pd.DataFrame(sorted_feature_infos)
+        return df
 
-        print('Here are the feature_importances from the tree-based model:')
-        print('The printed list will only contain at most the top 50 features.')
-        for feature in sorted_feature_infos[-50:]:
-            print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
+        # print('Here are the feature_importances from the tree-based model:')
+        # print('The printed list will only contain at most the top 50 features.')
+        # for feature in sorted_feature_infos[-50:]:
+        #     print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
+
+
+    def _join_and_print_analytics_results(self, df_feature_responses, df_features):
+        df_results = pd.merge(df_feature_responses, df_features, on='Feature Name')
+
+        analytics_file_name = self.analytics_config['file_name']
+
+        print('The printed list will only contain at most the top 100 features.')
+        print('The full analytics results will be saved to a filed called: ' + analytics_file_name + '\n')
+        print(tabulate(df_results, headers='keys', floatfmt='.4f', tablefmt='psql'))
+        print('\n')
+        print('*******')
+        print('Legend:')
+        print('Importance = Feature Importance')
+        print('     Explanation: A weighted measure of how much of the variance the model is able to explain is due to this column')
+        print('FR_delta = Feature Response Delta Amount')
+        print('     Explanation: Amount this column was incremented or decremented by to calculate the feature reponses')
+        print('FR_Decrementing = Feature Response From Decrementing Values In This Column By One FR_delta')
+        print('     Explanation: Represents how much the predicted output values respond to subtracting one FR_delta amount from every value in this column')
+        print('FR_Incrementing = Feature Response From Incrementing Values In This Column By One FR_delta')
+        print('     Explanation: Represents how much the predicted output values respond to adding one FR_delta amount to every value in this column')
+        print('*******\n')
+
+        df_results.to_csv(analytics_file_name)
+
 
 
     def _print_ml_analytics_results_random_forest(self, feature_responses):
@@ -1036,7 +1065,7 @@ class Predictor(object):
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
         if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
-            self._get_xgb_feat_importances(final_model_obj.model)
+            df_results = self._get_xgb_feat_importances(final_model_obj.model)
 
         else:
             trained_feature_names = self._get_trained_feature_names()
@@ -1052,28 +1081,13 @@ class Predictor(object):
             sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
             df_results = pd.DataFrame(sorted_feature_infos)
-            df_results.columns = ['Feature Name', 'Importance']
-            df_results = pd.merge(df_results, feature_responses, on='Feature Name')
-            print('df_results')
-            print(tabulate(df_results, headers='keys'))
-            print('\n\n')
-            print('*******')
-            print('Legend:')
-            print('Importance = Feature Importance')
-            print('     Explanation: A weighted measure of how much of the variance the model is able to explain is due to this column')
-            print('FR_delta = Feature Response Delta Amount')
-            print('     Explanation: Amount this column was incremented or decremented by to calculate the feature reponses')
-            print('FR_Decrementing = Feature Response From Decrementing Values In This Column By One FR_delta')
-            print('     Explanation: Represents how much the predicted output values respond to subtracting one FR_delta amount from every value in this column')
-            print('FR_Incrementing = Feature Response From Incrementing Values In This Column By One FR_delta')
-            print('     Explanation: Represents how much the predicted output values respond to adding one FR_delta amount to every value in this column')
-            print('*******')
 
+        df_results.columns = ['Feature Name', 'Importance']
 
-            print('Here are the feature_importances from the tree-based model:')
-            print('The printed list will only contain at most the top 50 features.')
-            for feature in sorted_feature_infos[-50:]:
-                print(feature[0] + ': ' + str(round(feature[1], 4)))
+        self._join_and_print_analytics_results(feature_responses, df_results)
+
+            # for feature in sorted_feature_infos[-50:]:
+            #     print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
     def _get_trained_feature_names(self):
