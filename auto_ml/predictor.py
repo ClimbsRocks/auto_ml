@@ -10,6 +10,7 @@ import pathos
 
 import numpy as np
 import pandas as pd
+from tabulate import tabulate
 
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
@@ -486,14 +487,8 @@ class Predictor(object):
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
 
-        print('#########################################')
-        print('in the right place')
-        print('#########################################')
-        print('self.advanced_analytics')
-        print(self.advanced_analytics)
-        if self.advanced_analytics == True:
-            print('heard true')
-            self.create_feature_responses(X_df, y)
+        # if self.advanced_analytics == True:
+        #     self.create_feature_responses(X_df, y)
 
         # Calibrate the probability predictions from our final model
         if self.calibrate_final_model is True:
@@ -578,7 +573,7 @@ class Predictor(object):
             print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
         self.trained_final_model = ppl
-        self.print_results(model_name)
+        self.print_results(model_name, ppl, X_df, y)
 
         return ppl
 
@@ -596,8 +591,7 @@ class Predictor(object):
 
         return X_df
 
-    def create_feature_responses(self, X_transformed, y):
-        print('inside create_feature_responses')
+    def create_feature_responses(self, model, X_transformed, y):
 
         # figure out how many rows to keep
         orig_row_count = X_transformed.shape[0]
@@ -611,52 +605,78 @@ class Predictor(object):
 
         # Get our baseline predictions
         if self.type_of_estimator == 'regressor':
-            base_predictions = self.trained_final_model.predict(X)
+            base_predictions = model.predict(X)
         elif self.type_of_estimator == 'classifier':
-            base_predictions = self.trained_final_model.predict_proba(X)
+            base_predictions = model.predict_proba(X)
+            base_predictions = [x[1] for x in base_predictions]
 
         feature_names = self._get_trained_feature_names()
 
         all_results = []
         for idx, col_name in enumerate(feature_names):
             col_result = {}
-            col_result['feature_name'] = col_name
+            col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name:
                 print('Getting feature response for: ' + str(col_name))
 
+                # print('np.mean at the start')
+                # print(np.mean(X[:, idx]))
                 col_std = np.std(X[:, idx])
-                col_result['std'] = col_std
+                col_delta = 0.5 * col_std
+                # print('col_delta')
+                # print(col_delta)
+                col_result['Delta'] = col_delta
 
                 # Increment the values of this column by the std
-                X[:, idx] += col_std
+                X[:, idx] += col_delta
+                # print('np.mean after incrementing from avg')
+                # print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
-                    predictions = self.trained_final_model.predict(X)
+                    predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
-                    predictions = self.trained_final_model.predict_proba(X)
+                    predictions = model.predict_proba(X)
+                    predictions = [x[1] for x in predictions]
 
-                col_result['change_when_incrementing_by_one_std'] = np.mean(predictions) - np.mean(base_predictions)
+                col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
 
 
-                X[:, idx] -= 2 * col_std
+                X[:, idx] -= 2 * col_delta
+                # print('np.mean after decrementing from avg')
+                # print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
-                    predictions = self.trained_final_model.predict(X)
+                    predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
-                    predictions = self.trained_final_model.predict_proba(X)
+                    predictions = model.predict_proba(X)
+                    predictions = [x[1] for x in predictions]
 
-                col_result['change_when_decrementing_by_one_std'] = np.mean(predictions) - np.mean(base_predictions)
+                col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
+                # Put the column back to it's original state
+                X[:, idx] += col_delta
+                # print('np.mean at the end')
+                # print(np.mean(X[:, idx]))
+
+
             all_results.append(col_result)
 
-        return all_results
+        df_all_results = pd.DataFrame(all_results)
+        print('df_all_results')
+        print(tabulate(df_all_results, headers='keys'))
+        return df_all_results
 
 
 
 
-    def print_results(self, model_name):
+    def print_results(self, model_name, model, X, y):
+
+        feature_responses = None
+        if self.advanced_analytics == True:
+            feature_responses = self.create_feature_responses(model, X, y)
+
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            self._print_ml_analytics_results_linear_model()
+            self._print_ml_analytics_results_linear_model(feature_responses)
 
         elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
-            self._print_ml_analytics_results_random_forest()
+            self._print_ml_analytics_results_random_forest(feature_responses)
 
 
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False):
@@ -720,7 +740,7 @@ class Predictor(object):
         self.trained_final_model = gs.best_estimator_
         if 'model' in gs.best_params_:
             model_name = gs.best_params_['model']
-            self.print_results(model_name)
+            self.print_results(model_name, gs.best_estimator_, X_df, y)
 
         return gs
 
@@ -1003,7 +1023,7 @@ class Predictor(object):
             print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
 
-    def _print_ml_analytics_results_random_forest(self):
+    def _print_ml_analytics_results_random_forest(self, feature_responses):
         try:
             final_model_obj = self.trained_final_model.named_steps['final_model']
         except:
@@ -1031,6 +1051,25 @@ class Predictor(object):
 
             sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
+            df_results = pd.DataFrame(sorted_feature_infos)
+            df_results.columns = ['Feature Name', 'Importance']
+            df_results = pd.merge(df_results, feature_responses, on='Feature Name')
+            print('df_results')
+            print(tabulate(df_results, headers='keys'))
+            print('\n\n')
+            print('*******')
+            print('Legend:')
+            print('Importance = Feature Importance')
+            print('     Explanation: A weighted measure of how much of the variance the model is able to explain is due to this column')
+            print('FR_delta = Feature Response Delta Amount')
+            print('     Explanation: Amount this column was incremented or decremented by to calculate the feature reponses')
+            print('FR_Decrementing = Feature Response From Decrementing Values In This Column By One FR_delta')
+            print('     Explanation: Represents how much the predicted output values respond to subtracting one FR_delta amount from every value in this column')
+            print('FR_Incrementing = Feature Response From Incrementing Values In This Column By One FR_delta')
+            print('     Explanation: Represents how much the predicted output values respond to adding one FR_delta amount to every value in this column')
+            print('*******')
+
+
             print('Here are the feature_importances from the tree-based model:')
             print('The printed list will only contain at most the top 50 features.')
             for feature in sorted_feature_infos[-50:]:
@@ -1047,7 +1086,7 @@ class Predictor(object):
         return trained_feature_names
 
 
-    def _print_ml_analytics_results_linear_model(self):
+    def _print_ml_analytics_results_linear_model(self, feature_responses):
         try:
             final_model_obj = self.trained_final_model.named_steps['final_model']
         except:
