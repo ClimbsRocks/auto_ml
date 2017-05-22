@@ -1085,6 +1085,15 @@ class Predictor(object):
             df_results = df_features
 
         # Sort by coefficients or feature importances
+        try:
+            df_results = df_results.sort_values(by='Importance')
+        except:
+            try:
+                df_results = df_results.sort_values(by='Coefficients')
+            except:
+                pass
+
+        df_results = df_results.reset_index(drop=True)
 
         analytics_file_name = self.analytics_config['file_name']
 
