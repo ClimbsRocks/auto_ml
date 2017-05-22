@@ -6,6 +6,7 @@ import sys
 import warnings
 
 import dill
+import eli5
 import pathos
 
 import numpy as np
@@ -332,6 +333,7 @@ class Predictor(object):
             , 'min_rows': 10000
             , 'cols_to_ignore': []
             , 'file_name': 'auto_ml_analytics_results_' + self.output_column + '.csv'
+            , 'col_std_multiplier': 0.5
         }
         if analytics_config is None:
             self.analytics_config = default_analytics_config
@@ -619,32 +621,36 @@ class Predictor(object):
             col_result = {}
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name:
-                # print('Getting feature response for: ' + str(col_name))
+                print('Getting feature response for: ' + str(col_name))
 
-                # print('np.mean at the start')
-                # print(np.mean(X[:, idx]))
+                print('np.mean at the start')
+                print(np.mean(X[:, idx]))
                 col_std = np.std(X[:, idx])
-                col_delta = 0.5 * col_std
-                # print('col_delta')
-                # print(col_delta)
+                col_delta = self.analytics_config['col_std_multiplier'] * col_std
+                print('col_delta')
+                print(col_delta)
                 col_result['Delta'] = col_delta
 
                 # Increment the values of this column by the std
                 X[:, idx] += col_delta
-                # print('np.mean after incrementing from avg')
-                # print(np.mean(X[:, idx]))
+                print('np.mean after incrementing from avg')
+                print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
+                print('predictions')
+                print(predictions)
+                print(np.mean(predictions))
+
                 col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
 
 
                 X[:, idx] -= 2 * col_delta
-                # print('np.mean after decrementing from avg')
-                # print(np.mean(X[:, idx]))
+                print('np.mean after decrementing from avg')
+                print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
@@ -654,8 +660,8 @@ class Predictor(object):
                 col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
                 # Put the column back to it's original state
                 X[:, idx] += col_delta
-                # print('np.mean at the end')
-                # print(np.mean(X[:, idx]))
+                print('np.mean at the end')
+                print(np.mean(X[:, idx]))
 
 
             all_results.append(col_result)
@@ -673,6 +679,49 @@ class Predictor(object):
         feature_responses = None
         if self.advanced_analytics == True:
             feature_responses = self.create_feature_responses(model, X, y)
+
+        # weights = eli5.explain_weights(model.model, vec=self.transformation_pipeline.named_steps['dv'])
+        # print('eli5 weights')
+        # print(weights)
+
+        # if weights.method == 'linear model':
+        #     feature_weights = weights.targets[0].feature_weights
+        #     print('feature_weights')
+        #     print(feature_weights)
+        # elif weights.method == 'random forest':
+        #     feature_weights = weights.feature_importances.importances
+
+        # # for thing in feature_weights:
+        # #     print('thing')
+        # #     print(thing)
+        # #     print(type(thing))
+        # #     # print(thing[0])
+        # #     print(thing.feature)
+
+        # importance_results = []
+        # for feature_summary in feature_weights:
+        #     result = {
+        #         'Feature Name': feature_summary.feature
+        #         , 'weight': feature_summary.weight
+        #         , 'std': feature_summary.std
+        #     }
+        #     importance_results.append(result)
+
+        # df_weights = pd.DataFrame(importance_results)
+        # print('df_weights')
+        # print(df_weights)
+        # self._join_and_print_analytics_results(feature_responses, df_weights)
+
+        # df_weights = pd.DataFrame(weights.feature_importances.importances)
+        # print('df_weights')
+        # print(df_weights)
+        # for thing in weights:
+        #     print('thing')
+        #     print(thing)
+
+        #     print('weights["thing"]')
+        #     print(weights["thing"])
+
 
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
             self._print_ml_analytics_results_linear_model(feature_responses)
@@ -1028,7 +1077,14 @@ class Predictor(object):
 
 
     def _join_and_print_analytics_results(self, df_feature_responses, df_features):
-        df_results = pd.merge(df_feature_responses, df_features, on='Feature Name')
+
+        # Join the standard feature_importances/coefficients, with our feature_responses
+        if df_feature_responses is not None:
+            df_results = pd.merge(df_feature_responses, df_features, on='Feature Name')
+        else:
+            df_results = df_features
+
+        # Sort by coefficients or feature importances
 
         analytics_file_name = self.analytics_config['file_name']
 
@@ -1122,11 +1178,17 @@ class Predictor(object):
 
         sorted_feature_summary = sorted(feature_summary, key=lambda x: abs(x[1]))
 
-        print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
-        print('This printed list will contain at most the top 50 features.')
-        for summary in sorted_feature_summary[-50:]:
+        df_results = pd.DataFrame(sorted_feature_summary)
 
-            print(str(summary[0]) + ': ' + str(round(summary[1], 4)))
+        df_results.columns = ['Feature Name', 'Coefficients']
+
+        self._join_and_print_analytics_results(feature_responses, df_results)
+
+        # print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
+        # print('This printed list will contain at most the top 50 features.')
+        # for summary in sorted_feature_summary[-50:]:
+
+        #     print(str(summary[0]) + ': ' + str(round(summary[1], 4)))
 
 
     def print_training_summary(self, gs):
