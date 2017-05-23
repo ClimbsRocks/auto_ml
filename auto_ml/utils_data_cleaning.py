@@ -34,12 +34,15 @@ def clean_val(val):
 
 # Same as above, except this version returns float('nan') when it fails
 # This plays more nicely with df.apply, and assumes we will be handling nans appropriately when doing DataFrameVectorizer later.
-def clean_val_nan_version(val):
+def clean_val_nan_version(key, val):
     try:
         str_val = str(val)
     except UnicodeEncodeError as e:
+        str_val = val.encode('ascii', 'ignore').decode('ascii')
         print('Here is the value that causes the UnicodeEncodeError to be thrown:')
         print(val)
+        print('Here is the feature name:')
+        print(key)
         raise(e)
 
     if str_val in bad_vals_as_strings:
@@ -48,7 +51,6 @@ def clean_val_nan_version(val):
         try:
             float_val = float(val)
         except ValueError:
-            # This will throw a ValueError if it fails
             # remove any commas in the string, and try to turn into a float again
             try:
                 cleaned_string = val.replace(',', '')
@@ -56,12 +58,24 @@ def clean_val_nan_version(val):
                 print('*************************************')
                 print('We expected this value to be numeric, but were unable to convert it to a float:')
                 print(val)
+                print('Here is the feature name:')
+                print(key)
                 print('*************************************')
                 return float('nan')
             try:
                 float_val = float(cleaned_string)
             except:
                 return float('nan')
+        except TypeError:
+            # This is what happens if you feed in a datetime object to float
+            print('*************************************')
+            print('We expected this value to be numeric, but were unable to convert it to a float:')
+            print(val)
+            print('Here is the feature name:')
+            print(key)
+            print('*************************************')
+            return float('nan')
+
         return float_val
 
 
@@ -148,7 +162,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 col_desc = self.column_descriptions.get(key)
 
                 if col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    dict_copy[key] = clean_val_nan_version(val)
+                    dict_copy[key] = clean_val_nan_version(key, val)
                 elif col_desc == 'date':
                     date_feature_dict = add_date_features_dict(X, key)
                     dict_copy.update(date_feature_dict)
@@ -196,31 +210,11 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     pass
 
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    # Make sure this isn't actually a date column, and if it is, give the user good information on how to fix this
-                    is_unmarked_date_col = False
-                    try:
-                        pd.to_datetime(X[key])
-                        is_unmarked_date_col = True
-                    except:
-                        pass
                     # For all of our numerical columns, try to turn all of these values into floats
                     # This function handles commas inside strings that represent numbers, and returns nan if we cannot turn this value into a float. nans are ignored in DataFrameVectorizer
                     try:
-                        X[key] = X[key].apply(clean_val_nan_version)
+                        X[key] = X[key].apply(lambda x: clean_val_nan_version(key, x))
                     except TypeError as e:
-                        if is_unmarked_date_col == True:
-                            print('\n\n\n')
-                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                            print('We have found a column that is not marked as a "date" column, but can be converted to dates.')
-                            print('The name of this column is:\n')
-                            print(key)
-                            print('\nThis column causes errors when we try to parse it as a numerical column.')
-                            print('If it is in fact a date column, please add this to the column_descriptions hash:')
-                            print('{' + key + ': date}')
-                            warnings.warn('UnmarkedDateColumn: Please mark the ' + key + ' column as being a date column in your column_descriptions dictionary.')
-                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n\n')
                         raise(e)
                     except UnicodeEncodeError as e:
                         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
@@ -230,7 +224,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                         print(key)
                         print('The actual value that caused the issue is logged right above the exclamation points')
                         print('Please either mark this column as categorical, or clean up the values in this column')
-                        raise(e)
+                        # raise(e)
                         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                         print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
