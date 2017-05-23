@@ -7,10 +7,12 @@ import sys
 import warnings
 
 import dill
+import eli5
 import pathos
 
 import numpy as np
 import pandas as pd
+from tabulate import tabulate
 
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
@@ -22,7 +24,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.model_selection import GridSearchCV
+from sklearn.model_selection import GridSearchCV, train_test_split
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 # from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -229,7 +231,8 @@ class Predictor(object):
                 pass
 
         # Remove the output column from the dataset, and store it into the y varaible
-        y = list(X_df.pop(self.output_column))
+        y = list(X_df[self.output_column])
+        X_df = X_df.drop(self.output_column, axis=1)
 
         # Drop all rows that have an empty value for our output column
         # User logging so they can adjust if they pass in a bunch of bad values:
@@ -294,7 +297,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both'):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -321,6 +324,7 @@ class Predictor(object):
             self.optimize_final_model = True
         self.compare_all_models = compare_all_models
         self.cv = cv
+
         self.calibrate_uncertainty = calibrate_uncertainty
         self.uncertainty_calibration_data = uncertainty_calibration_data
         self.uncertainty_delta_direction = uncertainty_delta_direction.lower()
@@ -334,6 +338,26 @@ class Predictor(object):
             }
         else:
             self.uncertainty_calibration_settings = uncertainty_calibration_settings
+
+        if advanced_analytics is None:
+            self.advanced_analytics = True
+        else:
+            self.advanced_analytics = advanced_analytics
+
+        default_analytics_config = {
+            'percent_rows': 0.1
+            , 'min_rows': 10000
+            , 'cols_to_ignore': []
+            , 'file_name': 'auto_ml_analytics_results_' + self.output_column + '.csv'
+            , 'col_std_multiplier': 0.5
+        }
+        if analytics_config is None:
+            self.analytics_config = default_analytics_config
+        else:
+            updated_analytics_config = default_analytics_config.copy()
+            updated_analytics_config = updated_analytics_config.update(analytics_config)
+            self.analytics_config = updated_analytics_config
+
 
         self.perform_feature_selection = perform_feature_selection
 
@@ -497,7 +521,7 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None):
 
         self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction)
 
@@ -726,7 +750,7 @@ class Predictor(object):
             print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
         # self.trained_final_model = ppl
-        self.print_results(model_name, ppl)
+        self.print_results(model_name, ppl, X_df, y)
 
         return ppl
 
@@ -744,14 +768,140 @@ class Predictor(object):
 
         return X_df
 
+    def create_feature_responses(self, model, X_transformed, y):
+        print('Calculating feature responses, for advanced analytics.')
 
-    def print_results(self, model_name, model):
+        # figure out how many rows to keep
+        orig_row_count = X_transformed.shape[0]
+        percent_row_count = int(self.analytics_config['percent_rows'] * orig_row_count)
+        num_rows_to_use = min(orig_row_count, percent_row_count, 10000)
+        # percent_of_data_to_use = num_rows_to_use / orig_row_count
+
+        X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use)
+        if scipy.sparse.issparse(X):
+            X = X.toarray()
+
+        # Get our baseline predictions
+        if self.type_of_estimator == 'regressor':
+            base_predictions = model.predict(X)
+        elif self.type_of_estimator == 'classifier':
+            base_predictions = model.predict_proba(X)
+            base_predictions = [x[1] for x in base_predictions]
+
+        feature_names = self._get_trained_feature_names()
+
+        all_results = []
+        for idx, col_name in enumerate(feature_names):
+            col_result = {}
+            col_result['Feature Name'] = col_name
+            if col_name[:4] != 'nlp_' and '=' not in col_name:
+                print('Getting feature response for: ' + str(col_name))
+
+                print('np.mean at the start')
+                print(np.mean(X[:, idx]))
+                col_std = np.std(X[:, idx])
+                col_delta = self.analytics_config['col_std_multiplier'] * col_std
+                print('col_delta')
+                print(col_delta)
+                col_result['Delta'] = col_delta
+
+                # Increment the values of this column by the std
+                X[:, idx] += col_delta
+                print('np.mean after incrementing from avg')
+                print(np.mean(X[:, idx]))
+                if self.type_of_estimator == 'regressor':
+                    predictions = model.predict(X)
+                elif self.type_of_estimator == 'classifier':
+                    predictions = model.predict_proba(X)
+                    predictions = [x[1] for x in predictions]
+
+                print('predictions')
+                print(predictions)
+                print(np.mean(predictions))
+
+                col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
+
+
+                X[:, idx] -= 2 * col_delta
+                print('np.mean after decrementing from avg')
+                print(np.mean(X[:, idx]))
+                if self.type_of_estimator == 'regressor':
+                    predictions = model.predict(X)
+                elif self.type_of_estimator == 'classifier':
+                    predictions = model.predict_proba(X)
+                    predictions = [x[1] for x in predictions]
+
+                col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
+                # Put the column back to it's original state
+                X[:, idx] += col_delta
+                print('np.mean at the end')
+                print(np.mean(X[:, idx]))
+
+
+            all_results.append(col_result)
+
+        df_all_results = pd.DataFrame(all_results)
+        # print('df_all_results')
+        # print(tabulate(df_all_results, headers='keys'))
+        return df_all_results
+
+
+
+
+    def print_results(self, model_name, model, X, y):
+
+        feature_responses = None
+        if self.advanced_analytics == True:
+            feature_responses = self.create_feature_responses(model, X, y)
+
+        # weights = eli5.explain_weights(model.model, vec=self.transformation_pipeline.named_steps['dv'])
+        # print('eli5 weights')
+        # print(weights)
+
+        # if weights.method == 'linear model':
+        #     feature_weights = weights.targets[0].feature_weights
+        #     print('feature_weights')
+        #     print(feature_weights)
+        # elif weights.method == 'random forest':
+        #     feature_weights = weights.feature_importances.importances
+
+        # # for thing in feature_weights:
+        # #     print('thing')
+        # #     print(thing)
+        # #     print(type(thing))
+        # #     # print(thing[0])
+        # #     print(thing.feature)
+
+        # importance_results = []
+        # for feature_summary in feature_weights:
+        #     result = {
+        #         'Feature Name': feature_summary.feature
+        #         , 'weight': feature_summary.weight
+        #         , 'std': feature_summary.std
+        #     }
+        #     importance_results.append(result)
+
+        # df_weights = pd.DataFrame(importance_results)
+        # print('df_weights')
+        # print(df_weights)
+        # self._join_and_print_analytics_results(feature_responses, df_weights)
+
+        # df_weights = pd.DataFrame(weights.feature_importances.importances)
+        # print('df_weights')
+        # print(df_weights)
+        # for thing in weights:
+        #     print('thing')
+        #     print(thing)
+
+        #     print('weights["thing"]')
+        #     print(weights["thing"])
+
+
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            self._print_ml_analytics_results_linear_model(model)
+            self._print_ml_analytics_results_linear_model(model, feature_responses)
 
         elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
-            self._print_ml_analytics_results_random_forest(model)
-
+            self._print_ml_analytics_results_random_forest(model, feature_responses)
 
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False):
 
@@ -814,7 +964,8 @@ class Predictor(object):
         # self.trained_final_model = gs.best_estimator_
         if 'model' in gs.best_params_:
             model_name = gs.best_params_['model']
-            self.print_results(model_name, gs.best_estimator_)
+
+        self.print_results(model_name, gs.best_estimator_, X_df, y)
 
         return gs
 
@@ -1090,14 +1241,56 @@ class Predictor(object):
             feature_infos.append([feature_name, feat_importance])
 
         sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+        df = pd.DataFrame(sorted_feature_infos)
+        return df
 
-        print('Here are the feature_importances from the tree-based model:')
-        print('The printed list will only contain at most the top 50 features.')
-        for feature in sorted_feature_infos[-50:]:
-            print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
+        # print('Here are the feature_importances from the tree-based model:')
+        # print('The printed list will only contain at most the top 50 features.')
+        # for feature in sorted_feature_infos[-50:]:
+        #     print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
 
-    def _print_ml_analytics_results_random_forest(self, trained_model_for_analytics):
+    def _join_and_print_analytics_results(self, df_feature_responses, df_features):
+
+        # Join the standard feature_importances/coefficients, with our feature_responses
+        if df_feature_responses is not None:
+            df_results = pd.merge(df_feature_responses, df_features, on='Feature Name')
+        else:
+            df_results = df_features
+
+        # Sort by coefficients or feature importances
+        try:
+            df_results = df_results.sort_values(by='Importance')
+        except:
+            try:
+                df_results = df_results.sort_values(by='Coefficients')
+            except:
+                pass
+
+        df_results = df_results.reset_index(drop=True)
+
+        analytics_file_name = self.analytics_config['file_name']
+
+        print('The printed list will only contain at most the top 100 features.')
+        print('The full analytics results will be saved to a filed called: ' + analytics_file_name + '\n')
+        print(tabulate(df_results, headers='keys', floatfmt='.4f', tablefmt='psql'))
+        print('\n')
+        print('*******')
+        print('Legend:')
+        print('Importance = Feature Importance')
+        print('     Explanation: A weighted measure of how much of the variance the model is able to explain is due to this column')
+        print('FR_delta = Feature Response Delta Amount')
+        print('     Explanation: Amount this column was incremented or decremented by to calculate the feature reponses')
+        print('FR_Decrementing = Feature Response From Decrementing Values In This Column By One FR_delta')
+        print('     Explanation: Represents how much the predicted output values respond to subtracting one FR_delta amount from every value in this column')
+        print('FR_Incrementing = Feature Response From Incrementing Values In This Column By One FR_delta')
+        print('     Explanation: Represents how much the predicted output values respond to adding one FR_delta amount to every value in this column')
+        print('*******\n')
+
+        df_results.to_csv(analytics_file_name)
+
+
+    def _print_ml_analytics_results_random_forest(self, trained_model_for_analytics, feature_responses):
         try:
             final_model_obj = trained_model_for_analytics.named_steps['final_model']
         except:
@@ -1110,7 +1303,7 @@ class Predictor(object):
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
         if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
-            self._get_xgb_feat_importances(final_model_obj.model)
+            df_results = self._get_xgb_feat_importances(final_model_obj.model)
 
         else:
             trained_feature_names = self._get_trained_feature_names()
@@ -1125,10 +1318,14 @@ class Predictor(object):
 
             sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
-            print('Here are the feature_importances from the tree-based model:')
-            print('The printed list will only contain at most the top 50 features.')
-            for feature in sorted_feature_infos[-50:]:
-                print(feature[0] + ': ' + str(round(feature[1], 4)))
+            df_results = pd.DataFrame(sorted_feature_infos)
+
+        df_results.columns = ['Feature Name', 'Importance']
+
+        self._join_and_print_analytics_results(feature_responses, df_results)
+
+            # for feature in sorted_feature_infos[-50:]:
+            #     print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
     def _get_trained_feature_names(self):
@@ -1141,7 +1338,7 @@ class Predictor(object):
         return trained_feature_names
 
 
-    def _print_ml_analytics_results_linear_model(self, trained_model_for_analytics):
+    def _print_ml_analytics_results_linear_model(self, trained_model_for_analytics, feature_responses):
         try:
             final_model_obj = trained_model_for_analytics.named_steps['final_model']
         except:
@@ -1163,11 +1360,17 @@ class Predictor(object):
 
         sorted_feature_summary = sorted(feature_summary, key=lambda x: abs(x[1]))
 
-        print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
-        print('This printed list will contain at most the top 50 features.')
-        for summary in sorted_feature_summary[-50:]:
+        df_results = pd.DataFrame(sorted_feature_summary)
 
-            print(str(summary[0]) + ': ' + str(round(summary[1], 4)))
+        df_results.columns = ['Feature Name', 'Coefficients']
+
+        self._join_and_print_analytics_results(feature_responses, df_results)
+
+        # print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
+        # print('This printed list will contain at most the top 50 features.')
+        # for summary in sorted_feature_summary[-50:]:
+
+        #     print(str(summary[0]) + ': ' + str(round(summary[1], 4)))
 
 
     def print_training_summary(self, gs):

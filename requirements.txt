@@ -1,7 +1,11 @@
 dill
 h5py
-scikit-learn
-scipy
-python-dateutil
+keras
+numpy
 pandas
 pathos
+python-dateutil
+scikit-learn
+scipy
+tabulate
+tensorflow
