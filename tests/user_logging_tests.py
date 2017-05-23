@@ -1,4 +1,5 @@
 # This set of tests id specifically designed to make sure auto_ml is user friendly- throwing useful warnings where possible about what specific actions the user can take to avoid an error, instead of throwing the non-obvious error messages that the underlying libraries will choke on.
+import datetime
 import dill
 from nose.tools import raises
 import numpy as np
@@ -12,33 +13,33 @@ from auto_ml import Predictor
 import utils_testing as utils
 
 
-def test_unmarked_date_column():
-    np.random.seed(0)
+# def test_unmarked_date_column():
+#     np.random.seed(0)
 
-    df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+#     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
 
-    column_descriptions = {
-        'airline_sentiment': 'output'
-        , 'airline': 'categorical'
-        , 'text': 'nlp'
-        , 'tweet_location': 'categorical'
-        , 'user_timezone': 'categorical'
-        # tweet_created is our date column. We want to test that "forgetting" to mark it as a date column throws a user warning before throwing the error
-        # , 'tweet_created': 'date'
-    }
+#     column_descriptions = {
+#         'airline_sentiment': 'output'
+#         , 'airline': 'categorical'
+#         , 'text': 'nlp'
+#         , 'tweet_location': 'categorical'
+#         , 'user_timezone': 'categorical'
+#         # tweet_created is our date column. We want to test that "forgetting" to mark it as a date column throws a user warning before throwing the error
+#         # , 'tweet_created': 'date'
+#     }
 
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-    with warnings.catch_warnings(record=True) as w:
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+#     with warnings.catch_warnings(record=True) as w:
 
-        try:
-            ml_predictor.train(df_twitter_train)
-        except TypeError as e:
-            pass
+#         try:
+#             ml_predictor.train(df_twitter_train)
+#         except TypeError as e:
+#             pass
 
-        print('Here are the caught warnings:')
-        print(w)
+#         print('Here are the caught warnings:')
+#         print(w)
 
-        assert len(w) == 1
+#         assert len(w) == 1
 
 @raises(ValueError)
 def test_bad_val_in_column_descriptions():
@@ -287,5 +288,30 @@ def test_throws_warning_when_fl_data_equals_df_train():
         for thing in w:
             print(thing)
         assert len(w) == 1
+
+
+def test_unexpected_datetime_column_handled_without_errors():
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train)
+
+    test_dict = df_titanic_test.sample(frac=0.1).to_dict('records')[0]
+
+    test_dict['unexpected_column'] = datetime.date.today()
+    test_dict['anoter_unexpected_column'] = datetime.datetime.today()
+
+    ml_predictor.predict(test_dict)
+
+    # We want to make sure the above does not throw an error
+    assert True
+
 
 
