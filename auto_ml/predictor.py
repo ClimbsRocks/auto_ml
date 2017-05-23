@@ -795,36 +795,36 @@ class Predictor(object):
             col_result = {}
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name:
-                print('Getting feature response for: ' + str(col_name))
+                # print('Getting feature response for: ' + str(col_name))
 
-                print('np.mean at the start')
-                print(np.mean(X[:, idx]))
+                # print('np.mean at the start')
+                # print(np.mean(X[:, idx]))
                 col_std = np.std(X[:, idx])
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
-                print('col_delta')
-                print(col_delta)
+                # print('col_delta')
+                # print(col_delta)
                 col_result['Delta'] = col_delta
 
                 # Increment the values of this column by the std
                 X[:, idx] += col_delta
-                print('np.mean after incrementing from avg')
-                print(np.mean(X[:, idx]))
+                # print('np.mean after incrementing from avg')
+                # print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
-                print('predictions')
-                print(predictions)
-                print(np.mean(predictions))
+                # print('predictions')
+                # print(predictions)
+                # print(np.mean(predictions))
 
                 col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
 
 
                 X[:, idx] -= 2 * col_delta
-                print('np.mean after decrementing from avg')
-                print(np.mean(X[:, idx]))
+                # print('np.mean after decrementing from avg')
+                # print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
@@ -834,8 +834,8 @@ class Predictor(object):
                 col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
                 # Put the column back to it's original state
                 X[:, idx] += col_delta
-                print('np.mean at the end')
-                print(np.mean(X[:, idx]))
+                # print('np.mean at the end')
+                # print(np.mean(X[:, idx]))
 
 
             all_results.append(col_result)
@@ -1261,9 +1261,11 @@ class Predictor(object):
         # Sort by coefficients or feature importances
         try:
             df_results = df_results.sort_values(by='Importance')
+            df_results = df_results[['Feature Name', 'Importance', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
         except:
             try:
                 df_results = df_results.sort_values(by='Coefficients')
+                df_results = df_results[['Feature Name', 'Coefficients', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
             except:
                 pass
 
