@@ -19,8 +19,6 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-import pypandoc
-
 here = path.abspath(path.dirname(__file__))
 try:
     # Try to format our PyPi page as rst so it displays properly
