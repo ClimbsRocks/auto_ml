@@ -19,11 +19,17 @@ from setuptools import setup, find_packages
 from codecs import open
 from os import path
 
-here = path.abspath(path.dirname(__file__))
+import pypandoc
 
+
+long_description = pypandoc.convert('README.md', 'rst')
+
+here = path.abspath(path.dirname(__file__))
 # Get the long description from the README file
-with open(path.join(here, 'README.md'), encoding='utf-8') as f:
-    long_description = f.read()
+# with open(path.join(here, 'README.md'), encoding='utf-8') as f:
+#     long_description = f.read()
+
+
 
 setup(
     name='auto_ml',
