@@ -1080,6 +1080,13 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
+        folder_name = file_name[:file_name.rfind('.')]
+
+        # Make the folder if it doesn't exist
+        utils.mkdir_p(folder_name)
+
+        file_name = os.path.join(folder_name, file_name)
+
         def save_one_step(pipeline_step, used_deep_learning):
             try:
                 if pipeline_step.model_name[:12] == 'DeepLearning':
@@ -1180,9 +1187,11 @@ class Predictor(object):
             print('It is saved in the directory: ')
             print(os.getcwd())
             print('To use it to get predictions, please follow the following flow (adjusting for your own uses as necessary:\n\n')
-            print('`from auto_ml.utils_models import load_ml_model')
-            print('`trained_ml_pipeline = load_ml_model("' + file_name + '")')
-            print('`trained_ml_pipeline.predict(data)`\n\n')
+            print('```')
+            print('from auto_ml.utils_models import load_ml_model')
+            print('trained_ml_pipeline = load_ml_model("' + file_name + '")')
+            print('trained_ml_pipeline.predict(data)\n\n')
+            print('```')
 
             if used_deep_learning == True:
                 print('While saving the trained_ml_pipeline, we found a number of deep learning models that we saved separately.')
