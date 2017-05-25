@@ -4,6 +4,7 @@
 import datetime
 import os
 import random
+import shutil
 import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 
@@ -158,7 +159,8 @@ def test_user_input_func_classification(model_name=None):
     ml_predictor.train(df_titanic_train, perform_feature_scaling=False, user_input_func=age_bucketing, model_names=model_name)
 
 
-    file_name = ml_predictor.save(str(random.random()))
+    original_file_name = str(random.random())
+    file_name = ml_predictor.save(original_file_name + '.dill')
 
     # if model_name == 'DeepLearningClassifier':
     #     from auto_ml.utils_models import load_keras_model
@@ -169,12 +171,13 @@ def test_user_input_func_classification(model_name=None):
     #         saved_ml_pipeline = dill.load(read_file)
     saved_ml_pipeline = load_ml_model(file_name)
 
-    os.remove(file_name)
-    try:
-        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
-        os.remove(keras_file_name)
-    except:
-        pass
+    # os.remove(file_name)
+    shutil.rmtree(original_file_name)
+    # try:
+    #     keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+    #     os.remove(keras_file_name)
+    # except:
+    #     pass
 
 
     df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
@@ -474,7 +477,8 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
         ml_predictor.train(df_twitter_train, model_names=model_name)
 
-        file_name = ml_predictor.save(str(random.random()))
+        original_file_name = str(random.random())
+        file_name = ml_predictor.save(original_file_name + '.dill')
 
         # if model_name == 'DeepLearningClassifier':
         #     from auto_ml.utils_models import load_keras_model
@@ -485,12 +489,13 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         #         saved_ml_pipeline = dill.load(read_file)
         saved_ml_pipeline = load_ml_model(file_name)
 
-        os.remove(file_name)
-        try:
-            keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
-            os.remove(keras_file_name)
-        except:
-            pass
+        # os.remove(file_name)
+        shutil.rmtree(original_file_name)
+        # try:
+        #     keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
+        #     os.remove(keras_file_name)
+        # except:
+        #     pass
 
         df_twitter_test_dictionaries = df_twitter_test.to_dict('records')
 

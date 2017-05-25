@@ -87,7 +87,7 @@ def test_verify_features_does_not_work_by_default():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
@@ -127,7 +127,7 @@ def test_verify_features_finds_missing_prediction_features():
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
     ml_predictor.train(df_titanic_train, verify_features=True)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
@@ -176,7 +176,7 @@ def test_verify_features_finds_missing_training_features():
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
     ml_predictor.train(df_titanic_train, verify_features=True)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     with open(file_name, 'rb') as read_file:
         saved_ml_pipeline = dill.load(read_file)
@@ -220,7 +220,7 @@ def test_verify_features_finds_no_missing_features_when_none_are_missing():
         ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
         ml_predictor.train(df_titanic_train, verify_features=True)
 
-        file_name = ml_predictor.save(str(random.random()))
+        file_name = ml_predictor.save(str(random.random()) + '.dill')
 
         with open(file_name, 'rb') as read_file:
             saved_ml_pipeline = dill.load(read_file)

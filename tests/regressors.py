@@ -91,7 +91,7 @@ def getting_single_predictions_regression(model_name=None):
 
     ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=model_name)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     # if model_name == 'DeepLearningRegressor':
     #     from auto_ml.utils_models import load_keras_model
@@ -189,7 +189,7 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
     df_boston_train, fl_data = train_test_split(df_boston_train, test_size=0.2)
     ml_predictor.train(df_boston_train, model_names=model_name, feature_learning=True, fl_data=fl_data)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     # from auto_ml.utils_models import load_keras_model
 
@@ -279,7 +279,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     df_boston_train, fl_data = train_test_split(df_boston_train, test_size=0.2)
     ml_predictor.train_categorical_ensemble(df_boston_train, model_names=model_name, feature_learning=False, fl_data=fl_data, categorical_column='CHAS')
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     from auto_ml.utils_models import load_ml_model
 

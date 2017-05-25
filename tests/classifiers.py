@@ -96,7 +96,9 @@ def getting_single_predictions_classification(model_name=None):
 
     ml_predictor.train(df_titanic_train, model_names=model_name)
 
-    file_name = ml_predictor.save(str(random.random()))
+    input_file_name = str(random.random()) + '.dill'
+    input_file_name = os.path.join('nested_save_folders', input_file_name)
+    file_name = ml_predictor.save(input_file_name)
 
     saved_ml_pipeline = load_ml_model(file_name)
     # if model_name == 'DeepLearningClassifier':
@@ -197,7 +199,7 @@ def getting_single_predictions_multilabel_classification(model_name=None):
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
     ml_predictor.train(df_twitter_train, model_names=model_name)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     # if model_name == 'DeepLearningClassifier':
     #     from auto_ml.utils_models import load_keras_model
@@ -293,7 +295,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     df_titanic_train, fl_data = train_test_split(df_titanic_train, test_size=0.2)
     ml_predictor.train(df_titanic_train, model_names=model_name, feature_learning=True, fl_data=fl_data)
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
 
     # from auto_ml.utils_models import load_keras_model
@@ -391,7 +393,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     df_titanic_train, fl_data = train_test_split(df_titanic_train, test_size=0.2)
     ml_predictor.train_categorical_ensemble(df_titanic_train, model_names=model_name, feature_learning=False, fl_data=fl_data, categorical_column='embarked')
 
-    file_name = ml_predictor.save(str(random.random()))
+    file_name = ml_predictor.save(str(random.random()) + '.dill')
 
     # with open(file_name, 'rb') as read_file:
     #     saved_ml_pipeline = dill.load(read_file)
