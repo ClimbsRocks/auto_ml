@@ -4,8 +4,8 @@
 [![Build Status](https://travis-ci.org/ClimbsRocks/auto_ml.svg?branch=master)](https://travis-ci.org/ClimbsRocks/auto_ml)
 [![Documentation Status](http://readthedocs.org/projects/auto-ml/badge/?version=latest)](http://auto-ml.readthedocs.io/en/latest/?badge=latest)
 [![PyPI version](https://badge.fury.io/py/auto_ml.svg)](https://badge.fury.io/py/auto_ml)
-[![Coverage Status](https://coveralls.io/repos/github/ClimbsRocks/auto_ml/badge.svg?branch=master&cacheBuster=1)](https://coveralls.io/github/ClimbsRocks/auto_ml?branch=master)
-[![license](https://img.shields.io/github/license/mashape/apistatus.svg)]()
+[![Coverage Status](https://coveralls.io/repos/github/ClimbsRocks/auto_ml/badge.svg?branch=master&cacheBuster=1)](https://coveralls.io/github/ClimbsRocks/auto_ml?branch=master&cacheBuster=1)
+[![license](https://img.shields.io/github/license/mashape/apistatus.svg)]((https://img.shields.io/github/license/mashape/apistatus.svg))
 <!-- Stars badge?! -->
 
 ## Installation
