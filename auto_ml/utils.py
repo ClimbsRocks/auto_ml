@@ -1,11 +1,22 @@
 import csv
 import datetime
+import errno
 import os
 
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
 
 import pandas as pd
+
+
+def mkdir_p(path):
+    try:
+        os.makedirs(path)
+    except OSError as exc:  # Python >2.5
+        if exc.errno == errno.EEXIST and os.path.isdir(path):
+            pass
+        else:
+            raise
 
 
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
