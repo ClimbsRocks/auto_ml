@@ -1080,12 +1080,19 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
-        folder_name = file_name[:file_name.rfind('.')]
+        file_name_and_path_without_extension = os.path.splitext(file_name)[0]
+        extension = os.path.splitext(file_name)[1]
+
+        # This is literally just the name of the folder. it does not include the path to that folder yet
+        folder_name = os.path.basename(file_name_and_path_without_extension)
+
+        path_to_folder = os.path.split(file_name)[0]
+        full_folder_path_and_name = os.path.join(path_to_folder, folder_name)
 
         # Make the folder if it doesn't exist
-        utils.mkdir_p(folder_name)
+        utils.mkdir_p(full_folder_path_and_name)
 
-        file_name = os.path.join(folder_name, file_name)
+        file_name = os.path.join(path_to_folder, folder_name, folder_name + extension)
 
         def save_one_step(pipeline_step, used_deep_learning):
             try:
@@ -1094,7 +1101,7 @@ class Predictor(object):
 
                     random_name = str(random.random())
 
-                    keras_file_name = file_name[:-5] + random_name + '_keras_deep_learning_model.h5'
+                    keras_file_name = os.path.splitext(file_name)[0] + random_name + '_keras_deep_learning_model.h5'
 
                     # Save a reference to this so we can put it back in place later
                     keras_wrapper = pipeline_step.model
