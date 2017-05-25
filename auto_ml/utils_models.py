@@ -491,17 +491,33 @@ def insert_deep_learning_model(pipeline_step, file_name):
     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
     return model
 
+
+
+# Can pass in either the file_name (assuming it's in the same directory)
+# The folder name (assuming the file_name is the same as the folder_name, plus some extension)
+# The file_name, nested inside a directory of the same name
 def load_ml_model(file_name):
 
-    with open(file_name, 'rb') as read_file:
-        base_pipeline = dill.load(read_file)
+    try:
+        with open(file_name, 'rb') as read_file:
+            base_pipeline = dill.load(read_file)
+    except:
+        base_name = os.path.basename(file_name)
+        extension = os.path.splitext(base_name)[1]
+        base_name = os.path.splitext(base_name)[0]
+        path_to_folder = os.path.split(file_name)[0]
+        folder_with_path = os.path.join(path_to_folder, base_name)
+        file_name = os.path.join(folder_with_path, base_name, extension)
+
+        with open(file_name, 'rb') as read_file:
+            base_pipeline = dill.load(read_file)
 
     if isinstance(base_pipeline, utils_categorical_ensembling.CategoricalEnsembler):
         for step in base_pipeline.transformation_pipeline.named_steps:
             pipeline_step = base_pipeline.transformation_pipeline.named_steps[step]
 
             try:
-                if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                if pipeline_step.get('model_name', 'ignorethisstringlongerthantwelve')[:12] == 'DeepLearning':
                     pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
             except AttributeError:
                 pass
@@ -510,7 +526,7 @@ def load_ml_model(file_name):
             pipeline_step = base_pipeline.trained_models[step]
 
             try:
-                if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                if pipeline_step.get('model_name', 'ignorethisstringlongerthantwelve')[:12] == 'DeepLearning':
                     pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
             except AttributeError:
                 pass
@@ -520,7 +536,7 @@ def load_ml_model(file_name):
         for step in base_pipeline.named_steps:
             pipeline_step = base_pipeline.named_steps[step]
             try:
-                if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                if pipeline_step.get('model_name', 'ignorethisstringlongerthantwelve')[:12] == 'DeepLearning':
                     pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
             except AttributeError:
                 pass
