@@ -74,8 +74,6 @@ class Predictor(object):
 
         self._validate_input_col_descriptions()
 
-        self.grid_search_pipelines = []
-
         self.name = name
 
 
@@ -484,7 +482,6 @@ class Predictor(object):
         # Delete values that we no longer need that are just taking up space.
         del self.X_test
         del self.y_test
-        del self.grid_search_pipelines
         del X_df
 
 
@@ -883,45 +880,46 @@ class Predictor(object):
 
 
 
-    def _get_xgb_feat_importances(self, clf):
+    # def _get_xgb_feat_importances(self, clf):
+    #     print('XGBoost changed their API recently, and we are unable to report feature_importances_ ')
 
-        try:
-            # Handles case when clf has been created by calling
-            # xgb.XGBClassifier.fit() or xgb.XGBRegressor().fit()
-            fscore = clf.booster().get_fscore()
-        except:
-            # Handles case when clf has been created by calling xgb.train.
-            # Thus, clf is an instance of xgb.Booster.
-            fscore = clf.get_fscore()
+    #     try:
+    #         # Handles case when clf has been created by calling
+    #         # xgb.XGBClassifier.fit() or xgb.XGBRegressor().fit()
+    #         fscore = clf.booster().get_fscore()
+    #     except:
+    #         # Handles case when clf has been created by calling xgb.train.
+    #         # Thus, clf is an instance of xgb.Booster.
+    #         fscore = clf.get_fscore()
 
-        trained_feature_names = self._get_trained_feature_names()
+    #     trained_feature_names = self._get_trained_feature_names()
 
-        feat_importances = []
+    #     feat_importances = []
 
-        # Somewhat annoying. XGBoost only returns importances for the features it finds useful.
-        # So we have to go in, get the index of the feature from the "feature name" by removing the f before the feature name, and grabbing the rest of that string, which is actually the index of that feature name.
-        fscore_list = [[int(k[1:]), v] for k, v in fscore.items()]
+    #     # Somewhat annoying. XGBoost only returns importances for the features it finds useful.
+    #     # So we have to go in, get the index of the feature from the "feature name" by removing the f before the feature name, and grabbing the rest of that string, which is actually the index of that feature name.
+    #     fscore_list = [[int(k[1:]), v] for k, v in fscore.items()]
 
 
-        feature_infos = []
-        sum_of_all_feature_importances = 0.0
+    #     feature_infos = []
+    #     sum_of_all_feature_importances = 0.0
 
-        for idx_and_result in fscore_list:
-            idx = idx_and_result[0]
-            # Use the index that we grabbed above to find the human-readable feature name
-            feature_name = trained_feature_names[idx]
-            feat_importance = idx_and_result[1]
+    #     for idx_and_result in fscore_list:
+    #         idx = idx_and_result[0]
+    #         # Use the index that we grabbed above to find the human-readable feature name
+    #         feature_name = trained_feature_names[idx]
+    #         feat_importance = idx_and_result[1]
 
-            # If we sum up all the feature importances and then divide by that sum, we will be able to have each feature importance as it's relative feature imoprtance, and the sum of all of them will sum up to 1, just as it is in scikit-learn.
-            sum_of_all_feature_importances += feat_importance
-            feature_infos.append([feature_name, feat_importance])
+    #         # If we sum up all the feature importances and then divide by that sum, we will be able to have each feature importance as it's relative feature imoprtance, and the sum of all of them will sum up to 1, just as it is in scikit-learn.
+    #         sum_of_all_feature_importances += feat_importance
+    #         feature_infos.append([feature_name, feat_importance])
 
-        sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+    #     sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
-        print('Here are the feature_importances from the tree-based model:')
-        print('The printed list will only contain at most the top 50 features.')
-        for feature in sorted_feature_infos[-50:]:
-            print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
+    #     print('Here are the feature_importances from the tree-based model:')
+    #     print('The printed list will only contain at most the top 50 features.')
+    #     for feature in sorted_feature_infos[-50:]:
+    #         print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
 
 
     def _print_ml_analytics_results_random_forest(self):
@@ -936,26 +934,26 @@ class Predictor(object):
         print('predicting ' + self.output_column)
 
         # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
-        if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
-            self._get_xgb_feat_importances(final_model_obj.model)
+        # if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
+        #     self._get_xgb_feat_importances(final_model_obj.model)
 
-        else:
-            trained_feature_names = self._get_trained_feature_names()
+        # else:
+        trained_feature_names = self._get_trained_feature_names()
 
-            try:
-                trained_feature_importances = final_model_obj.model.feature_importances_
-            except AttributeError as e:
-                # There was a version of LightGBM that had this misnamed to miss the "s" at the end
-                trained_feature_importances = final_model_obj.model.feature_importance_
+        try:
+            trained_feature_importances = final_model_obj.model.feature_importances_
+        except AttributeError as e:
+            # There was a version of LightGBM that had this misnamed to miss the "s" at the end
+            trained_feature_importances = final_model_obj.model.feature_importance_
 
-            feature_infos = zip(trained_feature_names, trained_feature_importances)
+        feature_infos = zip(trained_feature_names, trained_feature_importances)
 
-            sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
+        sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
-            print('Here are the feature_importances from the tree-based model:')
-            print('The printed list will only contain at most the top 50 features.')
-            for feature in sorted_feature_infos[-50:]:
-                print(feature[0] + ': ' + str(round(feature[1], 4)))
+        print('Here are the feature_importances from the tree-based model:')
+        print('The printed list will only contain at most the top 50 features.')
+        for feature in sorted_feature_infos[-50:]:
+            print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
     def _get_trained_feature_names(self):
