@@ -38,14 +38,25 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
     print(format(accuracy_score(y_true=actuals, y_pred=predicted_labels) * 100, '.1f') + '%')
 
 
-    print('\nHere is a confusion matrix showing predictions and actuals by label')
+    print('\nHere is a confusion matrix showing predictions vs. actuals by label:')
     #it would make sense to use sklearn's confusion_matrix here but it apparently has no labels
     #took this idea instead from: http://stats.stackexchange.com/a/109015
     conf = pd.crosstab(pd.Series(actuals), pd.Series(predicted_labels), rownames=['v Actual v'], colnames=['Predicted >'], margins=True)
     print(conf)
-
-
-    print('Here is the accuracy of our trained estimator at each level of predicted probabilities')
+    
+    #I like knowing the per class accuracy to see if the model is mishandling imbalanced data.
+    #For example, if it is predicting 100% of observations to one class just because it is the majority
+    #Wikipedia seems to call that Positive/negative predictive value 
+    print('\nHere is predictive value by class:')
+    df = pd.concat([pd.Series(actuals,name='actuals'),pd.Series(predicted_labels,name='predicted')],axis=1)
+    targets = list(df.predicted.unique())
+    for i in range(0,len(targets)):
+        tot_count = len(df[df.predicted==targets[i]])
+        true_count = len(df[(df.predicted==targets[i]) & (df.actuals == targets[i])])
+        print('Class: ',targets[i],'=',float(true_count)/tot_count)
+        #print(len(df[(df.predicted==targets[i]) & (df.actuals == targets[i])]))
+    
+    print('\nHere is the accuracy of our trained estimator at each level of predicted probabilities')
 
     # create summary dict
     summary_dict = OrderedDict()
