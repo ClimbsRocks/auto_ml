@@ -21,12 +21,6 @@ test_names = OrderedDict([
     ('getting_single_predictions_multilabel_classification', classifier_tests.getting_single_predictions_multilabel_classification),
     ('categorical_ensembling_classification', classifier_tests.categorical_ensembling_classification),
     ('feature_learning_categorical_ensembling_getting_single_predictions_classification', classifier_tests.feature_learning_categorical_ensembling_getting_single_predictions_classification)
-
-    # ('optimize_final_model_regression', regressor_tests.optimize_final_model_regression),
-    # ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression),
-    # ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression),
-    # ('categorical_ensembling_regression', regressor_tests.categorical_ensembling_regression),
-    # ('feature_learning_categorical_ensembling_getting_single_predictions_regression', regressor_tests.feature_learning_categorical_ensembling_getting_single_predictions_regression)
 ])
 
 

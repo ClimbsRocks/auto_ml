@@ -551,27 +551,3 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         # Make sure our score is good, but not unreasonably good
         assert lower_bound < second_score < 0.79
 
-
-# def test_nlp_multilabel_classification(model_name=None):
-#     np.random.seed(0)
-
-#     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
-
-#     column_descriptions = {
-#         'airline_sentiment': 'output'
-#         , 'airline': 'categorical'
-#         , 'text': 'nlp'
-#         , 'tweet_location': 'categorical'
-#         , 'user_timezone': 'categorical'
-#         , 'tweet_created': 'date'
-#     }
-
-#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-#     ml_predictor.train(df_twitter_train, model_names=model_name)
-
-#     test_score = ml_predictor.score(df_twitter_test, df_twitter_test.airline_sentiment)
-
-#     # Make sure our score is good, but not unreasonably good
-#     print('test_score')
-#     print(test_score)
-#     assert 0.73 < test_score < 0.79
