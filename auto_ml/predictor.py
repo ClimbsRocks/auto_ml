@@ -7,7 +7,6 @@ import sys
 import warnings
 
 import dill
-import eli5
 import pathos
 
 import numpy as np
