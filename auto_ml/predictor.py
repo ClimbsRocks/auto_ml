@@ -326,6 +326,8 @@ class Predictor(object):
 
         self.calibrate_uncertainty = calibrate_uncertainty
         self.uncertainty_calibration_data = uncertainty_calibration_data
+        if uncertainty_delta_direction is None:
+            uncertainty_delta_direction = 'both'
         self.uncertainty_delta_direction = uncertainty_delta_direction.lower()
         if self.uncertainty_delta_direction not in ['both', 'directional']:
             raise ValueError('Please pass in either "both" or "directional" for uncertainty_delta_direction')
