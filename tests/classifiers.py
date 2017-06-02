@@ -177,7 +177,6 @@ def getting_single_predictions_classification(model_name=None):
     assert lower_bound < second_score < -0.17
 
 
-
 def getting_single_predictions_multilabel_classification(model_name=None):
     # auto_ml does not support multilabel classification for deep learning at the moment
     if model_name == 'DeepLearningClassifier':
