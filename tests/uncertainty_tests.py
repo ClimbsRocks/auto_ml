@@ -110,6 +110,36 @@ def test_calibrate_uncertainty():
     assert 'percentile_50_delta' in list(uncertainty_score.columns)
     assert 'percentile_75_delta' in list(uncertainty_score.columns)
     assert 'bucket_num' in list(uncertainty_score.columns)
+
+
+def test_calibrate_uncertainty():
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
+    uncertainty_data, uncertainty_calibration_data = train_test_split(uncertainty_data, test_size=0.5)
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    uncertainty_calibration_settings = {
+        'num_buckets': 3
+        , 'percentiles': [25, 50, 75]
+    }
+    ml_predictor.train(df_boston_train, perform_feature_selection=True, train_uncertainty_model=True, uncertainty_data=uncertainty_data, calibrate_uncertainty=True, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction='directional')
+
+    uncertainty_score = ml_predictor.predict_uncertainty(df_boston_test)
+
+
+    assert 'percentile_25_delta' in list(uncertainty_score.columns)
+    assert 'percentile_50_delta' in list(uncertainty_score.columns)
+    assert 'percentile_75_delta' in list(uncertainty_score.columns)
+    assert 'bucket_num' in list(uncertainty_score.columns)
     # API:
     # calibrate_uncertainty=False
     # uncertainty_calibration_settings = {
