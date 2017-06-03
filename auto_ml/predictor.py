@@ -765,7 +765,7 @@ class Predictor(object):
         # We are intentionally overwriting X_df here to try to save some memory space
         X_df = ppl.fit_transform(X_df, y)
 
-        self.transformation_pipeline = ppl
+        self.transformation_pipeline = self._consolidate_pipeline(ppl)
 
         return X_df
 
@@ -1276,6 +1276,8 @@ class Predictor(object):
 
         print('The printed list will only contain at most the top 100 features.')
         print('The full analytics results will be saved to a filed called: ' + analytics_file_name + '\n')
+
+        df_results = df_results.head(n=100)
         print(tabulate(df_results, headers='keys', floatfmt='.4f', tablefmt='psql'))
         print('\n')
         print('*******')
@@ -1333,11 +1335,7 @@ class Predictor(object):
 
     def _get_trained_feature_names(self):
 
-        try:
-            trained_feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-        except AttributeError:
-            trained_feature_names = self.transformation_pipeline.named_steps['dv'].get_feature_names()
-
+        trained_feature_names = self.transformation_pipeline.named_steps['dv'].get_feature_names()
         return trained_feature_names
 
 
