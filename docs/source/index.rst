@@ -15,6 +15,7 @@ Contents:
    getting_started.rst
    formatting_data.rst
    analytics.rst
+   feature_responses.rst
    categorical_ensembling.rst
    deep_learning.rst
    api_docs_for_geeks.rst
