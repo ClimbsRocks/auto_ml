@@ -1,10 +1,8 @@
 
-
-
 Background
 ----------
 
-People love linear models for their explainability. Let's take a look at the classic Titanic example, and say that the "Fare" feature has a coefficient of 0.1. The way it's classically interpreted, that means that, holding all else equal, for every unit increase in fare, the person's likelihood of surviving increased by 10%.
+People love linear models for their explainability. Let's take a look at the classic Titanic example, and say that th "Fare" feature has a coefficient of 0.1. The way it's classically interpreted, that means that, holding all else equal, for every unit increase in fare, the person's likelihood of surviving increased by 10%.
 
 There are two important parts here: holding all else equal, and the response of the output variable to this feature.
 
