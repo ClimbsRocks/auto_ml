@@ -568,9 +568,6 @@ class Predictor(object):
         # Note that we will have to be cautious that things all happen in the exact same order as we expand what we do post-DV over time
         self.transformation_pipeline.named_steps['dv'].feature_names_.append('base_prediction')
         # 2. Get predictions from our base predictor on our uncertainty data
-            # transform our uncertainty_data
-            # Do we want to do this in FinalModelATC, or in Predictor? I think Predictor. We've already got access to all the components we need, and I like this pattern of advanced features being included as part of Predictor, and keeping our pipeline itself as relatively pure as possible
-        # y_uncertainty = uncertainty_data[self.output_column]
         uncertainty_data, y_uncertainty, _ = self._clean_data_and_prepare_for_training(uncertainty_data, scoring)
 
         uncertainty_data_transformed = self.transformation_pipeline.transform(uncertainty_data)
@@ -583,34 +580,15 @@ class Predictor(object):
         # 2A. Grab the user's definition of uncertainty, and create the output values 'is_uncertain_prediction'
             # post-mvp: allow the user to pass in stuff like 1.5*std
         if self.uncertainty_delta == 'std':
-            # How do we define std? is it std of our predictions, or std of our y values?
-            # probably of our y values
-            # which is less cheating- y values from our X_df data, or our uncertainty_data? it seems almost certainly less messy to get it from our X_df data, since we're not using that for anything else at this point
             y_std = np.std(y)
-            self.uncertainty_delta = y_std
+            self.uncertainty_delta = 0.5 * y_std
 
-        # is_uncertain_predictions = []
-
-        # for idx, y_val in enumerate(y_uncertainty):
-
-        #     base_prediction_for_row = base_predictions[idx]
-        #     delta = abs(y_val - base_prediction_for_row)
-
-        #     if self.uncertainty_delta_units == 'absolute':
-        #         if delta > self.uncertainty_delta:
-        #             is_uncertain_predictions.append(1)
-        #         else:
-        #             is_uncertain_predictions.append(0)
-        #     elif self.uncertainty_delta_units == 'percentage':
-        #         if delta / y_val > self.uncertainty_delta:
-        #             is_uncertain_predictions.append(1)
-        #         else:
-        #             is_uncertain_predictions.append(0)
         is_uncertain_predictions = self.define_uncertain_predictions(base_predictions, y_uncertainty)
 
         analytics_results = pd.Series(is_uncertain_predictions)
-        print('\n\nHere is the percentage of values in our uncertainty training data that are classified as uncertain:')
+        print('\n\nHere is the percent of values in our uncertainty training data that are classified as uncertain:')
         percent_uncertain = sum(is_uncertain_predictions) * 1.0 / len(is_uncertain_predictions)
+        print(percent_uncertain)
         if percent_uncertain == 1.0:
             print('Using the current definition, all rows are classified as uncertain')
             print('Here is our current definition:')
@@ -620,8 +598,8 @@ class Predictor(object):
             print(self.uncertainty_delta_units)
             print('And here is a summary of our predictions:')
             print(pd.Series(y_uncertainty).describe(include='all'))
+            warnings.warn('All predictions in ojur uncertainty training data are classified as uncertain. Please redefine uncertainty so there is a mix of certain and uncertain predictions to train an uncertainty model.')
             return self
-        # print(analytics_results.describe(include='all'))
 
         # 3. train our uncertainty predictor
         uncertainty_estimator_names = ['GradientBoostingClassifier']
@@ -631,20 +609,12 @@ class Predictor(object):
         # 4. grab the entire uncertainty FinalModelATC object, and put it as a property on our base predictor's FinalModelATC (something like .trained_uncertainty_model). It's important to grab this entire object, for all of the edge-case handling we've built in.
         self.trained_final_model.uncertainty_model = self.trained_uncertainty_model
 
-        # 5. Build a new method onto FinalModelATC that's something like .predict_uncertainty(). Make sure this works for both DataFrames and single instances.
-            # by this time, we're just dealing with scipy sparse matrices, so we just need to be prepared to deal with them in multiple lengths
-            # get prediction(s) from our base_predictor on the data
-            # hstack these predictions onto the scipy sparse matrix
-            # feed the combined data into our uncertainty predictor, and get a prediction
-            # MVP: return a dictionary with two fields: base_prediction, uncertainty_prediction
-
 
         if self.calibrate_uncertainty == True:
 
             uncertainty_calibration_data_transformed = self.transformation_pipeline.transform(self.uncertainty_calibration_data)
             uncertainty_calibration_predictions = self.trained_final_model.predict_uncertainty(uncertainty_calibration_data_transformed)
 
-            # TODO: get the actual deltas
             actuals = list(uncertainty_calibration_data[self.output_column])
             predictions = uncertainty_calibration_predictions['base_prediction']
             deltas = predictions - actuals
@@ -665,8 +635,8 @@ class Predictor(object):
                 deltas = dataset['actual_deltas']
                 uc_results[bucket] = OrderedDict()
                 uc_results[bucket]['bucket_num'] = bucket
-                # TODO: add in rmse and maybe something like median_ae
-                # TODO: add in max_value for each bucket
+                # FUTURE: add in rmse and maybe something like median_ae
+                # FUTURE: add in max_value for each bucket
                 uc_results[bucket]['max_proba'] = np.max(dataset['uncertainty_prediction'])
 
                 for perc in self.uncertainty_calibration_settings['percentiles']:
@@ -680,23 +650,12 @@ class Predictor(object):
                 print(uc_results[num])
 
             self.trained_final_model.uc_results = uc_results
-            # TODO: add this uc_results dict to our final_model
-            # TODO: reference this uc_results dict in our predict_uncertainty function
-            # bucket_split_interval = int(100 / num_buckets)
-
-            # buket_intervals = []
-            # dividing_point = 0
-            # while dividing_point <= 100:
-            #     buket_intervals.append(dividing_point)
-            #     dividing_point += bucket_split_interval
-
 
 
         # POST-MVP:
             # Translate each level of predicted proba uncertainty into the same base units as the original regressor
             # i.e., a probability of 20% translates to a median absolute error of 3 minutes, while a probability of 50 % translates to a mae of 7 minutes
         # Way post-mvp: allow the user to define multiple different uncertainty definitions they want to try. otherwise we duplicate a lot of computing forcing them to retrain the base predictor and transformation pipeline just to try a different definition and uncertainty model
-        # TODO TODO: figure out how to extend sklearn's Pipeline class to have .predict_uncertainty() capabilities
         self.need_to_train_uncertainty_model = False
 
     def _prepare_for_verify_features(self):
@@ -787,11 +746,16 @@ class Predictor(object):
 
         # figure out how many rows to keep
         orig_row_count = X_transformed.shape[0]
-        percent_row_count = int(self.analytics_config['percent_rows'] * orig_row_count)
-        num_rows_to_use = min(orig_row_count, percent_row_count, 10000)
-        # percent_of_data_to_use = num_rows_to_use / orig_row_count
+        # If we have fewer than 10000 rows, use all of them, regardless of user input
+        # This approach only works if there are a decent number of rows, so we will try to put some safeguard in place to help the user from getting results that are too misleading
+        if orig_row_count <= 10000:
+            num_rows_to_use = orig_row_count
+            X = X_transformed
+        else:
+            percent_row_count = int(self.analytics_config['percent_rows'] * orig_row_count)
+            num_rows_to_use = min(orig_row_count, percent_row_count, 10000)
+            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use)
 
-        X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use)
         if scipy.sparse.issparse(X):
             X = X.toarray()
 
@@ -1485,6 +1449,9 @@ class Predictor(object):
 
 
     def define_uncertain_predictions(self, base_predictions, y):
+        if not (isinstance(base_predictions[0], float) or isinstance(base_predictions[0], int)):
+            base_predictions = [row[0] for row in base_predictions]
+
         base_predictions = list(base_predictions)
 
         is_uncertain_predictions = []
@@ -1499,8 +1466,7 @@ class Predictor(object):
                     if abs(delta) > self.uncertainty_delta:
                         is_uncertain_predictions.append(1)
                     else:
-                        is_uncertain_predictions.append(1)
-
+                        is_uncertain_predictions.append(0)
 
                 else:
                     # This is now the case of single-directional deltas (we only care if our predictions are higher, not lower, or lower and not higher)
