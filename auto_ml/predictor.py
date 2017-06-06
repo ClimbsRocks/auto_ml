@@ -560,7 +560,6 @@ class Predictor(object):
 
 
     def _create_uncertainty_model(self, uncertainty_data, scoring, y, uncertainty_calibration_data):
-        # TODO:
         # 1. Add base_prediction to our dv for analytics purposes
         # Note that we will have to be cautious that things all happen in the exact same order as we expand what we do post-DV over time
         self.transformation_pipeline.named_steps['dv'].feature_names_.append('base_prediction')
@@ -770,36 +769,23 @@ class Predictor(object):
             col_result = {}
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name:
-                # print('Getting feature response for: ' + str(col_name))
 
-                # print('np.mean at the start')
-                # print(np.mean(X[:, idx]))
                 col_std = np.std(X[:, idx])
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
-                # print('col_delta')
-                # print(col_delta)
                 col_result['Delta'] = col_delta
 
                 # Increment the values of this column by the std
                 X[:, idx] += col_delta
-                # print('np.mean after incrementing from avg')
-                # print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
-                # print('predictions')
-                # print(predictions)
-                # print(np.mean(predictions))
-
                 col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
 
 
                 X[:, idx] -= 2 * col_delta
-                # print('np.mean after decrementing from avg')
-                # print(np.mean(X[:, idx]))
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
@@ -809,15 +795,10 @@ class Predictor(object):
                 col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
                 # Put the column back to it's original state
                 X[:, idx] += col_delta
-                # print('np.mean at the end')
-                # print(np.mean(X[:, idx]))
-
 
             all_results.append(col_result)
 
         df_all_results = pd.DataFrame(all_results)
-        # print('df_all_results')
-        # print(tabulate(df_all_results, headers='keys'))
         return df_all_results
 
 
@@ -828,48 +809,6 @@ class Predictor(object):
         feature_responses = None
         if self.advanced_analytics == True:
             feature_responses = self.create_feature_responses(model, X, y)
-
-        # weights = eli5.explain_weights(model.model, vec=self.transformation_pipeline.named_steps['dv'])
-        # print('eli5 weights')
-        # print(weights)
-
-        # if weights.method == 'linear model':
-        #     feature_weights = weights.targets[0].feature_weights
-        #     print('feature_weights')
-        #     print(feature_weights)
-        # elif weights.method == 'random forest':
-        #     feature_weights = weights.feature_importances.importances
-
-        # # for thing in feature_weights:
-        # #     print('thing')
-        # #     print(thing)
-        # #     print(type(thing))
-        # #     # print(thing[0])
-        # #     print(thing.feature)
-
-        # importance_results = []
-        # for feature_summary in feature_weights:
-        #     result = {
-        #         'Feature Name': feature_summary.feature
-        #         , 'weight': feature_summary.weight
-        #         , 'std': feature_summary.std
-        #     }
-        #     importance_results.append(result)
-
-        # df_weights = pd.DataFrame(importance_results)
-        # print('df_weights')
-        # print(df_weights)
-        # self._join_and_print_analytics_results(feature_responses, df_weights)
-
-        # df_weights = pd.DataFrame(weights.feature_importances.importances)
-        # print('df_weights')
-        # print(df_weights)
-        # for thing in weights:
-        #     print('thing')
-        #     print(thing)
-
-        #     print('weights["thing"]')
-        #     print(weights["thing"])
 
 
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
@@ -1181,54 +1120,6 @@ class Predictor(object):
         self.trained_pipeline = categorical_ensembler
 
 
-
-    # def _get_xgb_feat_importances(self, clf):
-    #     print('XGBoost changed their API recently, and we are unable to report feature_importances_ ')
-
-    #     try:
-    #         # Handles case when clf has been created by calling
-    #         # xgb.XGBClassifier.fit() or xgb.XGBRegressor().fit()
-    #         fscore = clf.booster().get_fscore()
-    #     except:
-    #         # Handles case when clf has been created by calling xgb.train.
-    #         # Thus, clf is an instance of xgb.Booster.
-    #         fscore = clf.get_fscore()
-
-    #     trained_feature_names = self._get_trained_feature_names()
-
-    #     feat_importances = []
-
-    #     # Somewhat annoying. XGBoost only returns importances for the features it finds useful.
-    #     # So we have to go in, get the index of the feature from the "feature name" by removing the f before the feature name, and grabbing the rest of that string, which is actually the index of that feature name.
-    #     fscore_list = [[int(k[1:]), v] for k, v in fscore.items()]
-
-
-    #     feature_infos = []
-    #     sum_of_all_feature_importances = 0.0
-
-    #     for idx_and_result in fscore_list:
-    #         idx = idx_and_result[0]
-    #         # Use the index that we grabbed above to find the human-readable feature name
-    #         feature_name = trained_feature_names[idx]
-    #         feat_importance = idx_and_result[1]
-
-    #         # If we sum up all the feature importances and then divide by that sum, we will be able to have each feature importance as it's relative feature imoprtance, and the sum of all of them will sum up to 1, just as it is in scikit-learn.
-    #         sum_of_all_feature_importances += feat_importance
-    #         feature_infos.append([feature_name, feat_importance])
-
-    #     sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
-
-    #     print('Here are the feature_importances from the tree-based model:')
-    #     print('The printed list will only contain at most the top 50 features.')
-    #     for feature in sorted_feature_infos[-50:]:
-    #         print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
-
-        # print('Here are the feature_importances from the tree-based model:')
-        # print('The printed list will only contain at most the top 50 features.')
-        # for feature in sorted_feature_infos[-50:]:
-        #     print(str(feature[0]) + ': ' + str(round(feature[1] / sum_of_all_feature_importances, 4)))
-
-
     def _join_and_print_analytics_results(self, df_feature_responses, df_features):
 
         # Join the standard feature_importances/coefficients, with our feature_responses
@@ -1284,16 +1175,6 @@ class Predictor(object):
             print(self.name)
         print('predicting ' + self.output_column)
 
-        # XGB's Classifier has a proper .feature_importances_ property, while the XGBRegressor does not.
-<<<<<<< HEAD
-        # if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
-        #     self._get_xgb_feat_importances(final_model_obj.model)
-=======
-        if final_model_obj.model_name in ['XGBRegressor', 'XGBClassifier']:
-            df_results = self._get_xgb_feat_importances(final_model_obj.model)
->>>>>>> uncertainty
-
-        # else:
         trained_feature_names = self._get_trained_feature_names()
 
         try:
@@ -1306,21 +1187,11 @@ class Predictor(object):
 
         sorted_feature_infos = sorted(feature_infos, key=lambda x: x[1])
 
-<<<<<<< HEAD
-        print('Here are the feature_importances from the tree-based model:')
-        print('The printed list will only contain at most the top 50 features.')
-        for feature in sorted_feature_infos[-50:]:
-            print(feature[0] + ': ' + str(round(feature[1], 4)))
-=======
-            df_results = pd.DataFrame(sorted_feature_infos)
->>>>>>> uncertainty
+        df_results = pd.DataFrame(sorted_feature_infos)
 
         df_results.columns = ['Feature Name', 'Importance']
 
         self._join_and_print_analytics_results(feature_responses, df_results)
-
-            # for feature in sorted_feature_infos[-50:]:
-            #     print(feature[0] + ': ' + str(round(feature[1], 4)))
 
 
     def _get_trained_feature_names(self):
@@ -1400,8 +1271,6 @@ class Predictor(object):
             prediction_data = pd.DataFrame(prediction_data)
         prediction_data = prediction_data.copy()
 
-        # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
-        # For some reason, turning it into a list here does not work.
         predicted_vals = self.trained_pipeline.predict(prediction_data)
         if self.took_log_of_y:
             for idx, val in predicted_vals:
@@ -1410,18 +1279,9 @@ class Predictor(object):
         return predicted_vals
 
     def predict_uncertainty(self, prediction_data):
-        # if isinstance(prediction_data, list):
-        #     prediction_data = pd.DataFrame(prediction_data)
         prediction_data = prediction_data.copy()
 
-        # If we are predicting a single row, we have to turn that into a list inside the first function that row encounters.
-        # For some reason, turning it into a list here does not work.
-        # recursionlimit = sys.getrecursionlimit()
-        # print(self.trained_pipeline.named_steps['final_model'])
         predicted_vals = self.trained_pipeline.predict_uncertainty(prediction_data)
-        # if self.took_log_of_y:
-        #     for idx, val in predicted_vals:
-        #         predicted_vals[idx] = math.exp(val)
 
         return predicted_vals
 
@@ -1522,28 +1382,8 @@ class Predictor(object):
     def score_uncertainty(self, X, y, advanced_scoring=True, verbose=2):
 
         df_uncertainty_predictions = self.predict_uncertainty(X)
-        # base_predictions = list(df_uncertainty_predictions['base_prediction'])
-
-        # is_uncertain_predictions = []
-
-        # for idx, y_val in enumerate(y):
-
-        #     base_prediction_for_row = base_predictions[idx]
-        #     delta = abs(y_val - base_prediction_for_row)
-
-        #     if self.uncertainty_delta_units == 'absolute':
-        #         if delta > self.uncertainty_delta:
-        #             is_uncertain_predictions.append(1)
-        #         else:
-        #             is_uncertain_predictions.append(0)
-        #     elif self.uncertainty_delta_units == 'percentage':
-        #         if delta / y_val > self.uncertainty_delta:
-        #             is_uncertain_predictions.append(1)
-        #         else:
-        #             is_uncertain_predictions.append(0)
         is_uncertain_predictions = self.define_uncertain_predictions(df_uncertainty_predictions.base_prediction, y)
 
-        # if advanced_scoring == True:
         score = utils_scoring.advanced_scoring_classifiers(df_uncertainty_predictions.uncertainty_prediction, is_uncertain_predictions)
 
         return score
