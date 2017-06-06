@@ -11,6 +11,11 @@ from sklearn.utils.fixes import frombuffer_empty
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
+def strip_non_ascii(string):
+    ''' Returns the string without non ASCII characters'''
+    stripped = (c for c in string if 0 < ord(c) < 127)
+    return ''.join(stripped)
+
 
 class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
@@ -23,6 +28,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             column_descriptions = {}
         self.column_descriptions = column_descriptions
         self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
+        self.has_been_restricted = False
 
 
     def get(self, prop_name, default=None):
@@ -42,11 +48,10 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical':
                     # If this is a categorical column, or the dtype continues to be object, iterate through each row to get all the possible values that we are one-hot-encoding.
                     for val in X[col_name]:
-                        try:
-                            feature_name = col_name + self.separator + str(val)
-                        except UnicodeEncodeError:
-                            str_val = val.encode('ascii', 'ignore').decode('ascii')
-                            feature_name = col_name + self.separator + str_val
+                        val = str(val)
+                        val = strip_non_ascii(val)
+                        feature_name = col_name + self.separator + str(val)
+
                         if feature_name not in vocab:
                             feature_names.append(feature_name)
                             vocab[feature_name] = len(vocab)
@@ -161,6 +166,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         This function modifies the estimator in-place.
 
         """
+        if self.has_been_restricted == True:
+            return self
+
         if not indices:
             support = np.where(support)[0]
 
@@ -172,5 +180,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         self.vocabulary_ = new_vocab
         self.feature_names_ = [f for f, i in sorted(six.iteritems(new_vocab),
                                                     key=itemgetter(1))]
+
+        self.has_been_restricted = True
 
         return self

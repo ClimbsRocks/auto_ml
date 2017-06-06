@@ -18,29 +18,6 @@ from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
 
-def test_perform_feature_selection_true_classification(model_name=None):
-    np.random.seed(0)
-
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-
-    column_descriptions = {
-        'survived': 'output'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-
-    ml_predictor.train(df_titanic_train, perform_feature_selection=True, model_names=model_name)
-
-    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
-
-    print('test_score')
-    print(test_score)
-
-    assert -0.225 < test_score < -0.17
-
-
 def test_perform_feature_selection_false_classification(model_name=None):
     np.random.seed(0)
 
@@ -67,6 +44,29 @@ def test_perform_feature_selection_false_classification(model_name=None):
         lower_bound = -0.221
 
     assert lower_bound < test_score < -0.17
+
+
+def test_perform_feature_selection_true_classification(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, perform_feature_selection=True, model_names=model_name)
+
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.225 < test_score < -0.17
 
 
 def test_perform_feature_scaling_true_classification(model_name=None):

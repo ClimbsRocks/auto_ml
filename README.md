@@ -91,6 +91,10 @@ All of these projects are ready for production. These projects all have predicti
 Depending on your machine, they can occasionally be difficult to install, so they are not included in auto_ml's default installation. You are responsible for installing them yourself. auto_ml will run fine without them installed (we check what's isntalled before choosing which algorithm to use). If you want to try the easy install, just `pip install -r advanced_requirements.txt`, which will install TensorFlow, Keras, and XGBoost. LightGBM is not available as a pip install currently.
 
 
+## Feature Responses
+Get linear-model-esque interpretations from non-linear models. See the [docs}(http://auto-ml.readthedocs.io/en/latest/feature_responses.html) for more information and caveats.
+
+
 ## Classification
 
 Binary and multiclass classification are both supported. Note that for now, labels must be integers (0 and 1 for binary classification). auto_ml will automatically detect if it is a binary or multiclass classification problem- you just have to pass in `ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)`
@@ -148,7 +152,6 @@ A quick overview of buzzwords, this project automates:
 - Data formatting (turning a DataFrame or a list of dictionaries into a sparse matrix, one-hot encoding categorical variables, taking the natural log of y for regression problems, etc).
 - Model Selection (which model works best for your problem- we try roughly a dozen apiece for classification and regression problems, including favorites like XGBoost if it's installed on your machine).
 - Hyperparameter Optimization (what hyperparameters work best for that model).
-<!-- - Ensembling (Train up a bunch of different estimators, then train a final estimator to intelligently aggregate them together. Also useful if you're just trying to compare many different models and see what works best.) -->
 - Big Data (feed it lots of data- it's fairly efficient with resources).
 - Unicorns (you could conceivably train it to predict what is a unicorn and what is not).
 - Ice Cream (mmm, tasty...).

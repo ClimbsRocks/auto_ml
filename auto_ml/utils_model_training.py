@@ -1,3 +1,4 @@
+from collections import Iterable
 import os
 
 import numpy as np
@@ -28,7 +29,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
 
         self.model = model
         self.model_name = model_name
@@ -38,6 +39,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.training_features = training_features
         self.column_descriptions = column_descriptions
         self.feature_learning = feature_learning
+        self.uncertainty_model = uncertainty_model
+        self.uc_results = uc_results
 
 
         if self.type_of_estimator == 'classifier':
@@ -87,8 +90,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
-            else:
-                self.model.fit(X_fit, y)
+            # elif self.uncertainty_model == True:
+            #     from sklearn.metrics import median_absolute_error
+            #     self.model.set_params('fobj', median_absolute_error)
+            #     self.model.fit(X_fit, y)
+            # else:
+            self.model.fit(X_fit, y)
 
         except TypeError as e:
             if scipy.sparse.issparse(X_fit):
@@ -330,3 +337,82 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('If you see this message, please file a bug at https://github.com/ClimbsRocks/auto_ml')
 
         return X
+
+    def predict_uncertainty(self, X):
+        if self.uncertainty_model is None:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('This model was not trained to predict uncertainties')
+            print('Please follow the documentation to tell this model at training time to learn how to predict uncertainties')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('This model was not trained to predict uncertainties')
+
+        base_predictions = self.predict(X)
+
+        if isinstance(base_predictions, Iterable):
+            base_predictions_col = [[val] for val in base_predictions]
+            base_predictions_col = np.array(base_predictions_col)
+        else:
+            base_predictions_col = [base_predictions]
+
+        X_combined = scipy.sparse.hstack([X, base_predictions_col], format='csr')
+
+        uncertainty_predictions = self.uncertainty_model.predict_proba(X_combined)
+
+        results = {
+            'base_prediction': base_predictions
+            , 'uncertainty_prediction': uncertainty_predictions
+        }
+
+
+
+        if isinstance(base_predictions, Iterable):
+
+            results['uncertainty_prediction'] = [row[1] for row in results['uncertainty_prediction']]
+
+            results = pd.DataFrame.from_dict(results, orient='columns')
+
+            if self.uc_results is not None:
+                calibration_results = {}
+                # grab the relevant properties from our uc_results, and make them each their own list in calibration_results
+                for key, value in self.uc_results[1].items():
+                    calibration_results[key] = []
+
+                for proba in results['uncertainty_prediction']:
+                    max_bucket_proba = 0
+                    bucket_num = 1
+                    while proba > max_bucket_proba:
+                        calibration_result = self.uc_results[bucket_num]
+                        max_bucket_proba = self.uc_results[bucket_num]['max_proba']
+                        bucket_num += 1
+
+                    for key, value in calibration_result.items():
+                        calibration_results[key].append(value)
+                # TODO: grab the uncertainty_calibration data for DataFrames
+                df_calibration_results = pd.DataFrame.from_dict(calibration_results, orient='columns')
+                del df_calibration_results['max_proba']
+
+                results = pd.concat([results, df_calibration_results], axis=1)
+
+        else:
+            if self.uc_results is not None:
+                # TODO: grab the uncertainty_calibration data for dictionaries
+                for bucket_name, bucket_result in self.uc_results.items():
+                    if proba > bucket_result['max_proba']:
+                        break
+                    results.update(bucket_result)
+                    del results['max_proba']
+
+
+
+
+        return results
+
+
+    def score_uncertainty(self, X, y, verbose=False):
+        return self.uncertainty_model.score(X, y, verbose=False)
+
+
+
+
+
+
