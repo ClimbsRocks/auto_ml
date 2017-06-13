@@ -817,6 +817,11 @@ class Predictor(object):
         elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
             self._print_ml_analytics_results_random_forest(model, feature_responses)
 
+        else:
+            print('Here are our feature responses for the deep learning model')
+            print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
+
+
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False):
 
         model = gs_params['model']
