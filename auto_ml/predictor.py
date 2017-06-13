@@ -1130,12 +1130,18 @@ class Predictor(object):
 
         # Sort by coefficients or feature importances
         try:
-            df_results = df_results.sort_values(by='Importance')
+            df_results = df_results.sort_values(by='Importance', ascending=False)
             df_results = df_results[['Feature Name', 'Importance', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
+            df_results = df_results.reset_index(drop=True)
+            df_results = df_results.head(n=100)
+            df_results = df_results.sort_values(by='Importance', ascending=True)
         except:
             try:
-                df_results = df_results.sort_values(by='Coefficients')
+                df_results = df_results.sort_values(by='Coefficients', ascending=False)
                 df_results = df_results[['Feature Name', 'Coefficients', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
+                df_results = df_results.reset_index(drop=True)
+                df_results = df_results.head(n=100)
+                df_results = df_results.sort_values(by='Coefficients', ascending=True)
             except:
                 pass
 
