@@ -108,6 +108,8 @@ class Predictor(object):
         for date_col in self.date_cols:
             self.column_descriptions[date_col + '_day_part'] = 'categorical'
 
+        self.cols_to_ignore = set(self.cols_to_ignore)
+
 
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
@@ -817,6 +819,7 @@ class Predictor(object):
         elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
             self._print_ml_analytics_results_random_forest(model, feature_responses)
 
+
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False):
 
         model = gs_params['model']
@@ -981,7 +984,11 @@ class Predictor(object):
     def train_categorical_ensemble(self, data, categorical_column, default_category=None, min_category_size=5, **kwargs):
         self.categorical_column = categorical_column
         self.trained_category_models = {}
-        self.column_descriptions[categorical_column] = 'categorical'
+        self.column_descriptions[categorical_column] = 'ignore'
+        try:
+            self.cols_to_ignore.remove(categorical_column)
+        except:
+            pass
         self.min_category_size = min_category_size
 
         self.default_category = default_category
@@ -1027,15 +1034,32 @@ class Predictor(object):
             categories_and_indices.append([category, indices])
 
         categories_and_data = []
+        all_small_categories = {
+            'relevant_transformed_rows': []
+            , 'relevant_y': []
+        }
         for pair in sorted(categories_and_indices, key=lambda x: len(x[1])):
             category = pair[0]
             indices = pair[1]
 
+            relevant_transformed_rows = X_df_transformed[indices]
+            relevant_y = [y[idx_val] for idx_val in indices]
+
+            # If this category is larger than our min_category_size filter, train a model for it
             if len(indices) > self.min_category_size:
-                relevant_transformed_rows = X_df_transformed[indices]
-                relevant_y = [y[idx_val] for idx_val in indices]
                 categories_and_data.append([category, relevant_transformed_rows, relevant_y])
 
+            # Otherwise, add it to our "all_small_categories" category, and train a model on all our small categories combined
+            else:
+                # Slightly complicated because we're dealing with sparse matrices
+                if isinstance(all_small_categories['relevant_transformed_rows'], list):
+                    all_small_categories['relevant_transformed_rows'] = relevant_transformed_rows
+                else:
+                    all_small_categories['relevant_transformed_rows'] = scipy.sparse.vstack([all_small_categories['relevant_transformed_rows'], relevant_transformed_rows], format='csr')
+                all_small_categories['relevant_y'] += relevant_y
+
+        if len(all_small_categories['relevant_y']) > self.min_category_size:
+            categories_and_data.append(['_all_small_categories', all_small_categories['relevant_transformed_rows'], all_small_categories['relevant_y']])
 
         def train_one_categorical_model(category, relevant_X, relevant_y):
             print('\n\nNow training a new estimator for the category: ' + str(category))
@@ -1113,8 +1137,10 @@ class Predictor(object):
         if self.search_for_default_category == True:
             print('By default, auto_ml finds the largest category, and uses that if asked to get predictions for any rows which come from a category that was not included in the training data (i.e., if you launch a new market and ask us to get predictions for it, we will default to using your largest market to get predictions for the market that was not included in the training data')
             print('To avoid this behavior, you can either choose your own default category (the "default_category" parameter to train_categorical_ensemble), or pass in "_RAISE_ERROR" as the value for default_category, and we will raise an error when trying to get predictions for a row coming from a category that was not included in the training data.')
-            print('Here is the default category we selected:')
+            print('\n\nHere is the default category we selected:')
             print(self.default_category)
+            if self.default_category == '_all_small_categories':
+                print('In this case, it is all the categories that did not meet the min_category_size threshold, combined together into their own "_all_small_categories" category.')
 
         categorical_ensembler = utils_categorical_ensembling.CategoricalEnsembler(self.trained_category_models, self.transformation_pipeline, self.categorical_column, self.default_category)
         self.trained_pipeline = categorical_ensembler
@@ -1145,7 +1171,6 @@ class Predictor(object):
             except:
                 pass
 
-        df_results = df_results.reset_index(drop=True)
 
         analytics_file_name = self.analytics_config['file_name']
 
