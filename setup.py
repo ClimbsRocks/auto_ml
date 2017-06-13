@@ -26,7 +26,7 @@ try:
     with open ('README.md', 'rb') as read_file:
         readme_text = read_file.readlines()
     # Change our README for pypi so we can get analytics tracking information for that separately
-    readme_text = [str(row) for row in readme_text]
+    readme_text = [row.decode() for row in readme_text]
     readme_text[-1] = "[![Analytics](https://ga-beacon.appspot.com/UA-58170643-5/auto_ml/pypi)](https://github.com/igrigorik/ga-beacon)"
 
     long_description = pypandoc.convert(''.join(readme_text), 'rst', format='md')
