@@ -26,11 +26,16 @@ try:
     with open ('README.md', 'rb') as read_file:
         readme_text = read_file.readlines()
     # Change our README for pypi so we can get analytics tracking information for that separately
+    readme_text = [str(row) for row in readme_text]
     readme_text[-1] = "[![Analytics](https://ga-beacon.appspot.com/UA-58170643-5/auto_ml/pypi)](https://github.com/igrigorik/ga-beacon)"
 
     long_description = pypandoc.convert(''.join(readme_text), 'rst', format='md')
 except ImportError:
+    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     print('pypandoc (and possibly pandoc) are not installed. This means the PyPi package info will be formatted as .md instead of .rst. If you are encountering this before uploading a PyPi distribution, please install these')
+    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+    print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
     # Get the long description from the README file
     with open(path.join(here, 'README.md'), encoding='utf-8') as f:
         long_description = f.read()
