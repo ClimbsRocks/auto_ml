@@ -306,13 +306,13 @@ def get_search_params(model_name):
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 5],
+            'max_depth': [1, 2, 3, 5, 10],
             'max_features': ['sqrt', 'log2', None],
             # 'loss': ['ls', 'lad', 'huber', 'quantile']
-            # 'booster': ['gbtree', 'gblinear', 'dart'],
             # 'loss': ['ls', 'lad', 'huber'],
             'loss': ['ls', 'huber'],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
+            'learning_rate': [0.01, 0.1],
+            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000],
             'subsample': [0.5, 0.8, 1.0]
         },
         'GradientBoostingClassifier': {
