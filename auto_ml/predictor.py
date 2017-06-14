@@ -23,7 +23,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.model_selection import GridSearchCV, train_test_split
+from sklearn.model_selection import GridSearchCV, KFold, train_test_split
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 # from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer
@@ -38,6 +38,8 @@ from auto_ml import utils_model_training
 from auto_ml import utils_models
 from auto_ml import utils_scaling
 from auto_ml import utils_scoring
+
+from evolutionary_search import EvolutionaryAlgorithmSearchCV
 
 xgb_installed = False
 try:
@@ -848,22 +850,26 @@ class Predictor(object):
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
 
-        gs = GridSearchCV(
+        gs = EvolutionaryAlgorithmSearchCV(
             # Fit on the pipeline.
             ppl,
             # Two splits of cross-validation, by default
-            cv=self.cv,
-            param_grid=gs_params,
+            cv=KFold(self.cv, shuffle=False),
+            params=gs_params,
             # Train across all cores.
             n_jobs=n_jobs,
             # Be verbose (lots of printing).
-            verbose=grid_search_verbose,
+            verbose=True,
             # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
             # Set the score on this partition to some very negative number, so that we do not choose this estimator.
             error_score=-1000000000,
             scoring=self._scorer.score,
             # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
-            pre_dispatch='1.5*n_jobs'
+            pre_dispatch='1.5*n_jobs',
+            population_size=10,
+            gene_mutation_prob=0.10,
+            tournament_size=3,
+            generations_number=10
         )
 
         if self.verbose:
@@ -876,8 +882,8 @@ class Predictor(object):
 
         gs.fit(X_df, y)
 
-        if self.write_gs_param_results_to_file:
-            utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
+        # if self.write_gs_param_results_to_file:
+        #     utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
 
         if self.verbose:
             self.print_training_summary(gs)
@@ -1290,15 +1296,15 @@ class Predictor(object):
 
         print(printing_copy)
 
-        if self.verbose:
-            print('Here are all the hyperparameters that were tried:')
-            raw_scores = gs.grid_scores_
-            sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
-            for score in sorted_scores:
-                for k, v in score[0].items():
-                    if k == 'model':
-                        score[0][k] = utils_models.get_name_from_model(v)
-                print(score)
+        # if self.verbose:
+        #     print('Here are all the hyperparameters that were tried:')
+        #     raw_scores = gs.grid_scores_
+        #     sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
+        #     for score in sorted_scores:
+        #         for k, v in score[0].items():
+        #             if k == 'model':
+        #                 score[0][k] = utils_models.get_name_from_model(v)
+        #         print(score)
 
 
     def predict(self, prediction_data):
