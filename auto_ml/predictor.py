@@ -39,6 +39,8 @@ from auto_ml import utils_models
 from auto_ml import utils_scaling
 from auto_ml import utils_scoring
 
+from evolutionary_search import EvolutionaryAlgorithmSearchCV
+
 xgb_installed = False
 try:
     import xgboost as xgb
@@ -848,12 +850,12 @@ class Predictor(object):
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
 
-        gs = GridSearchCV(
+        gs = EvolutionaryAlgorithmSearchCV(
             # Fit on the pipeline.
             ppl,
             # Two splits of cross-validation, by default
             cv=self.cv,
-            param_grid=gs_params,
+            params=gs_params,
             # Train across all cores.
             n_jobs=n_jobs,
             # Be verbose (lots of printing).
