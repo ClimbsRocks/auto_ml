@@ -2,7 +2,7 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 from auto_ml import utils
 
-
+booleans = set([True, False, 'true', 'false', 'True', 'False', 'TRUE', 'FALSE'])
 # Used in CustomSparseScaler
 def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
 
@@ -20,6 +20,9 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
         min_val = series_vals[min_val_idx]
     else:
         return 'ignore'
+
+    if max_val in booleans or min_val in booleans:
+        return 'pass_on_col'
 
     inner_range = max_val - min_val
 
@@ -84,6 +87,8 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                     col_summary = calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95)
                     if col_summary == 'ignore':
                         self.cols_to_ignore.append(col)
+                    elif col_summary == 'pass_on_col':
+                        pass
                     else:
                         self.column_ranges[col] = col_summary
 

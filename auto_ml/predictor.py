@@ -1042,7 +1042,7 @@ class Predictor(object):
             'relevant_transformed_rows': []
             , 'relevant_y': []
         }
-        for pair in sorted(categories_and_indices, key=lambda x: len(x[1])):
+        for pair in sorted(categories_and_indices, key=lambda x: len(x[1]), reverse=True):
             category = pair[0]
             indices = pair[1]
 
@@ -1063,7 +1063,7 @@ class Predictor(object):
                 all_small_categories['relevant_y'] += relevant_y
 
         if len(all_small_categories['relevant_y']) > self.min_category_size:
-            categories_and_data.append(['_all_small_categories', all_small_categories['relevant_transformed_rows'], all_small_categories['relevant_y']])
+            categories_and_data.insert(0, ['_all_small_categories', all_small_categories['relevant_transformed_rows'], all_small_categories['relevant_y']])
 
         def train_one_categorical_model(category, relevant_X, relevant_y):
             print('\n\nNow training a new estimator for the category: ' + str(category))
