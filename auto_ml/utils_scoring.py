@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
+from tabulate import tabulate
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf', 'np.nan', 'numpy.nan'])
 
@@ -67,7 +68,7 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
     df_probas['Bucket Edges'] = bucket_results
 
     df_buckets = df_probas.groupby(df_probas['Bucket Edges'])
-    print(df_buckets.mean())
+    print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql', showindex='always'))
 
     print('\n\n')
     return brier_score
