@@ -32,15 +32,6 @@ def clean_val(val):
                 return None
         return float_val
 
-
-booleans = {
-    'false': 0
-    , 'False': 0
-    , 'FALSE': 0
-    , 'true': 1
-    , 'True': 1
-    , 'TRUE': 1
-}
 # Same as above, except this version returns float('nan') when it fails
 # This plays more nicely with df.apply, and assumes we will be handling nans appropriately when doing DataFrameVectorizer later.
 def clean_val_nan_version(key, val):
@@ -56,8 +47,6 @@ def clean_val_nan_version(key, val):
 
     if str_val in bad_vals_as_strings:
         return float('nan')
-    elif str_val in booleans:
-        return booleans[str_val]
     else:
         try:
             float_val = float(val)
@@ -132,7 +121,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             if key in self.text_columns:
                 X_df[key].fillna('nan', inplace=True)
-                text_col = X_df[key].astype(str, errors='ignore')
+                text_col = X_df[key].astype(str, raise_on_error=False)
                 self.text_columns[key].fit(text_col)
 
                 col_names = self.text_columns[key].get_feature_names()
@@ -258,7 +247,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
 
                     X[key].fillna('nan', inplace=True)
-                    nlp_matrix = self.text_columns[key].transform(X[key].astype(str, errors='ignore'))
+                    nlp_matrix = self.text_columns[key].transform(X[key].astype(str, raise_on_error=False))
                     nlp_matrix = nlp_matrix.toarray()
 
                     text_df = pd.DataFrame(nlp_matrix)
@@ -311,10 +300,10 @@ def add_date_features_df(df, date_col):
     df.is_copy = False
 
     df[date_col] = pd.to_datetime(df[date_col])
-    df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, errors='ignore')
+    df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, raise_on_error=False)
 
     try:
-        df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, errors='ignore')
+        df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, raise_on_error=False)
 
         df[date_col + '_minutes_into_day'] = df[date_col].apply(lambda x: x.hour * 60 + x.minute)
     except AttributeError:

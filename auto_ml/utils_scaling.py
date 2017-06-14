@@ -2,8 +2,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 
 from auto_ml import utils
 
-booleans = set([True, False])
-
 
 # Used in CustomSparseScaler
 def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
@@ -23,8 +21,6 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
     else:
         return 'ignore'
 
-    if max_val in booleans or min_val in booleans:
-        return 'ignore'
     inner_range = max_val - min_val
 
     if inner_range == 0:
