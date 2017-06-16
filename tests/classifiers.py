@@ -425,7 +425,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
 
     lower_bound = -0.215
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.23
+        lower_bound = -0.24
     if model_name == 'GradientBoostingClassifier' or model_name is None:
         lower_bound = -0.25
     if model_name == 'LGBMClassifier':
