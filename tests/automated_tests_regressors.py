@@ -10,18 +10,17 @@ import regressors as regressor_tests
 
 
 training_parameters = {
-    # 'model_names': ['GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
-    'model_names': ['GradientBoosting']
+    'model_names': ['GradientBoosting', 'XGB', 'DeepLearning', 'LGBM']
 }
 
 
 # Make this an OrderedDict so that we run the tests in a consistent order
 test_names = OrderedDict([
     ('optimize_final_model_regression', regressor_tests.optimize_final_model_regression),
-    # ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression),
-    # ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression),
-    # ('categorical_ensembling_regression', regressor_tests.categorical_ensembling_regression),
-    # ('feature_learning_categorical_ensembling_getting_single_predictions_regression', regressor_tests.feature_learning_categorical_ensembling_getting_single_predictions_regression)
+    ('getting_single_predictions_regression', regressor_tests.getting_single_predictions_regression),
+    ('feature_learning_getting_single_predictions_regression', regressor_tests.feature_learning_getting_single_predictions_regression),
+    ('categorical_ensembling_regression', regressor_tests.categorical_ensembling_regression),
+    ('feature_learning_categorical_ensembling_getting_single_predictions_regression', regressor_tests.feature_learning_categorical_ensembling_getting_single_predictions_regression)
 ])
 
 
