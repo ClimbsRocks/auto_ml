@@ -6,6 +6,7 @@ import random
 import sys
 import warnings
 
+from deap.base import Toolbox
 import dill
 import pathos
 
@@ -857,6 +858,15 @@ class Predictor(object):
             total_combinations *= len(v)
 
         if total_combinations >= 50:
+            pool = pathos.multiprocessing.ProcessPool()
+
+            # Since we may have already closed the pool, try to restart it
+            try:
+                pool.restart()
+            except AssertionError as e:
+                pass
+            toolbox = Toolbox()
+            toolbox.register('map', pool.map)
 
             gs = EvolutionaryAlgorithmSearchCV(
                 # Fit on the pipeline.
