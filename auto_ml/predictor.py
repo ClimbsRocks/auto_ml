@@ -884,10 +884,11 @@ class Predictor(object):
                 scoring=self._scorer.score,
                 # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
                 pre_dispatch='1.5*n_jobs',
-                population_size=10,
+                # The number of
+                population_size=20,
                 gene_mutation_prob=0.10,
-                tournament_size=3,
-                generations_number=10
+                tournament_size=7,
+                generations_number=7
             )
 
         else:
