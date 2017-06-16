@@ -37,7 +37,7 @@ def optimize_final_model_regression(model_name=None):
     # There's a ton of noise here, due to small sample sizes
     lower_bound = -3.4
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -20
+        lower_bound = -13
     if model_name == 'LGBMRegressor':
         lower_bound = -5.5
     if model_name == 'GradientBoostingRegressor':
@@ -68,7 +68,7 @@ def categorical_ensembling_regression(model_name=None):
     # Bumping this up since without these features our score drops
     lower_bound = -4.0
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -19
+        lower_bound = -14
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
 
@@ -131,7 +131,7 @@ def getting_single_predictions_regression(model_name=None):
 
     lower_bound = -3.2
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -8.8
+        lower_bound = -7.8
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
     if model_name == 'XGBRegressor':
@@ -221,7 +221,7 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
 
     lower_bound = -3.2
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -23
+        lower_bound = -9.2
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
     if model_name == 'XGBRegressor':
@@ -311,7 +311,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
 
     lower_bound = -3.2
     if model_name == 'DeepLearningRegressor':
-        lower_bound = -21.5
+        lower_bound = -15
     if model_name == 'LGBMRegressor':
         lower_bound = -5.1
     if model_name == 'XGBRegressor':
