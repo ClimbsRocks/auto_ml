@@ -850,27 +850,54 @@ class Predictor(object):
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
 
-        gs = EvolutionaryAlgorithmSearchCV(
-            # Fit on the pipeline.
-            ppl,
-            # Two splits of cross-validation, by default
-            cv=KFold(self.cv, shuffle=False),
-            params=gs_params,
-            # Train across all cores.
-            n_jobs=n_jobs,
-            # Be verbose (lots of printing).
-            verbose=True,
-            # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
-            # Set the score on this partition to some very negative number, so that we do not choose this estimator.
-            error_score=-1000000000,
-            scoring=self._scorer.score,
-            # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
-            pre_dispatch='1.5*n_jobs',
-            population_size=10,
-            gene_mutation_prob=0.10,
-            tournament_size=3,
-            generations_number=10
-        )
+
+        # We only want to run EASCV when we have more than 50 parameter combinations (it efficiently searches very large spaces, but offers no benefits in small search spaces)
+        total_combinations = 1
+        for k, v in gs_params.items():
+            total_combinations *= len(v)
+
+        if total_combinations >= 50:
+
+            gs = EvolutionaryAlgorithmSearchCV(
+                # Fit on the pipeline.
+                ppl,
+                # Two splits of cross-validation, by default
+                cv=KFold(self.cv, shuffle=False),
+                params=gs_params,
+                # Train across all cores.
+                n_jobs=n_jobs,
+                # Be verbose (lots of printing).
+                verbose=True,
+                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+                error_score=-1000000000,
+                scoring=self._scorer.score,
+                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
+                pre_dispatch='1.5*n_jobs',
+                population_size=10,
+                gene_mutation_prob=0.10,
+                tournament_size=3,
+                generations_number=10
+            )
+
+        else:
+            gs = GridSearchCV(
+                # Fit on the pipeline.
+                ppl,
+                # Two splits of cross-validation, by default
+                cv=self.cv,
+                param_grid=gs_params,
+                # Train across all cores.
+                n_jobs=n_jobs,
+                # Be verbose (lots of printing).
+                verbose=grid_search_verbose,
+                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+                error_score=-1000000000,
+                scoring=self._scorer.score,
+                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
+                pre_dispatch='1.5*n_jobs'
+            )
 
         if self.verbose:
             print('\n\n********************************************************************************************')
