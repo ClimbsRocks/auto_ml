@@ -1,5 +1,6 @@
 import dill
 import os
+import random
 import sys
 
 from auto_ml import utils_categorical_ensembling
@@ -263,9 +264,11 @@ def get_search_params(model_name):
                 # [1, 0.66, 0.33, 0.1],
                 # [1, 2, 2, 1]
             ]
-            # , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
-            # # , 'weight_constraint': [0, 1, 3, 5]
-            # , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+            , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
+            , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
+            , 'kernel_initializer': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
+            # , 'activation'
+            , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         },
         'DeepLearningClassifier': {
             'hidden_layers': [
@@ -316,22 +319,20 @@ def get_search_params(model_name):
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 5, 10],
+            'max_depth': [1, 2, 3, 4, 5, 7, 10, 20],
             'max_features': ['sqrt', 'log2', None],
-            # 'loss': ['ls', 'lad', 'huber', 'quantile']
-            # 'loss': ['ls', 'lad', 'huber'],
             'loss': ['ls', 'huber'],
-            'learning_rate': [0.01, 0.1],
-            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000],
-            'subsample': [0.5, 0.8, 1.0]
+            'learning_rate': [0.001, 0.01, 0.05,  0.1, 0.2],
+            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000, 2000],
+            'subsample': [0.5, 0.65, 0.8, 0.9, 0.95, 1.0]
         },
         'GradientBoostingClassifier': {
             'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 2, 3, 5],
+            'max_depth': [1, 2, 3, 4, 5, 7, 10, 20],
             'max_features': ['sqrt', 'log2', None],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.5, 1.0]
-            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+            'learning_rate': [0.001, 0.01, 0.05,  0.1, 0.2],
+            'subsample': [0.5, 0.65, 0.8, 0.9, 0.95, 1.0],
+            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000, 2000],
 
         },
 
@@ -489,12 +490,12 @@ def get_search_params(model_name):
 
     # Some of these are super expensive to compute. So if we're running this in a test suite, let's make sure the structure works, but reduce the compute time
     params = grid_search_params[model_name]
-    if os.environ.get('is_test_suite', 0) == 'True':
-        simplified_params = {}
-        for k, v in params.items():
-            # Grab the first two items for each thing we want to test
-            simplified_params[k] = v[:2]
-        params = simplified_params
+    # if os.environ.get('is_test_suite', 0) == 'True' and random.random() > 0.5:
+    #     simplified_params = {}
+    #     for k, v in params.items():
+    #         # Grab the first two items for each thing we want to test
+    #         simplified_params[k] = v[:2]
+    #     params = simplified_params
 
     return params
 
@@ -551,7 +552,7 @@ def load_keras_model(file_name):
     return load_ml_model(file_name)
 
 
-def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False):
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
@@ -570,16 +571,17 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
 
     model = Sequential()
 
-    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01), activation='relu'))
+    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01), activation='relu'))
 
     for layer_size in scaled_layers[1:-1]:
-        model.add(Dense(layer_size, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01), activation='relu'))
+        model.add(Dense(layer_size, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01), activation='relu'))
 
     # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
-    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01), activation='relu'))
+    model.add(Dense(scaled_layers[-1], kernel_initializer=kernel_initializer, name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01), activation='relu'))
 
     # For regressors, we want an output layer with a single node
-    model.add(Dense(1, kernel_initializer='normal'))
+    model.add(Dense(1, kernel_initializer=kernel_initializer))
+
 
     # The final step is to compile the model
     model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
