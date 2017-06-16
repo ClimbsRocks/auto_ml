@@ -6,6 +6,7 @@ import pandas as pd
 from sklearn.ensemble import GradientBoostingRegressor, GradientBoostingClassifier
 from sklearn.metrics import mean_squared_error, make_scorer, brier_score_loss, accuracy_score, explained_variance_score, mean_absolute_error, median_absolute_error, r2_score, log_loss, roc_auc_score
 import numpy as np
+from tabulate import tabulate
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf', 'np.nan', 'numpy.nan'])
 
@@ -44,10 +45,10 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
     #took this idea instead from: http://stats.stackexchange.com/a/109015
     conf = pd.crosstab(pd.Series(actuals), pd.Series(predicted_labels), rownames=['v Actual v'], colnames=['Predicted >'], margins=True)
     print(conf)
-    
+
     #I like knowing the per class accuracy to see if the model is mishandling imbalanced data.
     #For example, if it is predicting 100% of observations to one class just because it is the majority
-    #Wikipedia seems to call that Positive/negative predictive value 
+    #Wikipedia seems to call that Positive/negative predictive value
     print('\nHere is predictive value by class:')
     df = pd.concat([pd.Series(actuals,name='actuals'),pd.Series(predicted_labels,name='predicted')],axis=1)
     targets = list(df.predicted.unique())
@@ -55,28 +56,19 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
         tot_count = len(df[df.predicted==targets[i]])
         true_count = len(df[(df.predicted==targets[i]) & (df.actuals == targets[i])])
         print('Class: ',targets[i],'=',float(true_count)/tot_count)
-        #print(len(df[(df.predicted==targets[i]) & (df.actuals == targets[i])]))
-    
+
     print('\nHere is the accuracy of our trained estimator at each level of predicted probabilities')
+    print('For a verbose description of what this means, please visit the docs:')
+    print('http://auto-ml.readthedocs.io/en/latest/analytics.html#interpreting-predicted-probability-buckets-for-classifiers')
 
-    # create summary dict
-    summary_dict = OrderedDict()
-    for num in range(0, 110, 10):
-        summary_dict[num] = []
+    bucket_results = pd.qcut(probas, q=10, duplicates='drop')
 
-    for idx, proba in enumerate(probas):
-        proba = math.floor(int(proba * 100) / 10) * 10
-        summary_dict[proba].append(actuals[idx])
+    df_probas = pd.DataFrame(probas, columns=['Predicted Probability Of Bucket'])
+    df_probas['Actual Probability of Bucket'] = actuals
+    df_probas['Bucket Edges'] = bucket_results
 
-    for k, v in summary_dict.items():
-        if len(v) > 0:
-            print('Predicted probability: ' + str(k) + '%')
-            actual = sum(v) * 1.0 / len(v)
-
-            # Format into a prettier number
-            actual = round(actual * 100, 1)
-            print('Actual: ' + str(actual) + '%')
-            print('# preds: ' + str(len(v)) + '\n')
+    df_buckets = df_probas.groupby(df_probas['Bucket Edges'])
+    print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql', showindex='always'))
 
     print('\n\n')
     return brier_score

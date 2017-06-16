@@ -65,6 +65,25 @@ Roughly, you can read the results as "all else equal, we'd expect a change from 
 The information coming from random-forest-esque models will be roughly the amount of variance that is explained by this feature. These values will, in total, sum up to 1.
 
 
+Interpreting Predicted Probability Buckets for Classifiers
+----------------------------------------------------------
+
+Sometimes, it's useful to know how a classifier is doing very granularly, beyond just accuracy. For instance, pretend an expensive event (say, burning a whole batch of pastries) has a 5% chance of occurring.
+
+If you train a model, obtaining 95% accuracy looks pretty bad on the surface- it's no better htan average! And in fact, you'll probably find that most (or all) of the predictions are 0- predicting that the pastries will not burn.
+
+It's easy to disregard the model at this point.
+
+However, we might still find some use for it, if we dive deeper into the predicted probabilities. Maybe, for 80% of deliveries, the model predicts 0 probability of fire, while for 20% of deliveries, the model predicts 25% chance of fire. That would be quite useful if it's accurate at each of those probabilities! We're able to correctly identify all the batches that have very low risk of fire, and a subset of the batches that are 5x as risky as our average batch. That sounds pretty promising!
+
+That's what we report out in advanced scoring for classifiers.
+
+We take the model's predicted probabilities on every item in the scoring dataset. Then we order the predicted probabilities from lowest to highest. We bucket those sorted predictions into 10 buckets, with the lowest bucket holding the 10% of the dataset that the model predicted the lowest probability for, and the highest bucket holding the 10% of the dataset that the model predicted the highest probability for.
+
+Then, for each bucket, we simply report what the average predicted probability was, and what the actual event occurrence was, along with what the max and min predicted probabilities were for that bucket.
+
+
+
 In the weeds
 ------------
 

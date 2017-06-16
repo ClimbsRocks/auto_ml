@@ -8,6 +8,8 @@ from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, Extr
 
 from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
 
+from sklearn.svm import LinearSVC, LinearSVR
+
 from sklearn.cluster import MiniBatchKMeans
 
 xgb_installed = False
@@ -65,9 +67,11 @@ def get_model_from_name(model_name, training_params=None):
         'AdaBoostClassifier': {'n_estimators': 10},
         'SGDClassifier': {'n_jobs': -1},
         'Perceptron': {'n_jobs': -1},
+        'LinearSVC': {'dual': False},
         'LinearRegression': {'n_jobs': -2},
 
         'RandomForestRegressor': {'n_jobs': -2},
+        'LinearSVR': {'dual': False, 'loss': 'squared_epsilon_insensitive'},
         'ExtraTreesRegressor': {'n_jobs': -1},
         'MiniBatchKMeans': {'n_clusters': 8},
         'GradientBoostingRegressor': {'presort': False},
@@ -108,11 +112,13 @@ def get_model_from_name(model_name, training_params=None):
         'SGDClassifier': SGDClassifier(),
         'Perceptron': Perceptron(),
         'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
+        'LinearSVC': LinearSVC(),
 
         # Regressors
         'LinearRegression': LinearRegression(),
         'RandomForestRegressor': RandomForestRegressor(),
         'Ridge': Ridge(),
+        'LinearSVR': LinearSVR(),
         'ExtraTreesRegressor': ExtraTreesRegressor(),
         'AdaBoostRegressor': AdaBoostRegressor(),
         'RANSACRegressor': RANSACRegressor(),
@@ -204,6 +210,10 @@ def get_name_from_model(model):
         return 'PassiveAggressiveRegressor'
     if isinstance(model, MiniBatchKMeans):
         return 'MiniBatchKMeans'
+    if isinstance(model, LinearSVR):
+        return 'LinearSVR'
+    if isinstance(model, LinearSVC):
+        return 'LinearSVC'
 
     if xgb_installed:
         if isinstance(model, XGBClassifier):
@@ -464,6 +474,15 @@ def get_search_params(model_name):
             # , 'subsample_for_bin': [1000, 10000]
             , 'n_estimators': [5, 20, 50, 200]
 
+        }
+
+        , 'LinearSVR': {
+            'C': [0.5, 0.75, 0.85, 0.95, 1.0]
+            , 'epsilon': [0, 0.05, 0.1, 0.15, 0.2]
+        }
+
+        , 'LinearSVC': {
+            'C': [0.5, 0.75, 0.85, 0.95, 1.0]
         }
 
     }
