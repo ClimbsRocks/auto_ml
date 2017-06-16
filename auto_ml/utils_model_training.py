@@ -73,6 +73,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                     model_params = self.model.get_params()
                     del model_params['build_fn']
+                    try:
+                        del model_params['feature_learning']
+                    except:
+                        pass
 
                     if self.type_of_estimator == 'regressor':
                         self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
