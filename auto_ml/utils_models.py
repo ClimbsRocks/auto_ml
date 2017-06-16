@@ -319,22 +319,20 @@ def get_search_params(model_name):
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 5, 10],
+            'max_depth': [1, 2, 3, 4, 5, 7, 10, 20],
             'max_features': ['sqrt', 'log2', None],
-            # 'loss': ['ls', 'lad', 'huber', 'quantile']
-            # 'loss': ['ls', 'lad', 'huber'],
             'loss': ['ls', 'huber'],
-            'learning_rate': [0.01, 0.1],
-            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000],
-            'subsample': [0.5, 0.8, 1.0]
+            'learning_rate': [0.001, 0.01, 0.05,  0.1, 0.2],
+            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000, 2000],
+            'subsample': [0.5, 0.65, 0.8, 0.9, 0.95, 1.0]
         },
         'GradientBoostingClassifier': {
             'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 2, 3, 5],
+            'max_depth': [1, 2, 3, 4, 5, 7, 10, 20],
             'max_features': ['sqrt', 'log2', None],
-            # 'learning_rate': [0.01, 0.1, 0.25, 0.4, 0.7],
-            'subsample': [0.5, 1.0]
-            # 'subsample': [0.4, 0.5, 0.58, 0.63, 0.68, 0.76]
+            'learning_rate': [0.001, 0.01, 0.05,  0.1, 0.2],
+            'subsample': [0.5, 0.65, 0.8, 0.9, 0.95, 1.0],
+            'n_estimators': [10, 50, 75, 100, 125, 150, 200, 500, 1000, 2000],
 
         },
 
@@ -584,8 +582,6 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
     # For regressors, we want an output layer with a single node
     model.add(Dense(1, kernel_initializer=kernel_initializer))
 
-    print('model after adding all layers')
-    print(model)
 
     # The final step is to compile the model
     model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
@@ -612,10 +608,6 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
 
 
     model = Sequential()
-    print('hidden_layers[0]')
-    print(hidden_layers[0])
-    print('num_cols')
-    print(num_cols)
 
     # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
     model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01), activation='relu'))
