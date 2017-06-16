@@ -885,10 +885,10 @@ class Predictor(object):
                 # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
                 pre_dispatch='1.5*n_jobs',
                 # The number of
-                population_size=20,
+                population_size=50,
                 gene_mutation_prob=0.10,
-                tournament_size=7,
-                generations_number=7
+                tournament_size=20,
+                generations_number=4
             )
 
         else:
