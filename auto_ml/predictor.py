@@ -870,6 +870,12 @@ class Predictor(object):
         n_jobs = -1
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
+            population_size = 10
+            tournament_size = 5
+        else:
+            population_size = 50
+            tournament_size = 20
+
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
 
@@ -901,9 +907,9 @@ class Predictor(object):
                 # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
                 pre_dispatch='1.5*n_jobs',
                 # The number of
-                population_size=50,
+                population_size=population_size,
                 gene_mutation_prob=0.10,
-                tournament_size=20,
+                tournament_size=tournament_size,
                 generations_number=4
             )
 
