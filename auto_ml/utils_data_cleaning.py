@@ -121,7 +121,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             if key in self.text_columns:
                 X_df[key].fillna('nan', inplace=True)
-                text_col = X_df[key].astype(str, errors='ignore')
+                text_col = X_df[key].astype(unicode, errors='ignore')
                 self.text_columns[key].fit(text_col)
 
                 col_names = self.text_columns[key].get_feature_names()
