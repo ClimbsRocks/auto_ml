@@ -868,16 +868,16 @@ class Predictor(object):
             total_combinations *= len(v)
 
         n_jobs = -1
+        population_size = 50
+        tournament_size = 20
+
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
             population_size = 10
             tournament_size = 5
-        else:
-            population_size = 50
-            tournament_size = 20
-
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
+
 
         if total_combinations >= 50:
             pool = pathos.multiprocessing.ProcessPool()
