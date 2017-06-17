@@ -319,7 +319,7 @@ def get_search_params(model_name):
         },
         'GradientBoostingRegressor': {
             # Add in max_delta_step if classes are extremely imbalanced
-            'max_depth': [1, 2, 3, 4, 5, 7, 10, 20],
+            'max_depth': [1, 2, 3, 4, 5, 7, 10, 15],
             'max_features': ['sqrt', 'log2', None],
             'loss': ['ls', 'huber'],
             'learning_rate': [0.001, 0.01, 0.05,  0.1, 0.2],
@@ -328,7 +328,7 @@ def get_search_params(model_name):
         },
         'GradientBoostingClassifier': {
             'loss': ['deviance', 'exponential'],
-            'max_depth': [1, 2, 3, 4, 5, 7, 10, 20],
+            'max_depth': [1, 2, 3, 4, 5, 7, 10, 15],
             'max_features': ['sqrt', 'log2', None],
             'learning_rate': [0.001, 0.01, 0.05,  0.1, 0.2],
             'subsample': [0.5, 0.65, 0.8, 0.9, 0.95, 1.0],
