@@ -722,7 +722,10 @@ class Predictor(object):
             print('Total training time:')
             print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
-        self.print_results(model_name, ppl, X_df, y)
+        # Don't report feature_responses (or nearly anything else) if this is just the feature_learning stage
+        # That saves a considerable amount of time
+        if feature_learning == False:
+            self.print_results(model_name, ppl, X_df, y)
 
         return ppl
 
@@ -948,7 +951,10 @@ class Predictor(object):
             model_name = gs.best_params_['model']
 
 
-        self.print_results(model_name, gs.best_estimator_, X_df, y)
+        # Don't report feature_responses (or nearly anything else) if this is just the feature_learning stage
+        # That saves a considerable amount of time
+        if feature_learning == False:
+            self.print_results(model_name, gs.best_estimator_, X_df, y)
 
         return gs
 
