@@ -28,25 +28,18 @@ except ImportError:
     pass
 
 # Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
-keras_installed = False
-try:
-    # Suppress some level of logs
-    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    from tensorflow import logging
-    logging.set_verbosity(logging.INFO)
-    from keras.constraints import maxnorm
-    from keras.layers import Dense, Dropout
-    from keras.layers.advanced_activations import LeakyReLU, PReLU
-    from keras.models import Sequential
-    from keras.models import load_model as keras_load_model
-    from keras import regularizers
-    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-    keras_installed = True
-except ImportError as e:
-    print('error importing keras')
-    print(e)
-    pass
+# Suppress some level of logs
+os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from tensorflow import logging
+logging.set_verbosity(logging.INFO)
+from keras.constraints import maxnorm
+from keras.layers import Dense, Dropout
+from keras.layers.advanced_activations import LeakyReLU, PReLU
+from keras.models import Sequential
+from keras.models import load_model as keras_load_model
+from keras import regularizers
+from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
 
 from auto_ml import utils
 
@@ -135,7 +128,9 @@ def get_model_from_name(model_name, training_params=None):
         'PassiveAggressiveRegressor': PassiveAggressiveRegressor(),
 
         # Clustering
-        'MiniBatchKMeans': MiniBatchKMeans()
+        'MiniBatchKMeans': MiniBatchKMeans(),
+        'DeepLearningClassifier']: KerasClassifier(build_fn=make_deep_learning_classifier),
+        'DeepLearningRegressor']: KerasRegressor(build_fn=make_deep_learning_model)
     }
 
     if xgb_installed:
@@ -146,9 +141,6 @@ def get_model_from_name(model_name, training_params=None):
         model_map['LGBMRegressor'] = LGBMRegressor()
         model_map['LGBMClassifier'] = LGBMClassifier()
 
-    if keras_installed:
-        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
-        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model)
 
     try:
         model_without_params = model_map[model_name]
@@ -216,17 +208,17 @@ def get_name_from_model(model):
     if isinstance(model, LinearSVC):
         return 'LinearSVC'
 
+    if isinstance(model, KerasRegressor):
+        return 'DeepLearningRegressor'
+    if isinstance(model, KerasClassifier):
+        return 'DeepLearningClassifier'
+
     if xgb_installed:
         if isinstance(model, XGBClassifier):
             return 'XGBClassifier'
         if isinstance(model, XGBRegressor):
             return 'XGBRegressor'
 
-    if keras_installed:
-        if isinstance(model, KerasRegressor):
-            return 'DeepLearningRegressor'
-        if isinstance(model, KerasClassifier):
-            return 'DeepLearningClassifier'
 
     if lgb_installed:
         if isinstance(model, LGBMClassifier):

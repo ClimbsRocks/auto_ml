@@ -44,6 +44,7 @@ from auto_ml import utils_scaling
 from auto_ml import utils_scoring
 
 from evolutionary_search import EvolutionaryAlgorithmSearchCV
+from keras.models import Model
 
 xgb_installed = False
 try:
@@ -52,13 +53,6 @@ try:
 except ImportError:
     pass
 
-keras_installed = False
-try:
-    from keras.models import Model
-    keras_installed = True
-except ImportError as e:
-    keras_import_error = e
-    pass
 
 
 def _pickle_method(m):
@@ -440,14 +434,6 @@ class Predictor(object):
                 print('ml_predictor.train(df_train, feature_learning=True, fl_data=df_train.copy())')
                 warnings.warn('Your fl_data and df_train must be different datasets. Use train_test_split, or at least copy the data for your fl_data')
 
-            if keras_installed != True:
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                print('feature_learning requires Keras to be installed.')
-                print('When we tried to import Model from Keras, we ran into the following error:')
-                print(keras_import_error)
-                print('Raising that error now, since feature_learning will not run without Keras')
-                raise(keras_import_error)
-
         self.transformation_pipeline = None
 
 
@@ -736,7 +722,6 @@ class Predictor(object):
             print('Total training time:')
             print(datetime.datetime.now().replace(microsecond=0) - start_time)
 
-        # self.trained_final_model = ppl
         self.print_results(model_name, ppl, X_df, y)
 
         return ppl
@@ -961,6 +946,7 @@ class Predictor(object):
         # self.trained_final_model = gs.best_estimator_
         if 'model' in gs.best_params_:
             model_name = gs.best_params_['model']
+
 
         self.print_results(model_name, gs.best_estimator_, X_df, y)
 

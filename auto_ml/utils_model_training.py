@@ -10,15 +10,10 @@ import warnings
 from auto_ml import utils_models
 from auto_ml.utils_models import get_name_from_model
 
-keras_installed = False
-try:
-    # Suppress some level of logs
-    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-    keras_installed = True
-except:
-    pass
+# Suppress some level of logs
+os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -66,29 +61,25 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit = X_fit.todense()
 
             if self.model_name[:12] == 'DeepLearning':
-                if keras_installed:
 
-                    # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
-                    num_cols = X_fit.shape[1]
+                # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
+                num_cols = X_fit.shape[1]
 
-                    model_params = self.model.get_params()
-                    del model_params['build_fn']
-                    try:
-                        del model_params['feature_learning']
-                    except:
-                        pass
-                    try:
-                        del model_params['num_cols']
-                    except:
-                        pass
+                model_params = self.model.get_params()
+                del model_params['build_fn']
+                try:
+                    del model_params['feature_learning']
+                except:
+                    pass
+                try:
+                    del model_params['num_cols']
+                except:
+                    pass
 
-                    if self.type_of_estimator == 'regressor':
-                        self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
-                    elif self.type_of_estimator == 'classifier':
-                        self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
-                else:
-                    print('WARNING: We did not detect that Keras was available.')
-                    raise TypeError('A DeepLearning model was requested, but Keras was not available to import')
+                if self.type_of_estimator == 'regressor':
+                    self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
+                elif self.type_of_estimator == 'classifier':
+                    self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
 
         try:
             if self.model_name[:12] == 'DeepLearning':
