@@ -760,15 +760,21 @@ class Predictor(object):
 
         # figure out how many rows to keep
         orig_row_count = X_transformed.shape[0]
+        orig_column_count = X_transformed.shape[1]
         # If we have fewer than 10000 rows, use all of them, regardless of user input
         # This approach only works if there are a decent number of rows, so we will try to put some safeguard in place to help the user from getting results that are too misleading
+        row_multiplier = 1.0
+        if orig_column_count > 1000:
+            row_multiplier = 0.25
+
         if orig_row_count <= 10000:
             num_rows_to_use = orig_row_count
-            X = X_transformed
+            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=int(num_rows_to_use * row_multiplier) )
+            # X = X_transformed
         else:
             percent_row_count = int(self.analytics_config['percent_rows'] * orig_row_count)
             num_rows_to_use = min(orig_row_count, percent_row_count, 10000)
-            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use)
+            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use * row_multiplier)
 
         if scipy.sparse.issparse(X):
             X = X.toarray()
