@@ -1,9 +1,12 @@
 from collections import OrderedDict
+import copy_reg
 import datetime
 import math
+import multiprocessing
 import os
 import random
 import sys
+import types
 import warnings
 
 from deap.base import Toolbox
@@ -56,6 +59,16 @@ try:
 except ImportError as e:
     keras_import_error = e
     pass
+
+
+def _pickle_method(m):
+    if m.im_self is None:
+        return getattr, (m.im_class, m.im_func.func_name)
+    else:
+        return getattr, (m.im_self, m.im_func.func_name)
+
+copy_reg.pickle(types.MethodType, _pickle_method)
+
 
 class Predictor(object):
 
@@ -847,15 +860,18 @@ class Predictor(object):
         else:
             grid_search_verbose = 0
 
-        n_jobs = -1
-        if os.environ.get('is_test_suite', 0) == 'True':
-            n_jobs = 1
 
 
         # We only want to run EASCV when we have more than 50 parameter combinations (it efficiently searches very large spaces, but offers no benefits in small search spaces)
         total_combinations = 1
         for k, v in gs_params.items():
             total_combinations *= len(v)
+
+        n_jobs = -1
+        if os.environ.get('is_test_suite', 0) == 'True':
+            n_jobs = 1
+        elif total_combinations >= 50:
+            n_jobs = multiprocessing.cpu_count()
 
         if total_combinations >= 50:
             pool = pathos.multiprocessing.ProcessPool()
@@ -877,7 +893,7 @@ class Predictor(object):
                 # Train across all cores.
                 n_jobs=n_jobs,
                 # Be verbose (lots of printing).
-                verbose=True,
+                verbose=grid_search_verbose,
                 # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
                 # Set the score on this partition to some very negative number, so that we do not choose this estimator.
                 error_score=-1000000000,
@@ -913,7 +929,11 @@ class Predictor(object):
         if self.verbose:
             print('\n\n********************************************************************************************')
             if self.optimize_final_model == True:
-                print('About to run GridSearchCV on the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+                print('Optimizing the hyperparameters for you model now')
+                if total_combinations < 50:
+                    print('About to run GridSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
+                elif total_combinations >= 50:
+                    print('About to run EvolutionaryAlgorithmSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
             else:
                 print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
                 # Note that we will only report analytics results on the final model that ultimately gets selected, and trained on the entire dataset
