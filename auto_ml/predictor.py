@@ -751,7 +751,7 @@ class Predictor(object):
         orig_column_count = X_transformed.shape[1]
         # If we have fewer than 10000 rows, use all of them, regardless of user input
         # This approach only works if there are a decent number of rows, so we will try to put some safeguard in place to help the user from getting results that are too misleading
-        row_multiplier = 1.0
+        row_multiplier = 1
         if orig_column_count > 1000:
             row_multiplier = 0.25
 
