@@ -1,5 +1,4 @@
 from collections import OrderedDict
-import copy_reg
 import datetime
 import math
 import multiprocessing
@@ -61,7 +60,12 @@ def _pickle_method(m):
     else:
         return getattr, (m.im_self, m.im_func.func_name)
 
-copy_reg.pickle(types.MethodType, _pickle_method)
+try:
+    import copy_reg
+    copy_reg.pickle(types.MethodType, _pickle_method)
+except ModuleNotFoundError:
+    import copyreg
+    copyreg.pickle(types.MethodType, _pickle_method)
 
 
 class Predictor(object):
@@ -757,12 +761,15 @@ class Predictor(object):
 
         if orig_row_count <= 10000:
             num_rows_to_use = orig_row_count
-            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=row_multiplier )
-            # X = X_transformed
+            if row_multiplier < 1:
+                X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=row_multiplier )
+            else:
+                X = X_transformed
         else:
             percent_row_count = int(self.analytics_config['percent_rows'] * orig_row_count)
             num_rows_to_use = min(orig_row_count, percent_row_count, 10000)
-            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use * row_multiplier)
+            num_rows_to_use = int(num_rows_to_use * row_multiplier)
+            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=num_rows_to_use)
 
         if scipy.sparse.issparse(X):
             X = X.toarray()
