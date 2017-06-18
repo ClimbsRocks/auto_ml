@@ -129,8 +129,8 @@ def get_model_from_name(model_name, training_params=None):
 
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(),
-        'DeepLearningClassifier']: KerasClassifier(build_fn=make_deep_learning_classifier),
-        'DeepLearningRegressor']: KerasRegressor(build_fn=make_deep_learning_model)
+        'DeepLearningClassifier': KerasClassifier(build_fn=make_deep_learning_classifier),
+        'DeepLearningRegressor': KerasRegressor(build_fn=make_deep_learning_model)
     }
 
     if xgb_installed:
