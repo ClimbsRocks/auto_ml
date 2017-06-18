@@ -310,7 +310,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -409,6 +409,7 @@ class Predictor(object):
             raise ValueError('The data passed in for uncertainty_data is missing')
 
 
+        self.optimize_feature_learning = optimize_feature_learning
         self.feature_learning = feature_learning
         if self.feature_learning == True:
             if fl_data is None:
@@ -528,9 +529,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=optimize_feature_learning, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -990,7 +991,7 @@ class Predictor(object):
     def train_ml_estimator(self, estimator_names, scoring, X_df, y, feature_learning=False):
 
         # Use Case 1: Super straightforward: just train a single, non-optimized model
-        if len(estimator_names) == 1 and self.optimize_final_model != True:
+        if (feature_learning == True and self.optimize_feature_learning != True) or (len(estimator_names) == 1 and self.optimize_final_model != True):
             trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning)
 
         # Use Case 2: Compare a bunch of models, but don't optimize any of them
@@ -1010,7 +1011,7 @@ class Predictor(object):
 
         # Use Case 3: One model, and optimize it!
         # Use Case 4: Many models, and optimize them!
-        elif self.optimize_final_model == True:
+        elif (feature_learning == False and self.optimize_final_model == True) or (feature_learning == True and self.optimize_feature_learning == True):
             # Use Cases 3 & 4 are clearly highly related
 
             all_gs_results = []
