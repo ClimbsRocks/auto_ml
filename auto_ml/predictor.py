@@ -757,7 +757,7 @@ class Predictor(object):
 
         if orig_row_count <= 10000:
             num_rows_to_use = orig_row_count
-            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=int(num_rows_to_use * row_multiplier) )
+            X, ignored_X, y, ignored_y = train_test_split(X_transformed, y, train_size=row_multiplier )
             # X = X_transformed
         else:
             percent_row_count = int(self.analytics_config['percent_rows'] * orig_row_count)
