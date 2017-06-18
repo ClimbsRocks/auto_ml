@@ -446,27 +446,21 @@ def get_search_params(model_name):
         }
 
         , 'LGBMClassifier': {
-            # 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
-            'num_leaves': [10, 20, 30, 40, 50, 200]
+            'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
+            , 'num_leaves': [10, 20, 30, 40, 50, 75, 100, 150, 200]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
-            # , 'subsample_freq': [0.3, 0.5, 0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]
-            # , 'subsample_for_bin': [1000, 10000]
-            , 'n_estimators': [5, 20, 50, 200]
-
+            , 'n_estimators': [5, 20, 50, 100, 200, 500, 1000]
         }
 
         , 'LGBMRegressor': {
-            # 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
-            'num_leaves': [10, 20, 30, 40, 50, 200]
+            'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
+            , 'num_leaves': [10, 20, 30, 40, 50, 75, 100, 150, 200]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
-            # , 'subsample_freq': [0.3, 0.5, 0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]
-            # , 'subsample_for_bin': [1000, 10000]
-            , 'n_estimators': [5, 20, 50, 200]
-
+            , 'n_estimators': [5, 20, 50, 100, 200, 500, 1000]
         }
 
         , 'LinearSVR': {
