@@ -236,13 +236,13 @@ class RegressionScorer(object):
 
             bad_val_indices = []
             for idx, val in enumerate(y):
-                if str(val) in bad_vals_as_strings:
+                if str(val) in bad_vals_as_strings or str(predictions[idx]) in bad_vals_as_strings:
                     bad_val_indices.append(idx)
 
             predictions = [val for idx, val in enumerate(predictions) if idx not in bad_val_indices]
             y = [val for idx, val in enumerate(y) if idx not in bad_val_indices]
 
-            print('Found ' + str(len(bad_val_indices)) + ' null or infinity values in the y values. We will ignore these, and report the score on the rest of the dataset')
+            print('Found ' + str(len(bad_val_indices)) + ' null or infinity values in the predicted or y values. We will ignore these, and report the score on the rest of the dataset')
             score = self.scoring_func(y, predictions)
 
         if advanced_scoring == True:
