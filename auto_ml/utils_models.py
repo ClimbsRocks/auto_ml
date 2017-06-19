@@ -257,9 +257,9 @@ def get_search_params(model_name):
                 # [1, 2, 2, 1]
             ]
             , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
-            , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
             , 'kernel_initializer': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
             # , 'activation'
+            , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         },
         'DeepLearningClassifier': {
@@ -279,6 +279,7 @@ def get_search_params(model_name):
                 [1, 0.66, 0.33, 0.1],
                 [1, 2, 2, 1]
             ]
+            , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
             # , 'epochs': [2, 4, 6, 10, 20]
             # , 'batch_size': [10, 25, 50, 100, 200, 1000]
@@ -290,8 +291,9 @@ def get_search_params(model_name):
             , 'dropout_rate': [0.0, 0.3, 0.6, 0.8, 0.9]
         },
         'XGBClassifier': {
-            'max_depth': [1, 5, 10, 15],
-            'learning_rate': [0.1],
+            'max_depth': [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 15],
+            'learning_rate': [0.01, 0.05, 0.1, 0.2],
+            'n_estimators': [50, 75, 100, 150, 200, 375, 500, 750, 1000],
             'min_child_weight': [1, 5, 10, 50],
             'subsample': [0.5, 0.8, 1.0],
             'colsample_bytree': [0.5, 0.8, 1.0]
