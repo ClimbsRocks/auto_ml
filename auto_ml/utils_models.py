@@ -34,8 +34,8 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from tensorflow import logging
 logging.set_verbosity(logging.INFO)
 from keras.constraints import maxnorm
-from keras.layers import Dense, Dropout
-from keras.layers.advanced_activations import LeakyReLU, PReLU
+from keras.layers import Activation, Dense, Dropout
+from keras.layers.advanced_activations import LeakyReLU, PReLU, ELU, ThresholdedReLU
 from keras.models import Sequential
 from keras.models import load_model as keras_load_model
 from keras import regularizers
@@ -76,8 +76,8 @@ def get_model_from_name(model_name, training_params=None):
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
         'LGBMRegressor': {},
         'LGBMClassifier': {},
-        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
-        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
+        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 64, 'verbose': 2},
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 64, 'verbose': 2}
     }
 
     model_params = all_model_params.get(model_name, None)
@@ -258,7 +258,7 @@ def get_search_params(model_name):
             ]
             , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
             , 'kernel_initializer': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
-            # , 'activation'
+            , 'activation': ['tanh', 'softmax', 'elu', 'softplus', 'softsign', 'relu', 'sigmoid', 'hard_sigmoid', 'linear', 'LeakyReLU', 'PReLU', 'ELU', 'ThresholdedReLU']
             , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         },
@@ -281,6 +281,7 @@ def get_search_params(model_name):
             ]
             , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
+            , 'activation': ['tanh', 'softmax', 'elu', 'softplus', 'softsign', 'relu', 'sigmoid', 'hard_sigmoid', 'linear', 'LeakyReLU', 'PReLU', 'ELU', 'ThresholdedReLU']
             # , 'epochs': [2, 4, 6, 10, 20]
             # , 'batch_size': [10, 25, 50, 100, 200, 1000]
             # , 'lr': [0.001, 0.01, 0.1, 0.3]
@@ -539,8 +540,40 @@ def load_ml_model(file_name):
 def load_keras_model(file_name):
     return load_ml_model(file_name)
 
+# For many activations, we can just pass the activation name into Activations
+# For some others, we have to import them as their own standalone activation function
+def get_activation_layer(activation):
+    if activation == 'LeakyReLU':
+        return LeakyReLU()
+    if activation == 'PReLU':
+        return PReLU()
+    if activation == 'ELU':
+        return ELU()
+    if activation == 'ThresholdedReLU':
+        return ThresholdedReLU()
 
-def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal'):
+    return Activation(activation)
+
+activation_map = {
+    'tanh': Activation('tanh')
+    , 'softmax': Activation('softmax')
+    , 'elu': Activation('elu')
+    , 'softplus': Activation('softplus')
+    , 'softsign': Activation('softsign')
+    , 'relu': Activation('relu')
+    , 'sigmoid': Activation('sigmoid')
+    , 'hard_sigmoid': Activation('hard_sigmoid')
+    , 'linear': Activation('linear')
+    , 'LeakyReLU': LeakyReLU()
+    , 'PReLU': PReLU()
+    , 'ELU': ELU()
+    , 'ThresholdedReLU': ThresholdedReLU()
+}
+
+# TODO: same for optimizers, including clipnorm
+
+
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='relu'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
@@ -559,13 +592,16 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
 
     model = Sequential()
 
-    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01), activation='relu', clipnorm=1., clipvalue=0.5))
+    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01)))
+    model.add(get_activation_layer(activation))
 
     for layer_size in scaled_layers[1:-1]:
-        model.add(Dense(layer_size, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01), activation='relu', clipnorm=1., clipvalue=0.5))
+        model.add(Dense(layer_size, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01)))
+        model.add(get_activation_layer(activation))
 
     # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
-    model.add(Dense(scaled_layers[-1], kernel_initializer=kernel_initializer, name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01), activation='relu', clipnorm=1., clipvalue=0.5))
+    model.add(Dense(scaled_layers[-1], kernel_initializer=kernel_initializer, name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(get_activation_layer(activation))
 
     # For regressors, we want an output layer with a single node
     model.add(Dense(1, kernel_initializer=kernel_initializer))
@@ -577,7 +613,7 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
     return model
 
 
-def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False):
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='relu'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
@@ -598,12 +634,15 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
     model = Sequential()
 
     # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
-    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01), activation='relu', clipnorm=1., clipvalue=0.5))
+    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(get_activation_layer(activation))
 
     for layer_size in scaled_layers[1:-1]:
-        model.add(Dense(layer_size, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01), activation='relu', clipnorm=1., clipvalue=0.5))
+        model.add(Dense(layer_size, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01)))
+        model.add(get_activation_layer(activation))
 
-    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01), activation='relu', clipnorm=1., clipvalue=0.5))
+    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(get_activation_layer(activation))
 
     model.add(Dense(1, kernel_initializer='normal', activation=final_activation))
     model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson'])
