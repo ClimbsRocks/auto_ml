@@ -38,6 +38,7 @@ from keras.layers import Activation, Dense, Dropout
 from keras.layers.advanced_activations import LeakyReLU, PReLU, ELU, ThresholdedReLU
 from keras.models import Sequential
 from keras.models import load_model as keras_load_model
+from keras import optimizers
 from keras import regularizers
 from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
 
@@ -554,23 +555,23 @@ def get_activation_layer(activation):
 
     return Activation(activation)
 
-activation_map = {
-    'tanh': Activation('tanh')
-    , 'softmax': Activation('softmax')
-    , 'elu': Activation('elu')
-    , 'softplus': Activation('softplus')
-    , 'softsign': Activation('softsign')
-    , 'relu': Activation('relu')
-    , 'sigmoid': Activation('sigmoid')
-    , 'hard_sigmoid': Activation('hard_sigmoid')
-    , 'linear': Activation('linear')
-    , 'LeakyReLU': LeakyReLU()
-    , 'PReLU': PReLU()
-    , 'ELU': ELU()
-    , 'ThresholdedReLU': ThresholdedReLU()
-}
-
 # TODO: same for optimizers, including clipnorm
+def get_optimizer(name='Adam'):
+    if name == 'SGD':
+        return optimizers.SGD(clipnorm=1.)
+    if name == 'RMSprop':
+        return optimizers.RMSprop(clipnorm=1.)
+    if name == 'Adagrad':
+        return optimizers.Adagrad(clipnorm=1.)
+    if name == 'Adadelta':
+        return optimizers.Adadelta(clipnorm=1.)
+    if name == 'Adam':
+        return optimizers.Adam(clipnorm=1.)
+    if name == 'Adamax':
+        return optimizers.Adamax(clipnorm=1.)
+    if name == 'Nadam':
+        return optimizers.Nadam(clipnorm=1.)
+
 
 
 def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='relu'):
@@ -608,7 +609,7 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
 
 
     # The final step is to compile the model
-    model.compile(loss='mean_squared_error', optimizer=optimizer, metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
+    model.compile(loss='mean_squared_error', optimizer=get_optimizer(optimizer), metrics=['mean_absolute_error', 'mean_absolute_percentage_error'])
 
     return model
 
@@ -645,5 +646,5 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
     model.add(get_activation_layer(activation))
 
     model.add(Dense(1, kernel_initializer='normal', activation=final_activation))
-    model.compile(loss='binary_crossentropy', optimizer=optimizer, metrics=['accuracy', 'poisson'])
+    model.compile(loss='binary_crossentropy', optimizer=get_optimizer(optimizer), metrics=['accuracy', 'poisson'])
     return model
