@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.model_selection import train_test_split
 import warnings
 
 from auto_ml import utils_models
@@ -84,10 +85,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         try:
             if self.model_name[:12] == 'DeepLearning':
 
-                print('\nWe will stop training early if we have not seen an improvement in training accuracy in 25 epochs')
+                print('\nWe will stop training early if we have not seen an improvement in validation accuracy in 25 epochs')
+                print('To measure validation accuracy, we will split off a random 10 percent of your data set')
+
+                X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
                 from keras.callbacks import EarlyStopping
-                early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
-                self.model.fit(X_fit, y, callbacks=[early_stopping])
+                early_stopping = EarlyStopping(monitor='val_loss', patience=20, verbose=1)
+                self.model.fit(X_fit, y, callbacks=[early_stopping], validation_data=(X_val, y_val))
 
             else:
                 self.model.fit(X_fit, y)
