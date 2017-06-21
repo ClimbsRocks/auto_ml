@@ -247,7 +247,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
 
                     X[key].fillna('nan', inplace=True)
-                    nlp_matrix = self.text_columns[key].transform(X[key].astype(str, errors='ignore'))
+                    nlp_matrix = self.text_columns[key].transform(X[key].astype(unicode, errors='ignore'))
                     nlp_matrix = nlp_matrix.toarray()
 
                     text_df = pd.DataFrame(nlp_matrix)

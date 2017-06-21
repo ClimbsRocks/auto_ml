@@ -574,7 +574,7 @@ def get_optimizer(name='Adam'):
 
 
 
-def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='relu'):
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='relu'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
@@ -614,7 +614,7 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='adam'
     return model
 
 
-def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='relu'):
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='relu'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
