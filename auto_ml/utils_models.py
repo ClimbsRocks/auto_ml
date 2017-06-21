@@ -572,6 +572,8 @@ def get_optimizer(name='Adam'):
     if name == 'Nadam':
         return optimizers.Nadam(clipnorm=1.)
 
+    return optimizers.Adam(clipnorm=1.)
+
 
 
 def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='relu'):
