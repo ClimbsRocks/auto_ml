@@ -77,8 +77,8 @@ def get_model_from_name(model_name, training_params=None):
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
         'LGBMRegressor': {},
         'LGBMClassifier': {},
-        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 64, 'verbose': 2},
-        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 64, 'verbose': 2}
+        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
     }
 
     model_params = all_model_params.get(model_name, None)
