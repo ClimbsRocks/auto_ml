@@ -328,7 +328,16 @@ class Predictor(object):
         else:
             self.model_names = model_names
 
-        self.perform_feature_scaling = perform_feature_scaling
+        if 'DeepLearningRegressor' in self.model_names or 'DeepLearningClassifier' in self.model_names:
+            if perform_feature_scaling is None or perform_feature_scaling == True:
+                self.perform_feature_scaling = True
+            else:
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print('Heard that we should not perform feature_scaling, but we should train a Deep Learning model. Note that feature_scaling is typically useful and frequently essential for deep learning. We STRONGLY suggest not setting perform_feature_scaling=False.')
+                warnings.warn('It is a best practice, and often necessary for training, to perform_feature_scaling while doing Deep Learning.')
+                self.perform_feature_scaling = perform_feature_scaling
+        else:
+            self.perform_feature_scaling = perform_feature_scaling
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
         self.training_params = training_params
@@ -870,7 +879,7 @@ class Predictor(object):
             total_combinations *= len(v)
 
         n_jobs = -1
-        population_size = 75
+        population_size = 50
         tournament_size = 3
         gene_mutation_prob = 0.3
         generations_number = 3
@@ -945,6 +954,8 @@ class Predictor(object):
                     print('About to run GridSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
                 elif total_combinations >= 50:
                     print('About to run EvolutionaryAlgorithmSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
+                    print('Population size each generation: ' + str(population_size))
+                    print('Number of generations: ' + str(generations_number))
             else:
                 print('About to run GridSearchCV on the pipeline for several models to predict ' + self.output_column)
                 # Note that we will only report analytics results on the final model that ultimately gets selected, and trained on the entire dataset
