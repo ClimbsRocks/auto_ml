@@ -69,17 +69,21 @@ def get_model_from_name(model_name, training_params=None):
         'LinearSVR': {'dual': False, 'loss': 'squared_epsilon_insensitive'},
         'ExtraTreesRegressor': {'n_jobs': -1},
         'MiniBatchKMeans': {'n_clusters': 8},
-        'GradientBoostingRegressor': {'presort': False},
+        'GradientBoostingRegressor': {'presort': False, 'n_estimators': 200},
+        'GradientBoostingClassifier': {'presort': False, 'n_estimators': 200},
         'SGDRegressor': {'shuffle': False},
         'PassiveAggressiveRegressor': {'shuffle': False},
         'AdaBoostRegressor': {'n_estimators': 10},
         'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
-        'LGBMRegressor': {},
-        'LGBMClassifier': {},
-        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
-        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
+        'LGBMRegressor': {'n_estimators': 200, 'max_bin': 500, 'num_leaves': 50},
+        'LGBMClassifier': {'n_estimators': 200, 'max_bin': 500, 'num_leaves': 50},
+        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 64, 'verbose': 2},
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 64, 'verbose': 2}
     }
+
+    if os.environ.get('is_test_suite', 0) == 'True':
+        all_model_params
 
     model_params = all_model_params.get(model_name, None)
     if model_params is None:
@@ -260,7 +264,7 @@ def get_search_params(model_name):
             , 'dropout_rate': [0.0, 0.2, 0.4, 0.6, 0.8]
             , 'kernel_initializer': ['uniform', 'lecun_uniform', 'normal', 'zero', 'glorot_normal', 'glorot_uniform', 'he_normal', 'he_uniform']
             , 'activation': ['tanh', 'softmax', 'elu', 'softplus', 'softsign', 'relu', 'sigmoid', 'hard_sigmoid', 'linear', 'LeakyReLU', 'PReLU', 'ELU', 'ThresholdedReLU']
-            , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
+            , 'batch_size': [16, 32, 64, 128, 256, 512]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
         },
         'DeepLearningClassifier': {
@@ -280,7 +284,7 @@ def get_search_params(model_name):
                 [1, 0.66, 0.33, 0.1],
                 [1, 2, 2, 1]
             ]
-            , 'batch_size': [10, 25, 50, 75, 100, 200, 500]
+            , 'batch_size': [16, 32, 64, 128, 256, 512]
             , 'optimizer': ['SGD', 'RMSprop', 'Adagrad', 'Adadelta', 'Adam', 'Adamax', 'Nadam']
             , 'activation': ['tanh', 'softmax', 'elu', 'softplus', 'softsign', 'relu', 'sigmoid', 'hard_sigmoid', 'linear', 'LeakyReLU', 'PReLU', 'ELU', 'ThresholdedReLU']
             # , 'epochs': [2, 4, 6, 10, 20]
@@ -450,21 +454,25 @@ def get_search_params(model_name):
         }
 
         , 'LGBMClassifier': {
-            'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
-            , 'num_leaves': [10, 20, 30, 40, 50, 75, 100, 150, 200]
+            'boosting_type': ['gbdt', 'dart']
+            , 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
+            , 'min_child_samples': [1, 5, 7, 10, 15, 20, 35, 50, 100, 200, 500, 1000]
+            , 'num_leaves': [2, 4, 7, 10, 20, 30, 40, 50, 75, 100]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]
-            , 'n_estimators': [5, 20, 50, 100, 200, 500, 1000]
+            , 'n_estimators': [5, 20, 35, 50, 75, 100, 150, 200, 350, 500, 750, 1000]
         }
 
         , 'LGBMRegressor': {
-            'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
-            , 'num_leaves': [10, 20, 30, 40, 50, 75, 100, 150, 200]
+            'boosting_type': ['gbdt', 'dart']
+            , 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
+            , 'min_child_samples': [1, 5, 7, 10, 15, 20, 35, 50, 100, 200, 500, 1000]
+            , 'num_leaves': [2, 4, 7, 10, 20, 30, 40, 50, 75, 100]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]
-            , 'n_estimators': [5, 20, 50, 100, 200, 500, 1000]
+            , 'n_estimators': [5, 20, 35, 50, 75, 100, 150, 200, 350, 500, 750, 1000]
         }
 
         , 'LinearSVR': {
@@ -616,7 +624,7 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adam'
     return model
 
 
-def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='relu'):
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='relu', kernel_initializer='normal'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
@@ -637,16 +645,16 @@ def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='
     model = Sequential()
 
     # There are times we will want the output from our penultimate layer, not the final layer, so give it a name that makes the penultimate layer easy to find
-    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(Dense(scaled_layers[0], input_dim=num_cols, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01)))
     model.add(get_activation_layer(activation))
 
     for layer_size in scaled_layers[1:-1]:
-        model.add(Dense(layer_size, kernel_initializer='normal', kernel_regularizer=regularizers.l2(0.01)))
+        model.add(Dense(layer_size, kernel_initializer=kernel_initializer, kernel_regularizer=regularizers.l2(0.01)))
         model.add(get_activation_layer(activation))
 
-    model.add(Dense(scaled_layers[-1], kernel_initializer='normal', name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01)))
+    model.add(Dense(scaled_layers[-1], kernel_initializer=kernel_initializer, name='penultimate_layer', kernel_regularizer=regularizers.l2(0.01)))
     model.add(get_activation_layer(activation))
 
-    model.add(Dense(1, kernel_initializer='normal', activation=final_activation))
+    model.add(Dense(1, kernel_initializer=kernel_initializer, activation=final_activation))
     model.compile(loss='binary_crossentropy', optimizer=get_optimizer(optimizer), metrics=['accuracy', 'poisson'])
     return model
