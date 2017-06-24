@@ -165,3 +165,13 @@ class ExtendedPipeline(Pipeline):
         return self.steps[-1][-1].score_uncertainty(Xt)
 
 
+def clean_params(params):
+    cleaned_params = {}
+    for k, v in params.items():
+
+        if k[:7] == 'model__':
+            cleaned_params[k[7:]] = v
+
+    return cleaned_params
+
+
