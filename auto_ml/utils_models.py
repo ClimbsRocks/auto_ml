@@ -76,8 +76,8 @@ def get_model_from_name(model_name, training_params=None):
         'AdaBoostRegressor': {'n_estimators': 10},
         'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
-        'LGBMRegressor': {'n_estimators': 200, 'max_bin': 500, 'num_leaves': 50},
-        'LGBMClassifier': {'n_estimators': 200, 'max_bin': 500, 'num_leaves': 50},
+        'LGBMRegressor': {'n_estimators': 100},
+        'LGBMClassifier': {'n_estimators': 100},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 64, 'verbose': 2},
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 64, 'verbose': 2}
     }
@@ -564,7 +564,7 @@ def get_activation_layer(activation):
     return Activation(activation)
 
 # TODO: same for optimizers, including clipnorm
-def get_optimizer(name='Adam'):
+def get_optimizer(name='Adadelta'):
     if name == 'SGD':
         return optimizers.SGD(clipnorm=1.)
     if name == 'RMSprop':
@@ -584,13 +584,13 @@ def get_optimizer(name='Adam'):
 
 
 
-def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='relu'):
+def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adadelta', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='elu'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
 
     if hidden_layers is None:
-        hidden_layers = [1, 1, 1]
+        hidden_layers = [1, 0.5, 0.1]
 
     # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
     scaled_layers = []
@@ -624,13 +624,13 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adam'
     return model
 
 
-def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='Adam', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='relu', kernel_initializer='normal'):
+def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='Adadelta', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='elu', kernel_initializer='normal'):
 
     if feature_learning == True and hidden_layers is None:
         hidden_layers = [1, 1, 0.5]
 
     if hidden_layers is None:
-        hidden_layers = [1, 1, 1]
+        hidden_layers = [1, 0.5, 0.1]
 
     # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
     scaled_layers = []
