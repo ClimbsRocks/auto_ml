@@ -1,7 +1,7 @@
 from collections import Iterable
 import os
 
-from keras.callbacks import EarlyStopping
+from keras.callbacks import EarlyStopping, TerminateOnNaN
 import numpy as np
 import pandas as pd
 import scipy
@@ -90,8 +90,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 print('To measure validation accuracy, we will split off a random 10 percent of your data set')
 
                 X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
-                early_stopping = EarlyStopping(monitor='val_loss', patience=10, verbose=1)
-                self.model.fit(X_fit, y, callbacks=[early_stopping], validation_data=(X_val, y_val))
+                early_stopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1)
+                terminate_on_nan = TerminateOnNaN()
+                # TODO: add in model checkpointer
+                self.model.fit(X_fit, y, callbacks=[early_stopping, terminate_on_nan], validation_data=(X_val, y_val))
+                # TODO: load best model from file, save to self.model
+                # TODO: delete temp file
 
             else:
                 self.model.fit(X_fit, y)
@@ -105,6 +109,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('Stopping training at this point because we heard a KeyboardInterrupt')
             print('If the model is functional at this point, we will output the model in its latest form')
             print('Note that not all models can be interrupted and still used, and that this feature generally is an unofficial beta-release feature that is known to fail on occasion')
+            # TODO: try to load the best model we had
             pass
 
         return self
