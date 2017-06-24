@@ -847,6 +847,7 @@ class Predictor(object):
             self._print_ml_analytics_results_random_forest(model, feature_responses)
 
         else:
+            feature_responses = feature_responses.sort_values(by='Importance', ascending=True)
             print('Here are our feature responses for the trained model')
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
 
@@ -879,10 +880,15 @@ class Predictor(object):
             total_combinations *= len(v)
 
         n_jobs = -1
-        population_size = 50
+        population_size = 35
         tournament_size = 3
         gene_mutation_prob = 0.3
         generations_number = 3
+
+        # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
+        # However, it does, itself,
+        if model_name in ['LGBMRegressor', 'LGBMClassifier', 'DeepLearningRegressor', 'DeeplearningClassifier']:
+            n_jobs = 2
 
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
@@ -1383,15 +1389,13 @@ class Predictor(object):
         if self.verbose:
             print('Here are all the hyperparameters that were tried:')
             raw_scores = gs.cv_results_
-            print('raw_scores')
-            print(raw_scores)
             df_raw_scores = pd.DataFrame(raw_scores)
             df_raw_scores = df_raw_scores.sort_values(by='mean_test_score', ascending=False)
             col_name_map = {
                 'mean_test_score': 'mean_score'
-                , 'min_test_score': 'min_score'
-                , 'max_test_score': 'max_score'
-                , 'nan_test_score?': 'failed?'
+                , 'min_test_score': 'DROPME'
+                , 'max_test_score': 'DROPME'
+                , 'nan_test_score?': 'DROPME'
                 , 'index': 'DROPME'
                 , 'param_index': 'DROPME'
                 , 'std_test_score': 'DROPME'
@@ -1404,10 +1408,12 @@ class Predictor(object):
                 df_raw_scores = df_raw_scores.drop('DROPME', axis=1)
             except:
                 pass
-            print('df_raw_scores')
-            print(df_raw_scores)
+
+            cleaned_params = list(df_raw_scores['params'].apply(utils.clean_params))
+            df_params = pd.DataFrame(cleaned_params)
+            df_scores = pd.concat([df_raw_scores.mean_score, df_params], axis=1)
             print('Score in the following columns always refers to cross-validation score')
-            print(tabulate(df_raw_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
+            print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
 
 
             # sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
