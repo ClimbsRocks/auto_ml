@@ -29,10 +29,9 @@ except ImportError:
 
 # Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
 # Suppress some level of logs
-os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-from tensorflow import logging
-logging.set_verbosity(logging.INFO)
+# from tensorflow import logging
+# logging.set_verbosity(logging.INFO)
+os.environ['KERAS_BACKEND'] = 'theano'
 from keras.constraints import maxnorm
 from keras.layers import Activation, Dense, Dropout
 from keras.layers.advanced_activations import LeakyReLU, PReLU, ELU, ThresholdedReLU
