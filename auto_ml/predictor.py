@@ -880,6 +880,7 @@ class Predictor(object):
 
         else:
             feature_responses = self.create_feature_responses(model, X, y)
+            feature_responses = feature_responses.sort_values(by='FR_Incrementing')
             # feature_responses = feature_responses.sort_values(by='Importance', ascending=True)
             print('Here are our feature responses for the trained model')
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
@@ -1202,7 +1203,7 @@ class Predictor(object):
 
 
             try:
-                category_trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, relevant_X, relevant_y)
+                category_trained_final_model = self.train_ml_estimator(self.model_names, self._scorer, relevant_X, relevant_y)
             except ValueError as e:
                 if 'BinomialDeviance requires 2 classes' in str(e) or 'BinomialDeviance requires 2 classes' in e or 'BinomialDeviance requires 2 classes' in e.get('message', None):
                     print('Found a category with only one label')
