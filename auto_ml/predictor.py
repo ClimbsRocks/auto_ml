@@ -492,7 +492,7 @@ class Predictor(object):
 
 
     def fit_feature_learning_and_transformation_pipeline(self, X_df, fl_data, y):
-        fl_data_cleaned, fl_y, _ = self._clean_data_and_prepare_for_training(fl_data, self.scoring)
+        fl_data_cleaned, fl_y = self._clean_data_and_prepare_for_training(fl_data, self.scoring)
 
         len_X_df = len(X_df)
         combined_training_data = pd.concat([X_df, fl_data_cleaned], axis=0)
@@ -580,7 +580,7 @@ class Predictor(object):
         # Note that we will have to be cautious that things all happen in the exact same order as we expand what we do post-DV over time
         self.transformation_pipeline.named_steps['dv'].feature_names_.append('base_prediction')
         # 2. Get predictions from our base predictor on our uncertainty data
-        uncertainty_data, y_uncertainty, _ = self._clean_data_and_prepare_for_training(uncertainty_data, scoring)
+        uncertainty_data, y_uncertainty = self._clean_data_and_prepare_for_training(uncertainty_data, scoring)
 
         uncertainty_data_transformed = self.transformation_pipeline.transform(uncertainty_data)
 
