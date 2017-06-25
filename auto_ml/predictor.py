@@ -1440,6 +1440,7 @@ class Predictor(object):
             cleaned_params = list(df_raw_scores['params'].apply(utils.clean_params))
             df_params = pd.DataFrame(cleaned_params)
             df_scores = pd.concat([df_raw_scores.mean_score, df_params], axis=1)
+            df_scores = df_scores.sort_values(by='mean_score', ascending=True)
             print('Score in the following columns always refers to cross-validation score')
             print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
 
