@@ -587,15 +587,15 @@ def get_optimizer(name='Adadelta'):
 def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adadelta', dropout_rate=0.2, weight_constraint=0, feature_learning=False, kernel_initializer='normal', activation='elu'):
 
     if feature_learning == True and hidden_layers is None:
-        hidden_layers = [1, 1, 0.5]
+        hidden_layers = [1, 0.75, 0.25]
 
     if hidden_layers is None:
-        hidden_layers = [1, 0.5, 0.1]
+        hidden_layers = [1, 0.75, 0.25]
 
     # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
     scaled_layers = []
     for layer in hidden_layers:
-        scaled_layers.append(int(num_cols * layer))
+        scaled_layers.append(min(int(num_cols * layer), 10))
 
     # If we're training this model for feature_learning, our penultimate layer (our final hidden layer before the "output" layer) will always have 10 neurons, meaning that we always output 10 features from our feature_learning model
     if feature_learning == True:
@@ -627,15 +627,15 @@ def make_deep_learning_model(hidden_layers=None, num_cols=None, optimizer='Adade
 def make_deep_learning_classifier(hidden_layers=None, num_cols=None, optimizer='Adadelta', dropout_rate=0.2, weight_constraint=0, final_activation='sigmoid', feature_learning=False, activation='elu', kernel_initializer='normal'):
 
     if feature_learning == True and hidden_layers is None:
-        hidden_layers = [1, 1, 0.5]
+        hidden_layers = [1, 0.75, 0.25]
 
     if hidden_layers is None:
-        hidden_layers = [1, 0.5, 0.1]
+        hidden_layers = [1, 0.75, 0.25]
 
     # The hidden_layers passed to us is simply describing a shape. it does not know the num_cols we are dealing with, it is simply values of 0.5, 1, and 2, which need to be multiplied by the num_cols
     scaled_layers = []
     for layer in hidden_layers:
-        scaled_layers.append(int(num_cols * layer))
+        scaled_layers.append(min(int(num_cols * layer), 10))
 
     # If we're training this model for feature_learning, our penultimate layer (our final hidden layer before the "output" layer) will always have 10 neurons, meaning that we always output 10 features from our feature_learning model
     if feature_learning == True:
