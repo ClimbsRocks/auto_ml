@@ -757,9 +757,11 @@ class Predictor(object):
 
         return X_df
 
-    def create_feature_responses(self, model, X_transformed, y):
+    def create_feature_responses(self, model, X_transformed, y, top_features=None):
         print('Calculating feature responses, for advanced analytics.')
 
+        if top_features is None:
+            top_features = self._get_trained_feature_names()
         # figure out how many rows to keep
         orig_row_count = X_transformed.shape[0]
         orig_column_count = X_transformed.shape[1]
@@ -794,40 +796,60 @@ class Predictor(object):
         feature_names = self._get_trained_feature_names()
 
         all_results = []
-        for idx, col_name in enumerate(feature_names):
+        for col_idx, col_name in enumerate(feature_names):
+            if col_name not in top_features:
+                continue
             col_result = {}
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name:
 
-                col_std = np.std(X[:, idx])
+                col_std = np.std(X[:, col_idx])
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
                 col_result['Delta'] = col_delta
 
                 # Increment the values of this column by the std
-                X[:, idx] += col_delta
+                X[:, col_idx] += col_delta
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
-                col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
+                deltas = []
+                for pred_idx, new_pred in enumerate(predictions):
+                    base_pred = base_predictions[pred_idx]
+                    deltas.append(new_pred - base_pred)
+
+                col_result['FR_Incrementing'] = np.mean(deltas)
+                absolute_prediction_deltas = np.absolute(deltas)
+                median_prediction = np.median(absolute_prediction_deltas)
+                col_result['FRI_MAP'] = median_prediction
 
 
-                X[:, idx] -= 2 * col_delta
+                X[:, col_idx] -= 2 * col_delta
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
-                col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
+                deltas = []
+                for pred_idx, new_pred in enumerate(predictions):
+                    base_pred = base_predictions[pred_idx]
+                    deltas.append(new_pred - base_pred)
+
+                col_result['FR_Decrementing'] = np.mean(deltas)
+                absolute_prediction_deltas = np.absolute(deltas)
+                median_prediction = np.median(absolute_prediction_deltas)
+                col_result['FRD_MAP'] = median_prediction
+
                 # Put the column back to it's original state
-                X[:, idx] += col_delta
+                X[:, col_idx] += col_delta
 
             all_results.append(col_result)
 
         df_all_results = pd.DataFrame(all_results)
+
         return df_all_results
 
 
@@ -835,19 +857,32 @@ class Predictor(object):
 
     def print_results(self, model_name, model, X, y):
 
-        feature_responses = None
-        if self.advanced_analytics == True:
-            feature_responses = self.create_feature_responses(model, X, y)
+        # feature_responses = None
+        # if self.advanced_analytics == True:
 
 
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            self._print_ml_analytics_results_linear_model(model, feature_responses)
+            df_model_results = self._print_ml_analytics_results_linear_model(model)
+            # TODO: only grab the top 100 features from X
+            sorted_model_results = df_model_results.sort_values(by='Coefficients', ascending=False)
+            sorted_model_results = sorted_model_results.reset_index(drop=True)
+            top_features = set(sorted_model_results.head(n=100)['Feature Name'])
+
+            feature_responses = self.create_feature_responses(model, X, y, top_features)
+            self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
 
         elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
-            self._print_ml_analytics_results_random_forest(model, feature_responses)
+            df_model_results = self._print_ml_analytics_results_random_forest(model)
+            sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
+            sorted_model_results = sorted_model_results.reset_index(drop=True)
+            top_features = set(sorted_model_results.head(n=100)['Feature Name'])
+
+            feature_responses = self.create_feature_responses(model, X, y, top_features)
+            self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
 
         else:
-            feature_responses = feature_responses.sort_values(by='Importance', ascending=True)
+            feature_responses = self.create_feature_responses(model, X, y)
+            # feature_responses = feature_responses.sort_values(by='Importance', ascending=True)
             print('Here are our feature responses for the trained model')
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
 
@@ -1246,7 +1281,7 @@ class Predictor(object):
         self.trained_pipeline = categorical_ensembler
 
 
-    def _join_and_print_analytics_results(self, df_feature_responses, df_features):
+    def _join_and_print_analytics_results(self, df_feature_responses, df_features, sort_field):
 
         # Join the standard feature_importances/coefficients, with our feature_responses
         if df_feature_responses is not None:
@@ -1255,22 +1290,11 @@ class Predictor(object):
             df_results = df_features
 
         # Sort by coefficients or feature importances
-        try:
-            df_results = df_results.sort_values(by='Importance', ascending=False)
-            df_results = df_results[['Feature Name', 'Importance', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
-            df_results = df_results.reset_index(drop=True)
-            df_results = df_results.head(n=100)
-            df_results = df_results.sort_values(by='Importance', ascending=True)
-        except:
-            try:
-                df_results = df_results.sort_values(by='Coefficients', ascending=False)
-                df_results = df_results[['Feature Name', 'Coefficients', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
-                df_results = df_results.reset_index(drop=True)
-                df_results = df_results.head(n=100)
-                df_results = df_results.sort_values(by='Coefficients', ascending=True)
-            except:
-                pass
-
+        df_results = df_results.sort_values(by=sort_field, ascending=False)
+        df_results = df_results[['Feature Name', sort_field, 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAP', 'FRI_MAP']]
+        df_results = df_results.reset_index(drop=True)
+        df_results = df_results.head(n=100)
+        df_results = df_results.sort_values(by=sort_field, ascending=True)
 
         analytics_file_name = self.analytics_config['file_name']
 
@@ -1290,12 +1314,16 @@ class Predictor(object):
         print('     Explanation: Represents how much the predicted output values respond to subtracting one FR_delta amount from every value in this column')
         print('FR_Incrementing = Feature Response From Incrementing Values In This Column By One FR_delta')
         print('     Explanation: Represents how much the predicted output values respond to adding one FR_delta amount to every value in this column')
+        print('FRD_MAD = Feature Response From Decrementing- Median Absolute Delta')
+        print('     Explanation: Takes the absolute value of all changes in predictions, then takes the median of those. Useful for seeing if decrementing this feature provokes strong changes that are both positive and negative')
+        print('FRI_MAD = Feature Response From Incrementing- Median Absolute Delta')
+        print('     Explanation: Takes the absolute value of all changes in predictions, then takes the median of those. Useful for seeing if incrementing this feature provokes strong changes that are both positive and negative')
         print('*******\n')
 
         df_results.to_csv(analytics_file_name)
 
 
-    def _print_ml_analytics_results_random_forest(self, trained_model_for_analytics, feature_responses):
+    def _print_ml_analytics_results_random_forest(self, trained_model_for_analytics):
         try:
             final_model_obj = trained_model_for_analytics.named_steps['final_model']
         except:
@@ -1322,7 +1350,7 @@ class Predictor(object):
 
         df_results.columns = ['Feature Name', 'Importance']
 
-        self._join_and_print_analytics_results(feature_responses, df_results)
+        return df_results
 
 
     def _get_trained_feature_names(self):
@@ -1331,7 +1359,7 @@ class Predictor(object):
         return trained_feature_names
 
 
-    def _print_ml_analytics_results_linear_model(self, trained_model_for_analytics, feature_responses):
+    def _print_ml_analytics_results_linear_model(self, trained_model_for_analytics):
         try:
             final_model_obj = trained_model_for_analytics.named_steps['final_model']
         except:
@@ -1357,7 +1385,7 @@ class Predictor(object):
 
         df_results.columns = ['Feature Name', 'Coefficients']
 
-        self._join_and_print_analytics_results(feature_responses, df_results)
+        return df_results
 
         # print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
         # print('This printed list will contain at most the top 50 features.')
