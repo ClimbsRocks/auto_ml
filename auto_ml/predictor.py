@@ -321,6 +321,7 @@ class Predictor(object):
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
 
+        self.compare_all_models = compare_all_models
         # We expect model_names to be a list of strings
         if isinstance(model_names, str):
             # If the user passes in a single string, put it in a list
@@ -349,7 +350,6 @@ class Predictor(object):
         self.user_gs_params = grid_search_params
         if self.user_gs_params is not None:
             self.optimize_final_model = True
-        self.compare_all_models = compare_all_models
         self.cv = cv
 
         self.calibrate_uncertainty = calibrate_uncertainty
