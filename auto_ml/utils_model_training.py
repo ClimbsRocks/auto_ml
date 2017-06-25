@@ -14,7 +14,7 @@ from auto_ml.utils_models import get_name_from_model
 # Suppress some level of logs
 os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-os.environ['KERAS_BACKEND'] = 'theano'
+# os.environ['KERAS_BACKEND'] = 'theano'
 from keras.callbacks import EarlyStopping, TerminateOnNaN
 from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
 

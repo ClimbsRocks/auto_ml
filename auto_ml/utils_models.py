@@ -31,7 +31,7 @@ except ImportError:
 # Suppress some level of logs
 # from tensorflow import logging
 # logging.set_verbosity(logging.INFO)
-os.environ['KERAS_BACKEND'] = 'theano'
+# os.environ['KERAS_BACKEND'] = 'theano'
 from keras.constraints import maxnorm
 from keras.layers import Activation, Dense, Dropout
 from keras.layers.advanced_activations import LeakyReLU, PReLU, ELU, ThresholdedReLU
