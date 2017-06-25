@@ -328,6 +328,11 @@ class Predictor(object):
         else:
             self.model_names = model_names
 
+        # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
+        if self.model_names is None or (len(self.model_names) == 1 and self.model_names[0] is None):
+            self.model_names = self._get_estimator_names()
+
+
         if 'DeepLearningRegressor' in self.model_names or 'DeepLearningClassifier' in self.model_names:
             if perform_feature_scaling is None or perform_feature_scaling == True:
                 self.perform_feature_scaling = True
@@ -471,13 +476,6 @@ class Predictor(object):
             else:
                 self.perform_feature_selection = True
 
-        # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
-        if self.model_names is not None and not (len(self.model_names) == 1 and self.model_names[0] is None):
-            estimator_names = self.model_names
-        else:
-            estimator_names = self._get_estimator_names()
-
-
         # TODO: we're not using ClassificationScorer for multilabel classification. Why?
         if self.type_of_estimator == 'classifier':
             if len(set(y)) > 2 and self.scoring is None:
@@ -490,7 +488,7 @@ class Predictor(object):
             self._scorer = scoring
 
 
-        return X_df, y, estimator_names
+        return X_df, y
 
 
     def fit_feature_learning_and_transformation_pipeline(self, X_df, fl_data, y):
@@ -547,15 +545,15 @@ class Predictor(object):
             print('If you have any issues, or new feature ideas, let us know at https://github.com/ClimbsRocks/auto_ml')
 
 
-        X_df, y, estimator_names = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
+        X_df, y = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
 
         if self.feature_learning == True:
             X_df = self.fit_feature_learning_and_transformation_pipeline(X_df, fl_data, y)
         else:
-            X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+            X_df = self.fit_transformation_pipeline(X_df, y, self.model_names[0])
 
         # This is our main logic for how we train the final model
-        self.trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
+        self.trained_final_model = self.train_ml_estimator(self.model_names, self._scorer, X_df, y)
 
         if self.need_to_train_uncertainty_model == True:
             self._create_uncertainty_model(uncertainty_data, scoring, y, uncertainty_calibration_data)
@@ -1136,7 +1134,7 @@ class Predictor(object):
         self.set_params_and_defaults(data, **kwargs)
 
 
-        X_df, y, estimator_names = self._clean_data_and_prepare_for_training(data, self.scoring)
+        X_df, y = self._clean_data_and_prepare_for_training(data, self.scoring)
         X_df = X_df.reset_index(drop=True)
         X_df = utils_categorical_ensembling.clean_categorical_definitions(X_df, categorical_column)
 
@@ -1148,7 +1146,7 @@ class Predictor(object):
             # Then, each categorical model will determine which features (if any) are useful for it's particular category
             X_df_transformed = self.fit_feature_learning_and_transformation_pipeline(X_df, kwargs['fl_data'], y)
         else:
-            X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+            X_df_transformed = self.fit_transformation_pipeline(X_df, y, self.model_names[0])
 
         unique_categories = X_df[categorical_column].unique()
 
