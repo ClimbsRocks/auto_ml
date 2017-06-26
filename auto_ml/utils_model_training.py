@@ -1,5 +1,7 @@
 from collections import Iterable
+import datetime
 import os
+import random
 
 import numpy as np
 import pandas as pd
@@ -15,8 +17,10 @@ from auto_ml.utils_models import get_name_from_model
 os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 # os.environ['KERAS_BACKEND'] = 'theano'
-from keras.callbacks import EarlyStopping, TerminateOnNaN
+from keras.callbacks import EarlyStopping, ModelCheckpoint, TerminateOnNaN
+from keras.models import load_model as keras_load_model
 from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -93,8 +97,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
                 early_stopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1)
                 terminate_on_nan = TerminateOnNaN()
+
+                now_time = datetime.datetime.now()
+                time_string = str(now_time.year) + '_' + str(now_time.month) + '_' + str(now_time.day) + '_' + str(now_time.hour) + '_' + str(now_time.minute)
+
+                temp_file_name = 'tmp_dl_model_checkpoint_' + time_string + str(random.random())
+                model_checkpoint = ModelCheckpoint(temp_file_name, monitor='val_loss', save_best_only=True, mode='min', period=1)
                 # TODO: add in model checkpointer
-                self.model.fit(X_fit, y, callbacks=[early_stopping, terminate_on_nan], validation_data=(X_val, y_val))
+                self.model.fit(X_fit, y, callbacks=[early_stopping, terminate_on_nan, model_checkpoint], validation_data=(X_val, y_val))
+
+                self.model = keras_load_model(temp_file_name)
+                os.remove(temp_file_name)
                 # TODO: load best model from file, save to self.model
                 # TODO: delete temp file
 
@@ -111,7 +124,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('If the model is functional at this point, we will output the model in its latest form')
             print('Note that not all models can be interrupted and still used, and that this feature generally is an unofficial beta-release feature that is known to fail on occasion')
             # TODO: try to load the best model we had
-            pass
+            if self.model_name[:12] == 'DeepLearning':
+                self.model = keras_load_model(temp_file_name)
+                os.remove(temp_file_name)
 
         return self
 
