@@ -43,7 +43,7 @@ def optimize_final_model_regression(model_name=None):
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -3.5
 
-    assert lower_bound < test_score < -2.8
+    assert lower_bound < test_score < -2.75
 
 
 def categorical_ensembling_regression(model_name=None):
