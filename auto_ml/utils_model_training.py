@@ -95,7 +95,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 print('To measure validation accuracy, we will split off a random 10 percent of your data set')
 
                 X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
-                early_stopping = EarlyStopping(monitor='val_loss', patience=15, verbose=1)
+                early_stopping = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
                 terminate_on_nan = TerminateOnNaN()
 
                 now_time = datetime.datetime.now()
