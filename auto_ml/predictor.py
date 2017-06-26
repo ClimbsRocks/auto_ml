@@ -921,7 +921,7 @@ class Predictor(object):
         n_jobs = -1
         population_size = 35
         tournament_size = 3
-        gene_mutation_prob = 0.3
+        gene_mutation_prob = 0.1
         generations_number = 3
 
         # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
@@ -932,7 +932,7 @@ class Predictor(object):
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
             population_size = 10
-            tournament_size = 2
+            generations_number = 1
 
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
