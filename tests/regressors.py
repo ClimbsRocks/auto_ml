@@ -90,7 +90,7 @@ def getting_single_predictions_regression(model_name=None):
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_scaling=False, model_names=model_name)
+    ml_predictor.train(df_boston_train, model_names=model_name)
 
     file_name = ml_predictor.save(str(random.random()))
 
