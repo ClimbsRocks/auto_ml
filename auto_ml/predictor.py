@@ -880,7 +880,12 @@ class Predictor(object):
 
         else:
             feature_responses = self.create_feature_responses(model, X, y)
-            feature_responses = feature_responses.sort_values(by='FR_Incrementing')
+            feature_responses['FR_Incrementing_abs'] = np.absolute(feature_responses.FR_Incrementing)
+            feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=False)
+            feature_responses = feature_responses.reset_index(drop=True)
+            feature_responses = feature_responses.head(n=100)
+            feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
+            feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAP', 'FRI_MAP']]
             # feature_responses = feature_responses.sort_values(by='Importance', ascending=True)
             print('Here are our feature responses for the trained model')
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
