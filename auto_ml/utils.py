@@ -2,11 +2,12 @@ import csv
 import datetime
 import os
 
+from keras.models import load_model as keras_load_model
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
 from sklearn.utils.metaestimators import if_delegate_has_method
-
+from keras.wrappers.scikit_learn import KerasClassifier, KerasRegressor
 
 import pandas as pd
 
@@ -175,3 +176,10 @@ def clean_params(params):
     return cleaned_params
 
 
+class ExtendedKerasRegressor(KerasRegressor):
+
+    def __init__(self, build_fn=None, **sk_params):
+        super(self.__class__, self).__init__(build_fn, sk_params)
+
+    def load_saved_model(self, model_name):
+        self.model = keras_load_model(temp_file_name)
