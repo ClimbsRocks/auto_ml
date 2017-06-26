@@ -953,7 +953,7 @@ class Predictor(object):
                 # Fit on the pipeline.
                 ppl,
                 # Two splits of cross-validation, by default
-                cv=KFold(self.cv, shuffle=False),
+                cv=self.cv,
                 params=gs_params,
                 # Train across all cores.
                 n_jobs=n_jobs,
