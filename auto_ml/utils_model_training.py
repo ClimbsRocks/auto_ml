@@ -20,7 +20,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
 from keras.callbacks import EarlyStopping, ModelCheckpoint, TerminateOnNaN
 from keras.models import load_model as keras_load_model
 from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-
+from auto_ml.utils import ExtendedKerasRegressor
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -101,13 +101,26 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 now_time = datetime.datetime.now()
                 time_string = str(now_time.year) + '_' + str(now_time.month) + '_' + str(now_time.day) + '_' + str(now_time.hour) + '_' + str(now_time.minute)
 
-                temp_file_name = 'tmp_dl_model_checkpoint_' + time_string + str(random.random())
+                temp_file_name = 'tmp_dl_model_checkpoint_' + time_string + str(random.random()) + '.h5'
                 model_checkpoint = ModelCheckpoint(temp_file_name, monitor='val_loss', save_best_only=True, mode='min', period=1)
                 # TODO: add in model checkpointer
                 self.model.fit(X_fit, y, callbacks=[early_stopping, terminate_on_nan, model_checkpoint], validation_data=(X_val, y_val))
 
+                print('self.model right after fit and before overwriting')
+                print(self.model)
                 self.model = keras_load_model(temp_file_name)
-                os.remove(temp_file_name)
+                # if self.type_of_estimator == 'classifier':
+                #     self.model = KerasClassifier(keras_load_model(temp_file_name))
+                # else:
+                #     self.model = KerasRegressor()
+                #     self.model.model = keras_load_model(temp_file_name)
+                #     # self.model = ExtendedKerasRegressor()
+                #     # self.model.load_saved_model(temp_file_name)
+                print('self.model right after overwriting')
+                print(self.model)
+                # os.remove(temp_file_name)
+                # print('self.model right after deleting temp file name')
+                # print(self.model)
                 # TODO: load best model from file, save to self.model
                 # TODO: delete temp file
 
@@ -124,10 +137,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('If the model is functional at this point, we will output the model in its latest form')
             print('Note that not all models can be interrupted and still used, and that this feature generally is an unofficial beta-release feature that is known to fail on occasion')
             # TODO: try to load the best model we had
+            # self.model = keras_load_model(temp_file_name)
             if self.model_name[:12] == 'DeepLearning':
-                self.model = keras_load_model(temp_file_name)
+                if self.type_of_estimator == 'classifier':
+                    self.model = KerasClassifier(keras_load_model(temp_file_name))
+                else:
+                    self.model = KerasRegressor(keras_load_model(temp_file_name))
                 os.remove(temp_file_name)
 
+        # print('self at the end of .fit')
+        # print(self)
         return self
 
     def remove_categorical_values(self, features):
