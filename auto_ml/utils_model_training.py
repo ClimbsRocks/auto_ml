@@ -5,6 +5,7 @@ import numpy as np
 import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
+from sklearn.model_selection import train_test_split
 import warnings
 
 from auto_ml import utils_models
@@ -89,6 +90,31 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 from keras.callbacks import EarlyStopping
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
+
+            elif self.model_name[:16] == 'GradientBoosting':
+                X_fit = X_fit.todense()
+
+                best_val_loss = -10000000000
+                best_loss_num_iter = 0
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.1)
+
+                # Add a variable number of trees each time, depending how far into the process we are
+                num_iters = range(1, 50, 1) + range(50, 100, 2) + range(100, 250, 3) + range(250, 500, 5) + range(500, 1000, 10) + range(1000, 2000, 20) + range(2000, 10000, 100)
+
+                print(num_iters)
+
+                for num_iter in num_iters:
+
+                    self.model.set_params(n_estimators=num_iter)
+                    self.model.fit(X_fit, y)
+
+                    val_loss = self._scorer.score(self, X_test, y_test)
+                    if val_loss > best_val_loss:
+                        best_val_loss = val_loss
+                        best_loss_num_iter = num_iter
+
+                    if num_iter - best_loss_num_iter > 5:
+                        break
 
             else:
                 self.model.fit(X_fit, y)
