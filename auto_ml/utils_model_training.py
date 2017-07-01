@@ -108,7 +108,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     self.model.set_params(n_estimators=num_iter)
                     self.model.fit(X_fit, y)
 
-                    val_loss = self._scorer.score(self, X_test, y_test)
+                    try:
+                        val_loss = self._scorer.score(self, X_test, y_test)
+                    except:
+                        val_loss = self.model.score(X_test, y_test)
                     if val_loss > best_val_loss:
                         best_val_loss = val_loss
                         best_loss_num_iter = num_iter
