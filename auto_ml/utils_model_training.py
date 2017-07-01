@@ -101,17 +101,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # Add a variable number of trees each time, depending how far into the process we are
                 num_iters = range(1, 50, 1) + range(50, 100, 2) + range(100, 250, 3) + range(250, 500, 5) + range(500, 1000, 10) + range(1000, 2000, 20) + range(2000, 10000, 100)
 
-                print(num_iters)
-
                 for num_iter in num_iters:
 
                     self.model.set_params(n_estimators=num_iter)
                     self.model.fit(X_fit, y)
 
+                    print('num_iter')
+                    print(num_iter)
+
                     try:
                         val_loss = self._scorer.score(self, X_test, y_test)
                     except:
                         val_loss = self.model.score(X_test, y_test)
+
+                    print('val_loss')
+                    print(val_loss)
                     if val_loss > best_val_loss:
                         best_val_loss = val_loss
                         best_loss_num_iter = num_iter
