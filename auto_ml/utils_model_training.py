@@ -30,7 +30,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
 
         self.model = model
         self.model_name = model_name
@@ -45,9 +45,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
         if self.type_of_estimator == 'classifier':
-            self._scorer = scoring_method
+            self._scorer = _scorer
         else:
-            self._scorer = scoring_method
+            self._scorer = _scorer
 
 
     def get(self, prop_name, default=None):
@@ -58,6 +58,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+        print('self._scorer inside fit')
+        print(self._scorer)
+        print('self.model_name inside fit')
+        print(self.model_name)
+        print('self.model inside fit')
+        print(self.model)
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X
@@ -116,10 +122,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     print(num_iter)
 
                     try:
+                        print('self._scorer')
+                        print(self._scorer)
                         val_loss = self._scorer.score(self, X_test, y_test)
                     except Exception as e:
-                        # print(e)
-                        # raise(e)
+                        print(e)
+                        raise(e)
                         val_loss = self.model.score(X_test, y_test)
 
                     print('val_loss')
