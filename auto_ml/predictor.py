@@ -620,8 +620,8 @@ class Predictor(object):
 
             probas = uncertainty_calibration_predictions.uncertainty_prediction
             num_buckets = self.uncertainty_calibration_settings['num_buckets']
-            bucket_labels = range(1, num_buckets + 1)
-            bucket_results = pd.qcut(probas, q=num_buckets, labels=bucket_labels, duplicates='drop')
+            # bucket_labels = range(1, num_buckets + 1)
+            bucket_results = pd.qcut(probas, q=num_buckets, duplicates='drop')
 
             uncertainty_calibration_predictions['bucket_num'] = bucket_results
 
