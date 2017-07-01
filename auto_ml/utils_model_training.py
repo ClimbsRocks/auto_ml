@@ -92,18 +92,24 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
             elif self.model_name[:16] == 'GradientBoosting':
-                X_fit = X_fit.todense()
+                if scipy.sparse.issparse(X_fit):
+                    X_fit = X_fit.todense()
 
                 best_val_loss = -10000000000
                 best_loss_num_iter = 0
                 X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.1)
 
                 # Add a variable number of trees each time, depending how far into the process we are
-                num_iters = range(1, 50, 1) + range(50, 100, 2) + range(100, 250, 3) + range(250, 500, 5) + range(500, 1000, 10) + range(1000, 2000, 20) + range(2000, 10000, 100)
+                num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
 
+                print('self.model')
+                print(self.model)
                 for num_iter in num_iters:
+                    warm_start = True
+                    if num_iter == 1:
+                        warm_start = False
 
-                    self.model.set_params(n_estimators=num_iter)
+                    self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
                     self.model.fit(X_fit, y)
 
                     print('num_iter')
@@ -111,7 +117,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                     try:
                         val_loss = self._scorer.score(self, X_test, y_test)
-                    except:
+                    except Exception as e:
+                        # print(e)
+                        # raise(e)
                         val_loss = self.model.score(X_test, y_test)
 
                     print('val_loss')
