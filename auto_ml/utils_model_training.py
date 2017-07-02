@@ -91,9 +91,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 if scipy.sparse.issparse(X_fit):
                     X_fit = X_fit.todense()
 
+                patience = 5
                 best_val_loss = -10000000000
-                best_loss_num_iter = 0
-                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.1)
+                num_worse_rounds = 0
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
 
                 # Add a variable number of trees each time, depending how far into the process we are
                 num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
@@ -118,9 +119,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     print(val_loss)
                     if val_loss > best_val_loss:
                         best_val_loss = val_loss
-                        best_loss_num_iter = num_iter
+                        num_worse_rounds = 0
+                    else:
+                        num_worse_rounds += 1
 
-                    if num_iter - best_loss_num_iter > 5:
+                    if num_worse_rounds >= patience:
                         break
 
             else:
