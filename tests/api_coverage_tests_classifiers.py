@@ -45,6 +45,35 @@ def test_perform_feature_selection_false_classification(model_name=None):
 
     assert lower_bound < test_score < -0.17
 
+# For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
+# home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
+# It didn't error previously
+# It appears to be an environment issue (possibly cuased by running too many parallelized things, which only happens in a test suite), not an issue with auto_ml. So we'll run this test to make sure the library functionality works, but only on some environments
+if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
+    def test_compare_all_models_classification(model_name=None):
+        np.random.seed(0)
+
+        df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+        column_descriptions = {
+            'survived': 'output'
+            , 'embarked': 'categorical'
+            , 'pclass': 'categorical'
+        }
+
+        ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+        ml_predictor.train(df_titanic_train, compare_all_models=True, model_names=model_name)
+
+        test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+        print('test_score')
+        print(test_score)
+
+        assert -0.215 < test_score < -0.17
+
+
+
 
 def test_perform_feature_selection_true_classification(model_name=None):
     np.random.seed(0)
@@ -294,35 +323,6 @@ def test_binary_classification_predict_proba_on_Predictor_instance(model_name=No
     # Make sure our score is good, but not unreasonably good
     print(test_score)
     assert -0.215 < test_score < -0.17
-
-
-
-# For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
-# home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
-# It didn't error previously
-# It appears to be an environment issue (possibly cuased by running too many parallelized things, which only happens in a test suite), not an issue with auto_ml. So we'll run this test to make sure the library functionality works, but only on some environments
-if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
-    def test_compare_all_models_classification(model_name=None):
-        np.random.seed(0)
-
-        df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-
-        column_descriptions = {
-            'survived': 'output'
-            , 'embarked': 'categorical'
-            , 'pclass': 'categorical'
-        }
-
-        ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-
-        ml_predictor.train(df_titanic_train, compare_all_models=True, model_names=model_name)
-
-        test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
-
-        print('test_score')
-        print(test_score)
-
-        assert -0.215 < test_score < -0.17
 
 
 def test_pass_in_list_of_dictionaries_train_classification(model_name=None):
