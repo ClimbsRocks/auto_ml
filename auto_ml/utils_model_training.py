@@ -58,12 +58,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
-        print('self._scorer inside fit')
-        print(self._scorer)
-        print('self.model_name inside fit')
-        print(self.model_name)
-        print('self.model inside fit')
-        print(self.model)
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X
@@ -73,21 +67,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit = X_fit.todense()
 
             if self.model_name[:12] == 'DeepLearning':
-                if keras_installed:
 
-                    # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
-                    num_cols = X_fit.shape[1]
+                # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
+                num_cols = X_fit.shape[1]
 
-                    model_params = self.model.get_params()
-                    del model_params['build_fn']
+                model_params = self.model.get_params()
+                del model_params['build_fn']
 
-                    if self.type_of_estimator == 'regressor':
-                        self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
-                    elif self.type_of_estimator == 'classifier':
-                        self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
-                else:
-                    print('WARNING: We did not detect that Keras was available.')
-                    raise TypeError('A DeepLearning model was requested, but Keras was not available to import')
+                if self.type_of_estimator == 'regressor':
+                    self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
+                elif self.type_of_estimator == 'classifier':
+                    self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
 
         try:
             if self.model_name[:12] == 'DeepLearning':
@@ -108,8 +98,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # Add a variable number of trees each time, depending how far into the process we are
                 num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
 
-                print('self.model')
-                print(self.model)
                 for num_iter in num_iters:
                     warm_start = True
                     if num_iter == 1:
@@ -122,12 +110,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     print(num_iter)
 
                     try:
-                        print('self._scorer')
-                        print(self._scorer)
                         val_loss = self._scorer.score(self, X_test, y_test)
                     except Exception as e:
-                        print(e)
-                        raise(e)
                         val_loss = self.model.score(X_test, y_test)
 
                     print('val_loss')
@@ -309,7 +293,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             predictions = self.model.predict_proba(X)
 
         except AttributeError as e:
-            # print('This model has no predict_proba method. Returning results of .predict instead.')
             try:
                 predictions = self.model.predict(X)
             except TypeError as e:
@@ -374,13 +357,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         predicted_features = self.predict(X)
         predicted_features = list(predicted_features)
 
-        if scipy.sparse.issparse(X):
-            X = scipy.sparse.hstack([X, predicted_features], format='csr')
-        else:
-            print('Figuring out what type X is')
-            print(type(X))
-            print('If you see this message, please file a bug at https://github.com/ClimbsRocks/auto_ml')
-
+        X = scipy.sparse.hstack([X, predicted_features], format='csr')
         return X
 
     def predict_uncertainty(self, X):
