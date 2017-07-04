@@ -95,33 +95,38 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 patience = 20
                 best_val_loss = -10000000000
                 num_worse_rounds = 0
+                best_model = deepcopy(self.model)
                 X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
 
                 # Add a variable number of trees each time, depending how far into the process we are
                 num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
 
-                for num_iter in num_iters:
-                    warm_start = True
-                    if num_iter == 1:
-                        warm_start = False
+                try:
+                    for num_iter in num_iters:
+                        warm_start = True
+                        if num_iter == 1:
+                            warm_start = False
 
-                    self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
-                    self.model.fit(X_fit, y)
+                        self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
+                        self.model.fit(X_fit, y)
 
-                    try:
-                        val_loss = self._scorer.score(self, X_test, y_test)
-                    except Exception as e:
-                        val_loss = self.model.score(X_test, y_test)
+                        try:
+                            val_loss = self._scorer.score(self, X_test, y_test)
+                        except Exception as e:
+                            val_loss = self.model.score(X_test, y_test)
 
-                    if val_loss > best_val_loss:
-                        best_val_loss = val_loss
-                        num_worse_rounds = 0
-                        best_model = deepcopy(self.model)
-                    else:
-                        num_worse_rounds += 1
+                        if val_loss > best_val_loss:
+                            best_val_loss = val_loss
+                            num_worse_rounds = 0
+                            best_model = deepcopy(self.model)
+                        else:
+                            num_worse_rounds += 1
 
-                    if num_worse_rounds >= patience:
-                        break
+                        if num_worse_rounds >= patience:
+                            break
+                except KeyboardInterrupt:
+                    print('Heard KeyboardInterrupt. Stopping training, and using the best checkpointed GradientBoosting model')
+                    pass
 
                 self.model = best_model
                 print('The number of estimators that were the best for this training dataset: ' + str(self.model.get_params()['n_estimators']))
