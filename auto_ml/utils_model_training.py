@@ -107,16 +107,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
                     self.model.fit(X_fit, y)
 
-                    print('num_iter')
-                    print(num_iter)
-
                     try:
                         val_loss = self._scorer.score(self, X_test, y_test)
                     except Exception as e:
                         val_loss = self.model.score(X_test, y_test)
 
-                    print('val_loss')
-                    print(val_loss)
                     if val_loss > best_val_loss:
                         best_val_loss = val_loss
                         num_worse_rounds = 0
@@ -125,6 +120,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                     if num_worse_rounds >= patience:
                         break
+
+                print('The number of estimators that were the best for this dataset: ' + str(num_iter))
+                print('The best score on a random 15 percent holdout set: ' + str(val_loss))
 
             else:
                 self.model.fit(X_fit, y)
