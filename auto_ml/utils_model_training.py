@@ -121,8 +121,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     if num_worse_rounds >= patience:
                         break
 
-                print('The number of estimators that were the best for this dataset: ' + str(num_iter))
-                print('The best score on a random 15 percent holdout set: ' + str(val_loss))
+                print('The number of estimators that were the best for this training dataset: ' + str(num_iter))
+                print('The best score on a random 15 percent holdout set of the training data: ' + str(val_loss))
 
             else:
                 self.model.fit(X_fit, y)
