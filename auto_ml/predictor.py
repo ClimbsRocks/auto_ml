@@ -620,13 +620,19 @@ class Predictor(object):
 
             probas = uncertainty_calibration_predictions.uncertainty_prediction
             num_buckets = self.uncertainty_calibration_settings['num_buckets']
-            bucket_labels = range(1, num_buckets + 1)
-            bucket_results = pd.qcut(probas, q=num_buckets, duplicates='drop')
+
+            # If we have overlapping bucket definitions, pandas will drop those duplicates, but won't drop the duplicate labels
+            # So we'll try bucketing one time, then get the actual number of bins from that
+            bucket_results, bins = pd.qcut(probas, q=num_buckets, retbins=True, duplicates='drop')
+
+            # now that we know the actual number of bins, we can create our labels, then use those to create our final set of buckets
+            bucket_labels = range(1, len(bins))
+            bucket_results = pd.qcut(probas, q=num_buckets, labels=bucket_labels, duplicates='drop')
 
             uncertainty_calibration_predictions['bucket_num'] = bucket_results
 
-
             uc_results = OrderedDict()
+
             for bucket in bucket_labels:
                 dataset = uncertainty_calibration_predictions[uncertainty_calibration_predictions['bucket_num'] == bucket]
 
@@ -634,26 +640,21 @@ class Predictor(object):
                 uc_results[bucket] = OrderedDict()
                 uc_results[bucket]['bucket_num'] = bucket
                 # FUTURE: add in rmse and maybe something like median_ae
-                # FUTURE: add in max_value for each bucket
+                # FUTURE: add in max_value for each bucket_num
                 uc_results[bucket]['max_proba'] = np.max(dataset['uncertainty_prediction'])
 
                 for perc in self.uncertainty_calibration_settings['percentiles']:
                     delta_at_percentile = np.percentile(deltas, perc)
                     uc_results[bucket]['percentile_' + str(perc) + '_delta'] = delta_at_percentile
 
-            # make the max_proba of our last bucket 1
-            uc_results[bucket_labels[-1]]['max_proba'] = 1
+            # make the max_proba of our last bucket_num 1
+            uc_results[bucket -1]['max_proba'] = 1
             print('Here are the uncertainty_calibration results, for each bucket of predicted probabilities')
             for num in uc_results:
                 print(uc_results[num])
 
             self.trained_final_model.uc_results = uc_results
 
-
-        # POST-MVP:
-            # Translate each level of predicted proba uncertainty into the same base units as the original regressor
-            # i.e., a probability of 20% translates to a median absolute error of 3 minutes, while a probability of 50 % translates to a mae of 7 minutes
-        # Way post-mvp: allow the user to define multiple different uncertainty definitions they want to try. otherwise we duplicate a lot of computing forcing them to retrain the base predictor and transformation pipeline just to try a different definition and uncertainty model
         self.need_to_train_uncertainty_model = False
 
     def _prepare_for_verify_features(self):
