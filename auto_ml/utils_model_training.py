@@ -1,4 +1,5 @@
 from collections import Iterable
+from copy import deepcopy
 import os
 
 import numpy as np
@@ -91,7 +92,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 if scipy.sparse.issparse(X_fit):
                     X_fit = X_fit.todense()
 
-                patience = 5
+                patience = 20
                 best_val_loss = -10000000000
                 num_worse_rounds = 0
                 X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
@@ -115,14 +116,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     if val_loss > best_val_loss:
                         best_val_loss = val_loss
                         num_worse_rounds = 0
+                        best_model = deepcopy(self.model)
                     else:
                         num_worse_rounds += 1
 
                     if num_worse_rounds >= patience:
                         break
 
-                print('The number of estimators that were the best for this training dataset: ' + str(num_iter))
-                print('The best score on a random 15 percent holdout set of the training data: ' + str(val_loss))
+                self.model = best_model
+                print('The number of estimators that were the best for this training dataset: ' + str(self.model.get_params()['n_estimators']))
+                print('The best score on a random 15 percent holdout set of the training data: ' + str(best_val_loss))
 
             else:
                 self.model.fit(X_fit, y)
