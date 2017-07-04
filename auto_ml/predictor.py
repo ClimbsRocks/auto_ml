@@ -648,7 +648,7 @@ class Predictor(object):
                     uc_results[bucket]['percentile_' + str(perc) + '_delta'] = delta_at_percentile
 
             # make the max_proba of our last bucket_num 1
-            uc_results[bucket -1]['max_proba'] = 1
+            uc_results[bucket_labels[-1]]['max_proba'] = 1
             print('Here are the uncertainty_calibration results, for each bucket of predicted probabilities')
             for num in uc_results:
                 print(uc_results[num])
