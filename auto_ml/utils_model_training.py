@@ -310,8 +310,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         try:
             if self.model_name[:4] == 'LGBM':
-                self.model.predict_proba(X, num_iteration=self.model.best_iteration)
-            predictions = self.model.predict_proba(X)
+                predictions = self.model.predict_proba(X, num_iteration=self.model.best_iteration)
+            else:
+                predictions = self.model.predict_proba(X)
 
         except AttributeError as e:
             try:
@@ -360,21 +361,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_predict = X
 
         if self.model_name[:4] == 'LGBM':
-            self.model.predict(X_predict, num_iteration=self.model.best_iteration)
-
-        prediction = self.model.predict(X_predict)
+            predictions = self.model.predict(X_predict, num_iteration=self.model.best_iteration)
+        else:
+            predictions = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
         # It makes a cleaner interface just to get just the single prediction back, rather than a list with the prediction hidden inside.
 
-        if isinstance(prediction, np.ndarray):
-            prediction = prediction.tolist()
-            if isinstance(prediction, float) or isinstance(prediction, int) or isinstance(prediction, str):
-                return prediction
+        if isinstance(predictions, np.ndarray):
+            predictions = predictions.tolist()
+            if isinstance(predictions, float) or isinstance(predictions, int) or isinstance(predictions, str):
+                return predictions
 
-        if len(prediction) == 1:
-            return prediction[0]
+        if len(predictions) == 1:
+            return predictions[0]
         else:
-            return prediction
+            return predictions
 
     # transform is initially designed to be used with feature_learning
     def transform(self, X):
