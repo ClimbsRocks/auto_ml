@@ -63,7 +63,7 @@ def _pickle_method(m):
 try:
     import copy_reg
     copy_reg.pickle(types.MethodType, _pickle_method)
-except ModuleNotFoundError:
+except:
     import copyreg
     copyreg.pickle(types.MethodType, _pickle_method)
 
