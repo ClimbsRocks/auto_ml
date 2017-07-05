@@ -1,6 +1,7 @@
 from collections import Iterable
 from copy import deepcopy
 import os
+import random
 
 import numpy as np
 import pandas as pd
@@ -87,6 +88,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 from keras.callbacks import EarlyStopping
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
+
+            elif self.model_name[:4] == 'LGBM':
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50)
+                print('self.model')
+                print(self.model)
+                print('self.model.best_iteration')
+                print(self.model.best_iteration)
+
 
             elif self.model_name[:16] == 'GradientBoosting':
                 if scipy.sparse.issparse(X_fit):
@@ -299,6 +309,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X = X.todense()
 
         try:
+            if self.model_name[:4] == 'LGBM':
+                self.model.predict_proba(X, num_iteration=self.model.best_iteration)
             predictions = self.model.predict_proba(X)
 
         except AttributeError as e:
@@ -346,6 +358,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         else:
             X_predict = X
+
+        if self.model_name[:4] == 'LGBM':
+            self.model.predict(X_predict, num_iteration=self.model.best_iteration)
 
         prediction = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
