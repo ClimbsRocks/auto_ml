@@ -80,8 +80,8 @@ def get_model_from_name(model_name, training_params=None):
         'AdaBoostRegressor': {'n_estimators': 10},
         'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
-        'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8},
-        'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8},
+        'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
+        'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
     }
