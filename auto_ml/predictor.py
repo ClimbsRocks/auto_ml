@@ -547,74 +547,107 @@ class Predictor(object):
             print('len(y) before SMOTing')
             print(len(y))
 
-            from imblearn.over_sampling import SMOTE
-            smote1 = SMOTE()
+            def oversample_minority_class(X_df, y):
+                from imblearn.over_sampling import ADASYN
+                adasyn_oversampler_minority_class = ADASYN(n_jobs=-1)
 
-            X_df, y = smote1.fit_sample(X_df, y)
-            print('X_df.shape after SMOTing 1')
-            print(X_df.shape)
-            print('len(y) after SMOTing 1')
-            print(len(y))
+                new_samples = []
+                new_ys = []
 
-            resampling_X = []
-            resampling_y = []
+                adasyn_oversampler_minority_class.fit(X_df, y)
 
-            temp_holdout_X = []
-            temp_holdout_y = []
+                for i in range(3):
+                    res_X, res_y = adasyn_oversampler_minority_class.sample(X_df, y)
 
-            chosen_class = y[0]
-            for idx, row in enumerate(X_df):
-                if y[idx] == chosen_class or random.random() > 0.5:
-                    resampling_X.append(X_df[idx])
-                    resampling_y.append(y[idx])
-                else:
-                    temp_holdout_X.append(X_df[idx])
-                    temp_holdout_y.append(y[idx])
+                    new_samples.append(res_X[:X_df.shape[0]])
+                    new_ys += list(res_y[:X_df.shape[0]])
 
+                new_samples = np.vstack(new_samples)
 
-            smote2 = SMOTE()
+                X_df = np.vstack((X_df, new_samples))
+                X_df = np.array(X_df)
+                y += new_ys
 
-            resampled_X, resampled_y = smote2.fit_sample(resampling_X, resampling_y)
-            resampled_X = list(resampled_X)
-            resampled_y = list(resampled_y)
+                print('X_df.shape after oversampling')
+                print(X_df.shape)
+                print('len(y) after oversampling')
+                print(len(y))
+                print('description of y after oversampling')
+                print(pd.Series(y).describe(include='all'))
+                print(pd.Series(y).value_counts())
 
+                return X_df, y
 
-            X_df = resampled_X + temp_holdout_X
-            y = resampled_y + temp_holdout_y
-
-            X_df = np.array(X_df)
+            X_df, y = oversample_minority_class(X_df, y)
+            X_df, y = oversample_minority_class(X_df, y)
 
 
-            smote3 = SMOTE()
-
-            X_df, y = smote3.fit_sample(X_df, y)
-
-            chosen_class = y[-1]
-            for idx, row in enumerate(X_df):
-                if y[idx] == chosen_class or random.random() > 0.5:
-                    resampling_X.append(X_df[idx])
-                    resampling_y.append(y[idx])
-                else:
-                    temp_holdout_X.append(X_df[idx])
-                    temp_holdout_y.append(y[idx])
 
 
-            smote4 = SMOTE()
+            # resampling_X = []
+            # resampling_y = []
 
-            resampled_X, resampled_y = smote4.fit_sample(resampling_X, resampling_y)
-            resampled_X = list(resampled_X)
-            resampled_y = list(resampled_y)
+            # temp_holdout_X = []
+            # temp_holdout_y = []
+
+            # chosen_class = y[0]
+            # for idx, row in enumerate(X_df):
+            #     if y[idx] == chosen_class or random.random() > 0.5:
+            #         resampling_X.append(X_df[idx])
+            #         resampling_y.append(y[idx])
+            #     else:
+            #         temp_holdout_X.append(X_df[idx])
+            #         temp_holdout_y.append(y[idx])
 
 
-            X_df = resampled_X + temp_holdout_X
-            y = resampled_y + temp_holdout_y
+            # smote2 = ADASYN(n_jobs=-1)
 
-            X_df = np.array(X_df)
+            # resampled_X, resampled_y = smote2.fit_sample(resampling_X, resampling_y)
+            # resampled_X = list(resampled_X)
+            # resampled_y = list(resampled_y)
 
 
-            smote5 = SMOTE()
+            # X_df = resampled_X + temp_holdout_X
+            # y = resampled_y + temp_holdout_y
 
-            X_df, y = smote5.fit_sample(X_df, y)
+            # X_df = np.array(X_df)
+            # print('X_df.shape after SMOTing 2')
+            # print(X_df.shape)
+            # print('len(y) after SMOTing 2')
+            # print(len(y))
+
+
+            # smote3 = ADASYN(n_jobs=-1)
+
+            # X_df, y = smote3.fit_sample(X_df, y)
+
+            # chosen_class = y[-1]
+            # for idx, row in enumerate(X_df):
+            #     if y[idx] == chosen_class or random.random() > 0.5:
+            #         resampling_X.append(X_df[idx])
+            #         resampling_y.append(y[idx])
+            #     else:
+            #         temp_holdout_X.append(X_df[idx])
+            #         temp_holdout_y.append(y[idx])
+
+
+            # print('Finished SMOTing 3')
+            # smote4 = ADASYN(n_jobs=-1)
+
+            # resampled_X, resampled_y = smote4.fit_sample(resampling_X, resampling_y)
+            # resampled_X = list(resampled_X)
+            # resampled_y = list(resampled_y)
+
+
+            # X_df = resampled_X + temp_holdout_X
+            # y = resampled_y + temp_holdout_y
+
+            # X_df = np.array(X_df)
+
+
+            # smote5 = ADASYN(n_jobs=-1)
+
+            # X_df, y = smote5.fit_sample(X_df, y)
 
 
             print('X_df.shape after SMOTing majority')
