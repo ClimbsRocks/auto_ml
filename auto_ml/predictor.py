@@ -538,6 +538,91 @@ class Predictor(object):
         else:
             X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
 
+        if True:
+        # if perform_oversampling == True:
+            print('Now SMOTing')
+            X_df = X_df.todense()
+            print('X_df.shape before SMOTing')
+            print(X_df.shape)
+            print('len(y) before SMOTing')
+            print(len(y))
+
+            from imblearn.over_sampling import SMOTE
+            smote1 = SMOTE()
+
+            X_df, y = smote1.fit_sample(X_df, y)
+            print('X_df.shape after SMOTing 1')
+            print(X_df.shape)
+            print('len(y) after SMOTing 1')
+            print(len(y))
+
+            resampling_X = []
+            resampling_y = []
+
+            temp_holdout_X = []
+            temp_holdout_y = []
+
+            chosen_class = y[0]
+            for idx, row in enumerate(X_df):
+                if y[idx] == chosen_class or random.random() > 0.5:
+                    resampling_X.append(X_df[idx])
+                    resampling_y.append(y[idx])
+                else:
+                    temp_holdout_X.append(X_df[idx])
+                    temp_holdout_y.append(y[idx])
+
+
+            smote2 = SMOTE()
+
+            resampled_X, resampled_y = smote2.fit_sample(resampling_X, resampling_y)
+            resampled_X = list(resampled_X)
+            resampled_y = list(resampled_y)
+
+
+            X_df = resampled_X + temp_holdout_X
+            y = resampled_y + temp_holdout_y
+
+            X_df = np.array(X_df)
+
+
+            smote3 = SMOTE()
+
+            X_df, y = smote3.fit_sample(X_df, y)
+
+            chosen_class = y[-1]
+            for idx, row in enumerate(X_df):
+                if y[idx] == chosen_class or random.random() > 0.5:
+                    resampling_X.append(X_df[idx])
+                    resampling_y.append(y[idx])
+                else:
+                    temp_holdout_X.append(X_df[idx])
+                    temp_holdout_y.append(y[idx])
+
+
+            smote4 = SMOTE()
+
+            resampled_X, resampled_y = smote4.fit_sample(resampling_X, resampling_y)
+            resampled_X = list(resampled_X)
+            resampled_y = list(resampled_y)
+
+
+            X_df = resampled_X + temp_holdout_X
+            y = resampled_y + temp_holdout_y
+
+            X_df = np.array(X_df)
+
+
+            smote5 = SMOTE()
+
+            X_df, y = smote5.fit_sample(X_df, y)
+
+
+            print('X_df.shape after SMOTing majority')
+            print(X_df.shape)
+            # print([len(X_df), len(X_df[0])])
+            print('len(y) after SMOTing majority')
+            print(len(y))
+
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
 
