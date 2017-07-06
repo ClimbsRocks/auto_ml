@@ -90,13 +90,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
             elif self.model_name[:4] == 'LGBM':
+                eval_metric = None
+                if self.type_of_estimator == 'regressor':
+                    eval_metric = 'rmse'
                 X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50)
-                print('self.model')
-                print(self.model)
-                print('self.model.best_iteration')
-                print(self.model.best_iteration)
-
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
 
             elif self.model_name[:16] == 'GradientBoosting':
                 if scipy.sparse.issparse(X_fit):
@@ -131,7 +129,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                             best_model = deepcopy(self.model)
                         else:
                             num_worse_rounds += 1
-
+                        print('[' + str(num_iter) + '] random_holdout_set_from_training_data\'s score is: ' + str(round(val_loss, 3)))
                         if num_worse_rounds >= patience:
                             break
                 except KeyboardInterrupt:
