@@ -90,10 +90,18 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
             elif self.model_name[:4] == 'LGBM':
-                eval_metric = None
+
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
                 if self.type_of_estimator == 'regressor':
                     eval_metric = 'rmse'
-                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+                elif self.type_of_estimator == 'classifier':
+                    if len(set(y_test)) > 2:
+                        eval_metric = 'multi_logloss'
+                    else:
+                        eval_metric = 'binary_logloss'
+
+
                 self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
 
             elif self.model_name[:16] == 'GradientBoosting':
@@ -381,6 +389,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         predicted_features = list(predicted_features)
 
         X = scipy.sparse.hstack([X, predicted_features], format='csr')
+        return X
+
+    # Allows the user to get the fully transformed data
+    def transform_only(self, X):
         return X
 
     def predict_uncertainty(self, X):
