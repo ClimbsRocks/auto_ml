@@ -32,7 +32,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, X_eval=None, y_eval=None):
 
         self.model = model
         self.model_name = model_name
@@ -44,6 +44,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.feature_learning = feature_learning
         self.uncertainty_model = uncertainty_model
         self.uc_results = uc_results
+        self.X_eval = X_eval
+        self.y_eval = y_eval
 
 
         if self.type_of_estimator == 'classifier':
@@ -91,7 +93,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             elif self.model_name[:4] == 'LGBM':
 
-                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+                X_fit, X_test, y, y_test = self.get_holdout_set(X_fit, y)
 
                 if self.type_of_estimator == 'regressor':
                     eval_metric = 'rmse'
@@ -112,7 +114,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 best_val_loss = -10000000000
                 num_worse_rounds = 0
                 best_model = deepcopy(self.model)
-                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
+                X_fit, X_test, y, y_test = self.get_holdout_set(X_fit, y)
 
                 # Add a variable number of trees each time, depending how far into the process we are
                 num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
@@ -152,6 +155,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 self.model.fit(X_fit, y)
 
         except TypeError as e:
+            print(e)
+            raise(e)
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
             self.model.fit(X_fit, y)
@@ -160,6 +165,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('Stopping training at this point because we heard a KeyboardInterrupt')
             print('If the model is functional at this point, we will output the model in its latest form')
             print('Note that not all models can be interrupted and still used, and that this feature generally is an unofficial beta-release feature that is known to fail on occasion')
+            pass
+
+        try:
+            del self.X_eval
+            del self.y_eval
+        except:
             pass
 
         return self
@@ -467,6 +478,19 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def score_uncertainty(self, X, y, verbose=False):
         return self.uncertainty_model.score(X, y, verbose=False)
+
+
+    def get_holdout_set(self, X_fit, y):
+
+        if self.X_eval is not None:
+            print('Using the previously provided evaluation data to determine when to stop training the model to avoid overfitting')
+            return X_fit, self.X_eval, y, self.y_eval
+
+        else:
+            X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
+
+        return X_fit, X_test, y, y_test
 
 
 
