@@ -170,7 +170,7 @@ class Predictor(object):
             #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
             final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, X_eval=self.X_eval, y_eval=self.y_eval)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -296,7 +296,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, X_eval=None, y_eval=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -304,6 +304,9 @@ class Predictor(object):
         self.ml_for_analytics = ml_for_analytics
         self.X_test = X_test
         self.y_test = y_test
+
+        self.X_eval = X_eval
+        self.y_eval = y_eval
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
 
@@ -522,9 +525,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, X_eval=None, y_eval=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, advanced_analytics=advanced_analytics, X_eval=X_eval, y_eval=y_eval)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -548,19 +551,34 @@ class Predictor(object):
             print(len(y))
 
             def oversample_minority_class(X_df, y):
-                from imblearn.over_sampling import ADASYN
-                adasyn_oversampler_minority_class = ADASYN(n_jobs=-1)
+                from imblearn.over_sampling import ADASYN, SMOTE
+                from imblearn.combine import SMOTETomek, SMOTEENN
+                samplers = [
+                    # ADASYN(n_jobs=-1),
+                    SMOTETomek(smote=SMOTE(n_jobs=-1)),
+                    # SMOTEENN(smote=SMOTE(n_jobs=-1)),
+                    SMOTE(n_jobs=-1),
+                    SMOTE(n_jobs=-1, kind='borderline1'),
+                    SMOTE(n_jobs=-1, kind='borderline2')
+                ]
+                # samplers = [ADASYN(n_jobs=-1), SMOTETomek(smote=SMOTE(n_jobs=-1)), SMOTEENN(smote=SMOTE(n_jobs=-1)), SMOTE(n_jobs=-1), SMOTE(n_jobs=-1, kind='borderline1'), SMOTE(n_jobs=-1, kind='borderline2')]
 
                 new_samples = []
                 new_ys = []
 
-                adasyn_oversampler_minority_class.fit(X_df, y)
+                for sampler in samplers:
+                    print('fitting oversampler:')
+                    print(sampler)
+                    sampler.fit(X_df, y)
 
-                for i in range(3):
-                    res_X, res_y = adasyn_oversampler_minority_class.sample(X_df, y)
+                for sampler in samplers:
+                    print('*****************************************')
+                    for i in range(3):
+                        res_X, res_y = sampler.sample(X_df, y)
+                        print(float(np.sum(res_X)))
 
-                    new_samples.append(res_X[:X_df.shape[0]])
-                    new_ys += list(res_y[:X_df.shape[0]])
+                        new_samples.append(res_X[:X_df.shape[0]])
+                        new_ys += list(res_y[:X_df.shape[0]])
 
                 new_samples = np.vstack(new_samples)
 
@@ -578,8 +596,14 @@ class Predictor(object):
 
                 return X_df, y
 
+            if self.X_eval is None:
+                print('Splitting off some of our original training data to not make synthetic data with.')
+                print('This data will then be used as our evaluation data, to help us avoid overfitting, and make sure the patterns we learn from the synthetic data generalize to at least the training set.')
+                X_df, X_eval, y, y_eval = train_test_split(X_df, y, test_size=0.15)
+                self.X_eval = np.array(X_eval)
+                self.y_eval = y_eval
             X_df, y = oversample_minority_class(X_df, y)
-            X_df, y = oversample_minority_class(X_df, y)
+            # X_df, y = oversample_minority_class(X_df, y)
 
 
 
