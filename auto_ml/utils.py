@@ -165,3 +165,12 @@ class ExtendedPipeline(Pipeline):
         return self.steps[-1][-1].score_uncertainty(Xt)
 
 
+    @if_delegate_has_method(delegate='_final_estimator')
+    def transform_only(self, X):
+        Xt = X
+        for name, transform in self.steps[:-1]:
+            if transform is not None:
+                Xt = transform.transform(Xt)
+        return self.steps[-1][-1].transform_only(Xt)
+
+
