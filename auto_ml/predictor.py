@@ -573,7 +573,7 @@ class Predictor(object):
 
                 for sampler in samplers:
                     print('*****************************************')
-                    for i in range(3):
+                    for i in range(5):
                         res_X, res_y = sampler.sample(X_df, y)
                         print(float(np.sum(res_X)))
 
@@ -879,6 +879,9 @@ class Predictor(object):
         X_df = ppl.fit_transform(X_df, y)
 
         self.transformation_pipeline = self._consolidate_pipeline(ppl)
+
+        if self.X_eval is not None and (isinstance(self.X_eval, list) or isinstance(self.X_eval, pd.DataFrame)):
+            self.X_eval = self.transformation_pipeline.transform(self.X_eval)
 
         return X_df
 
