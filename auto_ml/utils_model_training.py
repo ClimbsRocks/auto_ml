@@ -155,8 +155,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 self.model.fit(X_fit, y)
 
         except TypeError as e:
-            print(e)
-            raise(e)
             if scipy.sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
             self.model.fit(X_fit, y)
