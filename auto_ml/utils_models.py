@@ -458,9 +458,9 @@ def get_search_params(model_name):
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             # , 'subsample_freq': [0.3, 0.5, 0.7, 0.9, 1.0]
-            , 'learning_rate': [0.01, 0.05, 0.1]
+            # , 'learning_rate': [0.01, 0.05, 0.1]
             # , 'subsample_for_bin': [1000, 10000]
-            , 'n_estimators': [5, 20, 50, 200]
+            # , 'n_estimators': [5, 20, 50, 200]
 
         }
 
@@ -470,9 +470,9 @@ def get_search_params(model_name):
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             # , 'subsample_freq': [0.3, 0.5, 0.7, 0.9, 1.0]
-            , 'learning_rate': [0.01, 0.05, 0.1]
+            # , 'learning_rate': [0.01, 0.05, 0.1]
             # , 'subsample_for_bin': [1000, 10000]
-            , 'n_estimators': [5, 20, 50, 200]
+            # , 'n_estimators': [5, 20, 50, 200]
 
         }
 
