@@ -1437,6 +1437,10 @@ class Predictor(object):
         return score
 
 
+    def transform_only(self, X):
+        return self.transformation_pipeline.transform(X)
+
+
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
         def save_one_step(pipeline_step, used_deep_learning):

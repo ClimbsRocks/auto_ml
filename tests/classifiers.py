@@ -42,6 +42,8 @@ def optimize_final_model_classification(model_name=None):
 
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.235
+    if model_name == 'LGBMClassifier':
+        lower_bound = -0.221
 
     assert lower_bound < test_score < -0.17
 
@@ -429,7 +431,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     if model_name == 'GradientBoostingClassifier' or model_name is None:
         lower_bound = -0.25
     if model_name == 'LGBMClassifier':
-        lower_bound = -0.221
+        lower_bound = -0.23
     if model_name == 'XGBClassifier':
         lower_bound = -0.25
 

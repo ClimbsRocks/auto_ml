@@ -1,6 +1,7 @@
 from collections import Iterable
 from copy import deepcopy
 import os
+import random
 
 import numpy as np
 import pandas as pd
@@ -88,6 +89,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
+            elif self.model_name[:4] == 'LGBM':
+
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
+                if self.type_of_estimator == 'regressor':
+                    eval_metric = 'rmse'
+                elif self.type_of_estimator == 'classifier':
+                    if len(set(y_test)) > 2:
+                        eval_metric = 'multi_logloss'
+                    else:
+                        eval_metric = 'binary_logloss'
+
+
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
+
             elif self.model_name[:16] == 'GradientBoosting':
                 if scipy.sparse.issparse(X_fit):
                     X_fit = X_fit.todense()
@@ -121,7 +137,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                             best_model = deepcopy(self.model)
                         else:
                             num_worse_rounds += 1
-
+                        print('[' + str(num_iter) + '] random_holdout_set_from_training_data\'s score is: ' + str(round(val_loss, 3)))
                         if num_worse_rounds >= patience:
                             break
                 except KeyboardInterrupt:
@@ -299,7 +315,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X = X.todense()
 
         try:
-            predictions = self.model.predict_proba(X)
+            if self.model_name[:4] == 'LGBM':
+                predictions = self.model.predict_proba(X, num_iteration=self.model.best_iteration)
+            else:
+                predictions = self.model.predict_proba(X)
 
         except AttributeError as e:
             try:
@@ -347,19 +366,22 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             X_predict = X
 
-        prediction = self.model.predict(X_predict)
+        if self.model_name[:4] == 'LGBM':
+            predictions = self.model.predict(X_predict, num_iteration=self.model.best_iteration)
+        else:
+            predictions = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
         # It makes a cleaner interface just to get just the single prediction back, rather than a list with the prediction hidden inside.
 
-        if isinstance(prediction, np.ndarray):
-            prediction = prediction.tolist()
-            if isinstance(prediction, float) or isinstance(prediction, int) or isinstance(prediction, str):
-                return prediction
+        if isinstance(predictions, np.ndarray):
+            predictions = predictions.tolist()
+            if isinstance(predictions, float) or isinstance(predictions, int) or isinstance(predictions, str):
+                return predictions
 
-        if len(prediction) == 1:
-            return prediction[0]
+        if len(predictions) == 1:
+            return predictions[0]
         else:
-            return prediction
+            return predictions
 
     # transform is initially designed to be used with feature_learning
     def transform(self, X):
@@ -367,6 +389,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         predicted_features = list(predicted_features)
 
         X = scipy.sparse.hstack([X, predicted_features], format='csr')
+        return X
+
+    # Allows the user to get the fully transformed data
+    def transform_only(self, X):
         return X
 
     def predict_uncertainty(self, X):

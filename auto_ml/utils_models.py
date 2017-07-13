@@ -80,8 +80,8 @@ def get_model_from_name(model_name, training_params=None):
         'AdaBoostRegressor': {'n_estimators': 10},
         'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
         'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
-        'LGBMRegressor': {},
-        'LGBMClassifier': {},
+        'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
+        'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
     }
@@ -454,25 +454,25 @@ def get_search_params(model_name):
 
         , 'LGBMClassifier': {
             # 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
-            'num_leaves': [10, 20, 30, 40, 50, 200]
+            'num_leaves': [2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 50, 125, 200]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             # , 'subsample_freq': [0.3, 0.5, 0.7, 0.9, 1.0]
-            , 'learning_rate': [0.01, 0.05, 0.1]
+            # , 'learning_rate': [0.01, 0.05, 0.1]
             # , 'subsample_for_bin': [1000, 10000]
-            , 'n_estimators': [5, 20, 50, 200]
+            # , 'n_estimators': [5, 20, 50, 200]
 
         }
 
         , 'LGBMRegressor': {
             # 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
-            'num_leaves': [10, 20, 30, 40, 50, 200]
+            'num_leaves': [2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 50, 125, 200]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             # , 'subsample_freq': [0.3, 0.5, 0.7, 0.9, 1.0]
-            , 'learning_rate': [0.01, 0.05, 0.1]
+            # , 'learning_rate': [0.01, 0.05, 0.1]
             # , 'subsample_for_bin': [1000, 10000]
-            , 'n_estimators': [5, 20, 50, 200]
+            # , 'n_estimators': [5, 20, 50, 200]
 
         }
 
