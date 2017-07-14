@@ -118,7 +118,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
 
                 # Add a variable number of trees each time, depending how far into the process we are
-                num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
+                if os.environ.get('is_test_suite', False) == 'True':
+                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3))
+                else:
+                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
 
                 try:
                     for num_iter in num_iters:
@@ -397,12 +400,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             raise ValueError('This model was not trained to predict intervals')
 
-        base_prediction = self.model.predict(X)
+        base_prediction = self.predict(X)
         lower_prediction = self.interval_predictors[0].predict(X)
         median_prediction = self.interval_predictors[1].predict(X)
         upper_prediction = self.interval_predictors[2].predict(X)
 
-        if len(X) == 1:
+        if scipy.sparse.issparse(X):
+            len_input = X.shape[0]
+        else:
+            len_input = len(X)
+
+        if len_input == 1:
             if return_type is None or return_type == 'dict':
                 return {
                     'prediction': base_prediction
