@@ -1375,9 +1375,10 @@ class Predictor(object):
         return predicted_vals
 
     def predict_intervals(self, prediction_data, return_type=None):
+
         prediction_data = prediction_data.copy()
 
-        return self.trained_pipeline.predict_intervals(prediction_data, return_type=None)
+        return self.trained_pipeline.predict_intervals(prediction_data, return_type=return_type)
 
 
     def predict_proba(self, prediction_data):

@@ -180,6 +180,7 @@ class ExtendedPipeline(Pipeline):
         for name, transform in self.steps[:-1]:
             if transform is not None:
                 Xt = transform.transform(Xt)
+
         return self.steps[-1][-1].predict_intervals(Xt, return_type=return_type)
 
 

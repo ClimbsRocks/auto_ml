@@ -393,6 +393,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return predictions
 
     def predict_intervals(self, X, return_type=None):
+
         if self.interval_predictors is None:
             print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
             print('This model was not trained to predict intervals')
