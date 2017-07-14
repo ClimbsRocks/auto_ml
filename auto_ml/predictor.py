@@ -785,7 +785,12 @@ class Predictor(object):
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
-                col_result['FR_Incrementing'] = np.mean(predictions) - np.mean(base_predictions)
+                deltas = []
+                for pred_idx, pred in enumerate(predictions):
+                    delta = pred - base_predictions[pred_idx]
+                    deltas.append(delta)
+                col_result['FR_Incrementing'] = np.mean(deltas)
+                col_result['FRI_abs'] = np.mean(np.absolute(deltas))
 
 
                 X[:, idx] -= 2 * col_delta
@@ -795,7 +800,13 @@ class Predictor(object):
                     predictions = model.predict_proba(X)
                     predictions = [x[1] for x in predictions]
 
-                col_result['FR_Decrementing'] = np.mean(predictions) - np.mean(base_predictions)
+                deltas = []
+                for pred_idx, pred in enumerate(predictions):
+                    delta = pred - base_predictions[pred_idx]
+                    deltas.append(delta)
+                col_result['FR_Decrementing'] = np.mean(deltas)
+                col_result['FRD_abs'] = np.mean(np.absolute(deltas))
+
                 # Put the column back to it's original state
                 X[:, idx] += col_delta
 
@@ -1164,14 +1175,14 @@ class Predictor(object):
         # Sort by coefficients or feature importances
         try:
             df_results = df_results.sort_values(by='Importance', ascending=False)
-            df_results = df_results[['Feature Name', 'Importance', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
+            df_results = df_results[['Feature Name', 'Importance', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_abs', 'FRI_abs']]
             df_results = df_results.reset_index(drop=True)
             df_results = df_results.head(n=100)
             df_results = df_results.sort_values(by='Importance', ascending=True)
         except:
             try:
                 df_results = df_results.sort_values(by='Coefficients', ascending=False)
-                df_results = df_results[['Feature Name', 'Coefficients', 'Delta', 'FR_Decrementing', 'FR_Incrementing']]
+                df_results = df_results[['Feature Name', 'Coefficients', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_abs', 'FRI_abs']]
                 df_results = df_results.reset_index(drop=True)
                 df_results = df_results.head(n=100)
                 df_results = df_results.sort_values(by='Coefficients', ascending=True)
@@ -1197,6 +1208,10 @@ class Predictor(object):
         print('     Explanation: Represents how much the predicted output values respond to subtracting one FR_delta amount from every value in this column')
         print('FR_Incrementing = Feature Response From Incrementing Values In This Column By One FR_delta')
         print('     Explanation: Represents how much the predicted output values respond to adding one FR_delta amount to every value in this column')
+        print('FRD_abs = Feature Response From Decrementing Avg Absolute Change')
+        print('     Explanation: What is the average absolute change in predicted output values to subtracting one FR_delta amount to every value in this column. Useful for seeing if output is sensitive to a feature, but not in a uniformly positive or negative way')
+        print('FRI_abs = Feature Response From Incrementing Avg Absolute Change')
+        print('     Explanation: What is the average absolute change in predicted output values to adding one FR_delta amount to every value in this column. Useful for seeing if output is sensitive to a feature, but not in a uniformly positive or negative way')
         print('*******\n')
 
         df_results.to_csv(analytics_file_name)
