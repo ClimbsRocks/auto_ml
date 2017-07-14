@@ -32,7 +32,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001):
 
         self.model = model
         self.model_name = model_name
@@ -44,6 +44,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.feature_learning = feature_learning
         self.uncertainty_model = uncertainty_model
         self.uc_results = uc_results
+        self.training_prediction_intervals = training_prediction_intervals
+        self.min_step_improvement = min_step_improvement
 
 
         if self.type_of_estimator == 'classifier':
@@ -126,12 +128,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
                         self.model.fit(X_fit, y)
 
-                        try:
-                            val_loss = self._scorer.score(self, X_test, y_test)
-                        except Exception as e:
+                        if self.training_prediction_intervals == True:
                             val_loss = self.model.score(X_test, y_test)
+                        else:
+                            try:
+                                val_loss = self._scorer.score(self, X_test, y_test)
+                            except Exception as e:
+                                val_loss = self.model.score(X_test, y_test)
 
-                        if val_loss > best_val_loss:
+                        if val_loss - self.min_step_improvement > best_val_loss:
                             best_val_loss = val_loss
                             num_worse_rounds = 0
                             best_model = deepcopy(self.model)
