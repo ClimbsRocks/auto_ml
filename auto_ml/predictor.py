@@ -171,6 +171,8 @@ class Predictor(object):
         else:
 
             training_prediction_intervals = False
+            params = None
+
             if prediction_interval is not False:
                 params = self.training_params.copy()
                 params['loss'] = 'quantile'
