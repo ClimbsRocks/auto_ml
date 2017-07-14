@@ -578,18 +578,6 @@ class Predictor(object):
 
             median_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=0.5)
 
-            predictions_upper = upper_interval_predictor.predict(X_df)
-            predictions_lower = lower_interval_predictor.predict(X_df)
-            predictions_median = median_interval_predictor.predict(X_df)
-            print('Here are some example upper predictions')
-            print([round(row, 1) for row in predictions_upper[:10]])
-            print('And their actual values')
-            print(y[:10])
-            print('median_predictions')
-            print([round(row, 1) for row in predictions_median[:10]])
-            print('Here are some example lower predictions')
-            print([round(row, 1) for row in predictions_lower[:10]])
-
             # TODO: figure out what the heck to do with this now!
             # Thoughts:
                 # probably add it to our FinalModelATC object inside the trained_final_model
@@ -1378,6 +1366,11 @@ class Predictor(object):
         predicted_vals = self.trained_pipeline.predict_uncertainty(prediction_data)
 
         return predicted_vals
+
+    def predict_intervals(self, prediction_data):
+        prediction_data = prediction_data.copy()
+
+        return self.trained_pipeline.predict_intervals(prediction_data)
 
 
     def predict_proba(self, prediction_data):
