@@ -114,7 +114,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer, and adds final_model back in if we did grid search on it
-    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model'):
+    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False):
 
         pipeline_list = []
 
@@ -169,8 +169,22 @@ class Predictor(object):
             # else:
             #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
-            final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model)))
+
+            training_prediction_intervals = False
+            params = None
+
+            if prediction_interval is not False:
+                params = {}
+                params['loss'] = 'quantile'
+                params['alpha'] = prediction_interval
+                training_prediction_intervals = True
+
+            elif feature_learning == False:
+                # Do not pass in our training_params for the feature_learning model
+                params = self.training_params
+
+            final_model = utils_models.get_model_from_name(model_name, training_params=params)
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -296,7 +310,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -361,6 +375,18 @@ class Predictor(object):
 
 
         self.perform_feature_selection = perform_feature_selection
+
+        if predict_intervals is not None and prediction_intervals is None:
+            prediction_intervals = predict_intervals
+
+        if prediction_intervals is None:
+            self.calculate_prediction_intervals = False
+        else:
+            self.calculate_prediction_intervals = True
+            if prediction_intervals == True:
+                self.prediction_intervals = [0.05, 0.95]
+            else:
+                self.prediction_intervals = prediction_intervals
 
         self.train_uncertainty_model = train_uncertainty_model
         if self.train_uncertainty_model == True and self.type_of_estimator == 'classifier':
@@ -522,9 +548,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -547,6 +573,24 @@ class Predictor(object):
         # Calibrate the probability predictions from our final model
         if self.calibrate_final_model is True:
             self.trained_final_model.model = self._calibrate_final_model(self.trained_final_model.model, X_test, y_test)
+
+        if self.calculate_prediction_intervals is True:
+            # TODO: parallelize these!
+            lower_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=self.prediction_intervals[0])
+
+            median_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=0.5)
+
+            upper_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=self.prediction_intervals[1])
+
+            interval_predictors = [lower_interval_predictor, median_interval_predictor, upper_interval_predictor]
+            self.trained_final_model.interval_predictors = interval_predictors
+
+            # TODO: figure out what the heck to do with this now!
+            # Thoughts:
+                # probably add it to our FinalModelATC object inside the trained_final_model
+                # Make sure we've got a predict_intervals method on that object
+                # make sure we've got the same method here on predictor
+
 
         self.trained_pipeline = self._consolidate_pipeline(self.transformation_pipeline, self.trained_final_model)
 
@@ -701,15 +745,18 @@ class Predictor(object):
         return calibrated_classifier
 
 
-    def fit_single_pipeline(self, X_df, y, model_name, feature_learning=False):
+    def fit_single_pipeline(self, X_df, y, model_name, feature_learning=False, prediction_interval=False):
 
-        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning)
+        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, prediction_interval=prediction_interval)
         ppl = full_pipeline.named_steps['final_model']
         if self.verbose:
             print('\n\n********************************************************************************************')
             if self.name is not None:
                 print(self.name)
-            print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+            if prediction_interval is not False:
+                print('About to fit a {} quantile regressor to predict the prediction_interval for the {}th percentile'.format(model_name, int(prediction_interval * 100)))
+            else:
+                print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
             print('Started at:')
             start_time = datetime.datetime.now().replace(microsecond=0)
             print(start_time)
@@ -926,11 +973,15 @@ class Predictor(object):
         return grid_search_params
 
     # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
-    def train_ml_estimator(self, estimator_names, scoring, X_df, y, feature_learning=False):
+    def train_ml_estimator(self, estimator_names, scoring, X_df, y, feature_learning=False, prediction_interval=False):
+
+        if prediction_interval is not False:
+            estimator_names = ['GradientBoostingRegressor']
+            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=prediction_interval)
 
         # Use Case 1: Super straightforward: just train a single, non-optimized model
-        if len(estimator_names) == 1 and self.optimize_final_model != True:
-            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning)
+        elif len(estimator_names) == 1 and self.optimize_final_model != True:
+            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=False)
 
         # Use Case 2: Compare a bunch of models, but don't optimize any of them
         elif len(estimator_names) > 1 and self.optimize_final_model != True:
@@ -1337,6 +1388,12 @@ class Predictor(object):
         predicted_vals = self.trained_pipeline.predict_uncertainty(prediction_data)
 
         return predicted_vals
+
+    def predict_intervals(self, prediction_data, return_type=None):
+
+        prediction_data = prediction_data.copy()
+
+        return self.trained_pipeline.predict_intervals(prediction_data, return_type=return_type)
 
 
     def predict_proba(self, prediction_data):

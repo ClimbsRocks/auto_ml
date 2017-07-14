@@ -32,7 +32,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None):
 
         self.model = model
         self.model_name = model_name
@@ -44,6 +44,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.feature_learning = feature_learning
         self.uncertainty_model = uncertainty_model
         self.uc_results = uc_results
+        self.training_prediction_intervals = training_prediction_intervals
+        self.min_step_improvement = min_step_improvement
+        self.interval_predictors = interval_predictors
 
 
         if self.type_of_estimator == 'classifier':
@@ -115,7 +118,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
 
                 # Add a variable number of trees each time, depending how far into the process we are
-                num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
+                if os.environ.get('is_test_suite', False) == 'True':
+                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3))
+                else:
+                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
 
                 try:
                     for num_iter in num_iters:
@@ -126,12 +132,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
                         self.model.fit(X_fit, y)
 
-                        try:
-                            val_loss = self._scorer.score(self, X_test, y_test)
-                        except Exception as e:
+                        if self.training_prediction_intervals == True:
                             val_loss = self.model.score(X_test, y_test)
+                        else:
+                            try:
+                                val_loss = self._scorer.score(self, X_test, y_test)
+                            except Exception as e:
+                                val_loss = self.model.score(X_test, y_test)
 
-                        if val_loss > best_val_loss:
+                        if val_loss - self.min_step_improvement > best_val_loss:
                             best_val_loss = val_loss
                             num_worse_rounds = 0
                             best_model = deepcopy(self.model)
@@ -382,6 +391,60 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return predictions[0]
         else:
             return predictions
+
+    def predict_intervals(self, X, return_type=None):
+
+        if self.interval_predictors is None:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('This model was not trained to predict intervals')
+            print('Please follow the documentation to tell this model at training time to learn how to predict intervals')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('This model was not trained to predict intervals')
+
+        base_prediction = self.predict(X)
+        lower_prediction = self.interval_predictors[0].predict(X)
+        median_prediction = self.interval_predictors[1].predict(X)
+        upper_prediction = self.interval_predictors[2].predict(X)
+
+        if scipy.sparse.issparse(X):
+            len_input = X.shape[0]
+        else:
+            len_input = len(X)
+
+        if len_input == 1:
+            if return_type is None or return_type == 'dict':
+                return {
+                    'prediction': base_prediction
+                    , 'prediction_lower': lower_prediction
+                    , 'prediction_median': median_prediction
+                    , 'prediction_upper': upper_prediction
+                }
+            else:
+                return [base_prediction, lower_prediction, median_prediction, upper_prediction]
+        else:
+            if return_type is None or return_type == 'list':
+                # kinda tough...
+                results = []
+                for idx in range(len(base_prediction)):
+                    row_result = []
+                    row_result.append(base_prediction[idx])
+                    row_result.append(lower_prediction[idx])
+                    row_result.append(median_prediction[idx])
+                    row_result.append(upper_prediction[idx])
+                    results.append(row_result)
+
+                return results
+
+            elif return_type == 'df':
+                dict_for_df = {
+                    'prediction': base_prediction
+                    , 'prediction_lower': lower_prediction
+                    , 'prediction_median': median_prediction
+                    , 'prediction_upper': upper_prediction
+                }
+                df = pd.DataFrame(dict_for_df)
+                return df
+
 
     # transform is initially designed to be used with feature_learning
     def transform(self, X):

@@ -115,6 +115,25 @@ def test_input_df_unmodified():
 
     assert -3.35 < test_score < -2.8
 
+def test_model_uses_user_provided_training_params(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    try:
+        ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', training_params={'this_param_is_not_valid': True})
+        assert False
+    except ValueError as e:
+        assert True
+
 
 def test_is_backwards_compatible_with_models_trained_using_1_9_6():
     np.random.seed(0)
