@@ -174,3 +174,12 @@ class ExtendedPipeline(Pipeline):
         return self.steps[-1][-1].transform_only(Xt)
 
 
+    @if_delegate_has_method(delegate='_final_estimator')
+    def predict_intervals(self, X):
+        Xt = X
+        for name, transform in self.steps[:-1]:
+            if transform is not None:
+                Xt = transform.transform(Xt)
+        return self.steps[-1][-1].predict_intervals(Xt)
+
+
