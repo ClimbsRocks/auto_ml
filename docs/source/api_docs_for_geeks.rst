@@ -92,9 +92,9 @@ auto_ml
 
 .. py:method:: ml_predictor.predict_intervals(prediction_rows, return_type='df')
 
-  :rtype: dict for single predictions, list of lists if getting predictions on multiple rows. The return type can also be specified using return_type below. The list of predicted values for each row will always be in this order: ``[prediction, lower_prediction, median_prediction, upper_prediction]``. Similarly, each returned dict will always have the properties ``{'prediction': None', 'lower_prediction': None, 'median_prediction': None, 'upper_prediction': None}``
+  :rtype: dict for single predictions, list of lists if getting predictions on multiple rows. The return type can also be specified using return_type below. The list of predicted values for each row will always be in this order: ``[prediction, prediction_lower, prediction_median, prediction_upper]``. Similarly, each returned dict will always have the properties ``{'prediction': None', 'prediction_lower': None, 'prediction_median': None, 'prediction_upper': None}``
 
-  :param return_type: [Default- dict for single prediction, list of lists for multiple predictions] Accepted values are ``'df', 'list', 'dict'``. If ``'df'``, we will return a pandas DataFrame, with the columns ``[prediction, lower_prediction, median_prediction, upper_prediction]``. If ``'list'``, we will return a single (non-nested) list for single predictions, and a list of lists for batch predictions. If ``'dict'``, we will return a single (non-nested) dictionary for single predictions, and a list of dictionaries for batch predictions.
+  :param return_type: [Default- dict for single prediction, list of lists for multiple predictions] Accepted values are ``'df', 'list', 'dict'``. If ``'df'``, we will return a pandas DataFrame, with the columns ``[prediction, prediction_lower, prediction_median, prediction_upper]``. If ``'list'``, we will return a single (non-nested) list for single predictions, and a list of lists for batch predictions. If ``'dict'``, we will return a single (non-nested) dictionary for single predictions, and a list of dictionaries for batch predictions.
 
 
 .. py:method:: ml_predictor.save(file_name='auto_ml_saved_pipeline.pkl', verbose=True)
