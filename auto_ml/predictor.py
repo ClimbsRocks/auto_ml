@@ -114,7 +114,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer, and adds final_model back in if we did grid search on it
-    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_intervals=False):
+    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False):
 
         pipeline_list = []
 
@@ -169,11 +169,20 @@ class Predictor(object):
             # else:
             #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
-            if prediction_intervals == True:
+
+            training_prediction_intervals = False
+            if prediction_interval is not False:
                 params = self.training_params.copy()
                 params['loss'] = 'quantile'
-            final_model = utils_models.get_model_from_name(model_name, training_params=self.training_params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model)))
+                params['alpha'] = prediction_interval
+                training_prediction_intervals = True
+
+            elif feature_learning == False:
+                # Do not pass in our training_params for the feature_learning model
+                params = self.training_params
+
+            final_model = utils_models.get_model_from_name(model_name, training_params=params)
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -365,9 +374,13 @@ class Predictor(object):
 
         self.perform_feature_selection = perform_feature_selection
         if prediction_intervals is None:
-            self.prediction_intervals = False
+            self.calculate_prediction_intervals = False
         else:
-            self.prediction_intervals = prediction_intervals
+            self.calculate_prediction_intervals = True
+            if prediction_intervals == True:
+                self.prediction_intervals = [0.05, 0.95]
+            else:
+                self.prediction_intervals = prediction_intervals
 
         self.train_uncertainty_model = train_uncertainty_model
         if self.train_uncertainty_model == True and self.type_of_estimator == 'classifier':
@@ -555,8 +568,32 @@ class Predictor(object):
         if self.calibrate_final_model is True:
             self.trained_final_model.model = self._calibrate_final_model(self.trained_final_model.model, X_test, y_test)
 
-        if self.prediction_intervals is True:
-            self.train_ml_estimator(estimator_names, self._scorer, X_df, y, prediction_intervals=True)
+        if self.calculate_prediction_intervals is True:
+            # TODO: parallelize these!
+            lower_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=self.prediction_intervals[0])
+
+            upper_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=self.prediction_intervals[1])
+
+            median_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=0.5)
+
+            predictions_upper = upper_interval_predictor.predict(X_df)
+            predictions_lower = lower_interval_predictor.predict(X_df)
+            predictions_median = median_interval_predictor.predict(X_df)
+            print('Here are some example upper predictions')
+            print([round(row, 1) for row in predictions_upper[:10]])
+            print('And their actual values')
+            print(y[:10])
+            print('median_predictions')
+            print([round(row, 1) for row in predictions_median[:10]])
+            print('Here are some example lower predictions')
+            print([round(row, 1) for row in predictions_lower[:10]])
+
+            # TODO: figure out what the heck to do with this now!
+            # Thoughts:
+                # probably add it to our FinalModelATC object inside the trained_final_model
+                # Make sure we've got a predict_intervals method on that object
+                # make sure we've got the same method here on predictor
+
 
         self.trained_pipeline = self._consolidate_pipeline(self.transformation_pipeline, self.trained_final_model)
 
@@ -711,15 +748,18 @@ class Predictor(object):
         return calibrated_classifier
 
 
-    def fit_single_pipeline(self, X_df, y, model_name, feature_learning=False, prediction_intervals=False):
+    def fit_single_pipeline(self, X_df, y, model_name, feature_learning=False, prediction_interval=False):
 
-        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning)
+        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, prediction_interval=prediction_interval)
         ppl = full_pipeline.named_steps['final_model']
         if self.verbose:
             print('\n\n********************************************************************************************')
             if self.name is not None:
                 print(self.name)
-            print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
+            if prediction_interval is not False:
+                print('About to fit a {} quantile regressor to predict the prediction_interval for the {}th percentile'.format(model_name, int(prediction_interval * 100)))
+            else:
+                print('About to fit the pipeline for the model ' + model_name + ' to predict ' + self.output_column)
             print('Started at:')
             start_time = datetime.datetime.now().replace(microsecond=0)
             print(start_time)
@@ -925,11 +965,15 @@ class Predictor(object):
         return grid_search_params
 
     # When we go to perform hyperparameter optimization, the hyperparameters for a GradientBoosting model will not at all align with the hyperparameters for an SVM. Doing all of that in one giant GSCV would throw errors. So we train each model in it's own grid search.
-    def train_ml_estimator(self, estimator_names, scoring, X_df, y, feature_learning=False, prediction_intervals=False):
+    def train_ml_estimator(self, estimator_names, scoring, X_df, y, feature_learning=False, prediction_interval=False):
+
+        if prediction_interval is not False:
+            estimator_names = ['GradientBoostingRegressor']
+            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=prediction_interval)
 
         # Use Case 1: Super straightforward: just train a single, non-optimized model
-        if len(estimator_names) == 1 and self.optimize_final_model != True:
-            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_intervals=prediction_intervals)
+        elif len(estimator_names) == 1 and self.optimize_final_model != True:
+            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=False)
 
         # Use Case 2: Compare a bunch of models, but don't optimize any of them
         elif len(estimator_names) > 1 and self.optimize_final_model != True:
