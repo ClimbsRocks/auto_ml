@@ -32,7 +32,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None):
 
         self.model = model
         self.model_name = model_name
@@ -46,6 +46,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.uc_results = uc_results
         self.training_prediction_intervals = training_prediction_intervals
         self.min_step_improvement = min_step_improvement
+        self.interval_predictors = interval_predictors
 
 
         if self.type_of_estimator == 'classifier':
@@ -387,6 +388,54 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return predictions[0]
         else:
             return predictions
+
+    def predict_intervals(self, X, return_type=None):
+        if self.interval_predictors is None:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('This model was not trained to predict intervals')
+            print('Please follow the documentation to tell this model at training time to learn how to predict intervals')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('This model was not trained to predict intervals')
+
+        base_prediction = self.model.predict(X)
+        lower_prediction = self.interval_predictors[0].predict(X)
+        median_prediction = self.interval_predictors[1].predict(X)
+        upper_prediction = self.interval_predictors[2].predict(X)
+
+        if len(X) == 1:
+            if return_type is None or return_type == 'dict':
+                return {
+                    'prediction': base_prediction
+                    , 'prediction_lower': lower_prediction
+                    , 'prediction_median': median_prediction
+                    , 'prediction_upper': upper_prediction
+                }
+            else:
+                return [base_prediction, lower_prediction, median_prediction, upper_prediction]
+        else:
+            if return_type is None or return_type == 'list':
+                # kinda tough...
+                results = []
+                for idx in range(len(base_prediction)):
+                    row_result = []
+                    row_result.append(base_prediction[idx])
+                    row_result.append(lower_prediction[idx])
+                    row_result.append(median_prediction[idx])
+                    row_result.append(upper_prediction[idx])
+                    results.append(row_result)
+
+                return results
+
+            elif return_type == 'df':
+                dict_for_df = {
+                    'prediction': base_prediction
+                    , 'prediction_lower': lower_prediction
+                    , 'prediction_median': median_prediction
+                    , 'prediction_upper': upper_prediction
+                }
+                df = pd.DataFrame(dict_for_df)
+                return df
+
 
     # transform is initially designed to be used with feature_learning
     def transform(self, X):
