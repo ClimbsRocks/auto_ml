@@ -12,7 +12,7 @@ auto_ml
   :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'``, ``'date'``, ``'ignore'``, or ``'categorical'``. See below for more details.
   :type column_descriptions: dictionary, where each attribute name represents a column of data in the training data, and each value describes that column as being either ['categorical', 'output', 'nlp', 'date', 'ignore']. Note that 'continuous' data does not need to be labeled as such (all columns are assumed to be continuous unless labeled otherwise).
 
-.. py:method:: ml_predictor.train(raw_training_data, user_input_func=None, optimize_final_model=False, perform_feature_selection=None, verbose=True, ml_for_analytics=True, model_names='GradientBoosting', perform_feature_scaling=True, calibrate_final_model=False, verify_features=False, cv=2, feature_learning=False, fl_data=None)
+.. py:method:: ml_predictor.train(raw_training_data, user_input_func=None, optimize_final_model=False, perform_feature_selection=None, verbose=True, ml_for_analytics=True, model_names='GradientBoosting', perform_feature_scaling=True, calibrate_final_model=False, verify_features=False, cv=2, feature_learning=False, fl_data=None, prediction_intervals=False)
 
   :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
 
@@ -51,6 +51,8 @@ auto_ml
 
   :param fl_data: If feature_learning=True, then this is the dataset we will fit the deep learning model on. This dataset should be different than your df_train dataset.
 
+  :param prediction_intervals: [default- False] In addition to predicting a single value, regressors can return upper and lower bounds for that prediction as well. If you pass True, we will return the 95th and 5th percentile (the range we'd expect 90% of values to fall within) when you get predicted intervals. If you pass in two float values between 0 and 1, we will return those particular predicted percentiles when you get predicted intervals. To get these additional predicted values, you must pass in True (or two of your own float values) at training time, and at prediction time, call ``ml_predictor.predict_intervals()``. ``ml_predictor.predict()`` will still return just the prediction.
+
 
 .. py:method:: ml_predictor.train_categorical_ensemble(df_train, categorical_column, min_category_size=5, default_category='most_frequently_occurring_category')
 
@@ -86,6 +88,14 @@ auto_ml
   :rtype: number representing the trained estimator's score on the validation data.
 
   :param verbose: [Default- 2] If 3, even more detailed logging will be included.
+
+
+.. py:method:: ml_predictor.predict_intervals(prediction_rows, return_type='df')
+
+  :rtype: dict for single predictions, list of lists if getting predictions on multiple rows. The return type can also be specified using return_type below. The list of predicted values for each row will always be in this order: ``[prediction, lower_prediction, median_prediction, upper_prediction]``. Similarly, each returned dict will always have the properties ``{'prediction': None', 'lower_prediction': None, 'median_prediction': None, 'upper_prediction': None}``
+
+  :param return_type: [Default- dict for single prediction, list of lists for multiple predictions] Accepted values are ``'df', 'list', 'dict'``. If ``'df'``, we will return a pandas DataFrame, with the columns ``[prediction, lower_prediction, median_prediction, upper_prediction]``. If ``'list'``, we will return a single (non-nested) list for single predictions, and a list of lists for batch predictions. If ``'dict'``, we will return a single (non-nested) dictionary for single predictions, and a list of dictionaries for batch predictions.
+
 
 .. py:method:: ml_predictor.save(file_name='auto_ml_saved_pipeline.pkl', verbose=True)
 
