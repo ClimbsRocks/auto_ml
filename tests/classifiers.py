@@ -332,7 +332,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     if model_name == 'GradientBoostingClassifier' or model_name is None:
         lower_bound = -0.23
     if model_name == 'LGBMClassifier':
-        lower_bound = -0.221
+        lower_bound = -0.227
     if model_name == 'XGBClassifier':
         lower_bound = -0.245
 
