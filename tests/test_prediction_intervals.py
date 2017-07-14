@@ -28,7 +28,7 @@ def test_predict_uncertainty_true():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=True, predict_intervals=True)
+    ml_predictor.train(df_boston_train, predict_intervals=True)
 
     intervals = ml_predictor.predict_intervals(df_boston_test)
 
@@ -71,7 +71,7 @@ def test_predict_intervals_takes_in_custom_intervals():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=True, predict_intervals=[0.4, 0.6])
+    ml_predictor.train(df_boston_train, predict_intervals=[0.4, 0.6])
 
     intervals = ml_predictor.predict_intervals(df_boston_test)
 
@@ -102,7 +102,7 @@ def test_predict_intervals_takes_in_custom_intervals():
     # Now make sure that the interval values are actually different
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=True, predict_intervals=True)
+    ml_predictor.train(df_boston_train, predict_intervals=True)
 
     default_intervals = ml_predictor.predict_intervals(df_boston_test)
 
@@ -129,7 +129,7 @@ def test_prediction_intervals_actually_work():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, perform_feature_selection=True, predict_intervals=True)
+    ml_predictor.train(df_boston_train, predict_intervals=True)
 
     intervals = ml_predictor.predict_intervals(df_boston_test)
 
@@ -143,3 +143,28 @@ def test_prediction_intervals_actually_work():
 
     assert (count_under * 1.0 / len(intervals)) < 0.05
     assert (count_over * 1.0 / len(intervals)) < 0.05
+
+
+def test_predict_intervals_should_fail_if_not_trained():
+    np.random.seed(0)
+
+    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
+
+    column_descriptions = {
+        'MEDV': 'output'
+        , 'CHAS': 'categorical'
+    }
+
+    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
+
+    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_boston_train)
+
+    try:
+        intervals = ml_predictor.predict_intervals(df_boston_test)
+        assert False
+    except ValueError:
+        assert True
+
+
