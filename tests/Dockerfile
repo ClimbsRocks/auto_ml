@@ -23,3 +23,5 @@ RUN pip install --upgrade numpy dill h5py scikit-learn scipy python-dateutil pan
 # docker build -t testdocker .
 # docker tag testdocker climbsrocks/auto_ml_tests:0.0.7
 # docker push climbsrocks/auto_ml_tests:0.0.7
+
+# docker build -t climbsrocks/auto_ml_tests:0.0.7 -t climbsrocks/auto_ml_tests:latest .
