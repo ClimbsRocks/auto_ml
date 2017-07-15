@@ -1,6 +1,7 @@
 """
 To get standard out, run nosetests as follows:
-  $ nosetests -s tests
+nosetests -sv tests
+nosetests --verbosity=2 --detailed-errors --nologcapture --processes=4 --process-restartworker --process-timeout=1000 tests
 """
 import datetime
 import os
