@@ -72,6 +72,8 @@ def categorical_ensembling_regression(model_name=None):
         lower_bound = -16
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
+    if model_name == 'GradientBoostingRegressor':
+        lower_bound = -4.2
 
 
     assert lower_bound < test_score < -2.8
@@ -227,6 +229,8 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
         lower_bound = -4.95
     if model_name == 'XGBRegressor':
         lower_bound = -3.3
+    if model_name == 'GradientBoostingRegressor':
+        lower_bound = -3.75
 
     assert lower_bound < first_score < -2.8
 
