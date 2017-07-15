@@ -435,7 +435,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if isinstance(predictions, float) or isinstance(predictions, int) or isinstance(predictions, str):
                 return predictions
 
-        if isinstance(predictions[0], list):
+        if isinstance(predictions[0], list) and len(predictions[0]) == 1:
             predictions = [row[0] for row in predictions]
 
         if len(predictions) == 1:
