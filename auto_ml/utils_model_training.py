@@ -32,7 +32,7 @@ from auto_ml.utils import ExtendedKerasRegressor
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, is_hp_search=None):
 
         self.model = model
         self.model_name = model_name
@@ -47,6 +47,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.training_prediction_intervals = training_prediction_intervals
         self.min_step_improvement = min_step_improvement
         self.interval_predictors = interval_predictors
+        self.is_hp_search = is_hp_search
 
 
         if self.type_of_estimator == 'classifier':
@@ -99,23 +100,38 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 print('To measure validation accuracy, we will split off a random 10 percent of your data set')
 
                 X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
-                early_stopping = EarlyStopping(monitor='val_loss', patience=25, verbose=1)
+
+                if self.is_hp_search == True:
+                    patience = 5
+                    verbose = 0
+                else:
+                    patience = 25
+                    verbose = 1
+
+                early_stopping = EarlyStopping(monitor='val_loss', patience=patience, verbose=verbose)
                 terminate_on_nan = TerminateOnNaN()
 
                 now_time = datetime.datetime.now()
                 time_string = str(now_time.year) + '_' + str(now_time.month) + '_' + str(now_time.day) + '_' + str(now_time.hour) + '_' + str(now_time.minute)
 
+
                 temp_file_name = 'tmp_dl_model_checkpoint_' + time_string + str(random.random()) + '.h5'
                 model_checkpoint = ModelCheckpoint(temp_file_name, monitor='val_loss', save_best_only=True, mode='min', period=1)
+
+                callbacks = [early_stopping, terminate_on_nan]
+                if not self.is_hp_search:
+                    callbacks.append(model_checkpoint)
+
                 # TODO: add in model checkpointer
-                # TODO: if is_hpsearch then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
-                self.model.fit(X_fit, y, callbacks=[early_stopping, terminate_on_nan, model_checkpoint], validation_data=(X_val, y_val))
+                # TODO: if is_hp_search then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
+                self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_val, y_val))
 
                 # TODO: give some kind of logging on how the model did here! best epoch, best accuracy, etc.
 
                 print('self.model right after fit and before overwriting')
                 print(self.model)
-                self.model = keras_load_model(temp_file_name)
+                if self.is_hp_search is False:
+                    self.model = keras_load_model(temp_file_name)
                 # if self.type_of_estimator == 'classifier':
                 #     self.model = KerasClassifier(keras_load_model(temp_file_name))
                 # else:

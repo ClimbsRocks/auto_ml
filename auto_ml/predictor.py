@@ -128,7 +128,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer, and adds final_model back in if we did grid search on it
-    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False):
+    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False, is_hp_search=False):
 
         pipeline_list = []
 
@@ -198,7 +198,7 @@ class Predictor(object):
                 params = self.training_params
 
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, is_hp_search=is_hp_search)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -955,7 +955,7 @@ class Predictor(object):
 
         gs_params['_scorer'] = [self._scorer]
 
-        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning)
+        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, is_hp_search=True)
         ppl = full_pipeline.named_steps['final_model']
 
         if self.verbose:
@@ -1046,7 +1046,7 @@ class Predictor(object):
         if self.verbose:
             print('\n\n********************************************************************************************')
             if self.optimize_final_model == True:
-                print('Optimizing the hyperparameters for you model now')
+                print('Optimizing the hyperparameters for your model now')
                 if total_combinations < 50:
                     print('About to run GridSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
                 elif total_combinations >= 50:
