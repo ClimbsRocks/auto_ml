@@ -85,6 +85,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
+        self.transformed_column_descriptions = column_descriptions.copy()
         self.text_col_indicators = set(['text', 'nlp'])
 
         self.text_columns = {}
@@ -119,6 +120,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         # See if we should fit TfidfVectorizer or not
         for key in X_df.columns:
 
+            if self.transformed_column_descriptions.get(key) is None:
+                self.transformed_column_descriptions[key] = 'continuous'
+
             if key in self.text_columns:
                 X_df[key].fillna('nan', inplace=True)
                 text_col = X_df[key].astype(unicode, errors='ignore')
@@ -140,6 +144,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
+        ignore_none_fields = False
+        if self.get('transformed_column_descriptions', None) is not None:
+            ignore_none_fields = True
+        column_descriptions = self.get('transformed_column_descriptions', self.column_descriptions)
 
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
@@ -159,9 +167,11 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             dict_copy = {}
 
             for key, val in X.items():
-                col_desc = self.column_descriptions.get(key)
+                col_desc = column_descriptions.get(key, None)
 
-                if col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
+                if col_desc is None and ignore_none_fields is True:
+                    continue
+                elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
                     dict_copy[key] = clean_val_nan_version(key, val)
                 elif col_desc == 'date':
                     date_feature_dict = add_date_features_dict(X, key)
@@ -203,9 +213,14 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
         else:
             X.reset_index(drop=True, inplace=True)
+
             for key in X.columns:
-                col_desc = self.column_descriptions.get(key)
-                if col_desc == 'categorical':
+                col_desc = column_descriptions.get(key)
+
+                if col_desc is None and ignore_none_fields is True:
+                    continue
+
+                elif col_desc == 'categorical':
                     # We will handle categorical data later, one-hot-encoding it inside DataFrameVectorizer
                     pass
 

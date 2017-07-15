@@ -280,6 +280,9 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     df_boston_train, fl_data = train_test_split(df_boston_train, test_size=0.2)
     ml_predictor.train_categorical_ensemble(df_boston_train, model_names=model_name, feature_learning=False, fl_data=fl_data, categorical_column='CHAS')
 
+    # print('Score on training data')
+    # ml_predictor.score(df_boston_train, df_boston_train.MEDV)
+
     file_name = ml_predictor.save(str(random.random()))
 
     from auto_ml.utils_models import load_ml_model
@@ -318,7 +321,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     if model_name == 'XGBRegressor':
         lower_bound = -3.6
     if model_name == 'GradientBoostingRegressor':
-        lower_bound = -3.6
+        lower_bound = -3.95
 
     assert lower_bound < first_score < -2.8
 

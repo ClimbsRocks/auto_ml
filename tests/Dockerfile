@@ -8,11 +8,6 @@ RUN sed -i "s/httpredir.debian.org/debian.uchicago.edu/" /etc/apt/sources.list &
     cd /usr/local/src && \
     pip install tensorflow && \
 
-    # Microsoft's LightGBM
-    cd /usr/local/src && git clone --recursive --depth 1 https://github.com/Microsoft/LightGBM && \
-    cd LightGBM && mkdir build && cd build && cmake .. && make -j $(nproc) && \
-    cd /usr/local/src/LightGBM/python-package && python setup.py install && \
-
     # XGBoost
     cd /usr/local/src && mkdir xgboost && cd xgboost && \
     git clone --depth 1 --recursive https://github.com/dmlc/xgboost.git && cd xgboost && \
@@ -21,9 +16,9 @@ RUN sed -i "s/httpredir.debian.org/debian.uchicago.edu/" /etc/apt/sources.list &
     apt-get autoremove -y && apt-get clean
 
 RUN pip install --upgrade pip
-RUN pip install --upgrade numpy dill h5py scikit-learn scipy python-dateutil pandas pathos keras coveralls nose tabulate sklearn-deap
+RUN pip install --upgrade numpy dill h5py scikit-learn scipy python-dateutil pandas pathos keras coveralls nose lightgbm tabulate imblearn sklearn-deap
 
 # To update this image and upload it:
 # docker build -t testdocker .
-# docker tag testdocker climbsrocks/auto_ml_tests:0.0.5
-# docker push climbsrocks/auto_ml_tests:0.0.5
+# docker tag testdocker climbsrocks/auto_ml_tests:0.0.6
+# docker push climbsrocks/auto_ml_tests:0.0.6

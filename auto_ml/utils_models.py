@@ -63,22 +63,22 @@ def get_model_from_name(model_name, training_params=None):
         'Perceptron': {'n_jobs': -1},
         'LinearSVC': {'dual': False},
         'LinearRegression': {'n_jobs': -2},
-
         'RandomForestRegressor': {'n_jobs': -2},
         'LinearSVR': {'dual': False, 'loss': 'squared_epsilon_insensitive'},
         'ExtraTreesRegressor': {'n_jobs': -1},
         'MiniBatchKMeans': {'n_clusters': 8},
-        'GradientBoostingRegressor': {'presort': False},
-        'GradientBoostingClassifier': {'presort': False},
+        # TODO: learning_rate s back up a bit, n_estimators back up as well for adaboost and random forest
+        'GradientBoostingRegressor': {'presort': False, 'learning_rate': 0.05, 'warm_start': True},
+        'GradientBoostingClassifier': {'presort': False, 'learning_rate': 0.05, 'warm_start': True},
         'SGDRegressor': {'shuffle': False},
         'PassiveAggressiveRegressor': {'shuffle': False},
         'AdaBoostRegressor': {'n_estimators': 10},
-        'XGBRegressor': {'nthread':-1},
-        'XGBClassifier': {'nthread':-1},
-        'LGBMRegressor': {'n_estimators': 100},
-        'LGBMClassifier': {'n_estimators': 100},
-        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 64, 'verbose': 2},
-        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 64, 'verbose': 2}
+        'XGBRegressor': {'nthread':-1, 'n_estimators': 200},
+        'XGBClassifier': {'nthread':-1, 'n_estimators': 200},
+        'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
+        'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
+        'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
     }
 
     if os.environ.get('is_test_suite', 0) == 'True':
@@ -456,7 +456,7 @@ def get_search_params(model_name):
             'boosting_type': ['gbdt', 'dart']
             , 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
             , 'min_child_samples': [1, 5, 7, 10, 15, 20, 35, 50, 100, 200, 500, 1000]
-            , 'num_leaves': [2, 4, 7, 10, 20, 30, 40, 50, 75, 100]
+            , 'num_leaves': [2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 50, 65, 80, 100, 125, 150, 200, 250]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]
@@ -467,7 +467,7 @@ def get_search_params(model_name):
             'boosting_type': ['gbdt', 'dart']
             , 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
             , 'min_child_samples': [1, 5, 7, 10, 15, 20, 35, 50, 100, 200, 500, 1000]
-            , 'num_leaves': [2, 4, 7, 10, 20, 30, 40, 50, 75, 100]
+            , 'num_leaves': [2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 50, 65, 80, 100, 125, 150, 200, 250]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
             , 'subsample': [0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]

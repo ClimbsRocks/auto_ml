@@ -1,5 +1,6 @@
 from collections import Iterable
 import datetime
+from copy import deepcopy
 import os
 import random
 
@@ -31,7 +32,7 @@ from auto_ml.utils import ExtendedKerasRegressor
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, scoring_method=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None):
 
         self.model = model
         self.model_name = model_name
@@ -43,12 +44,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.feature_learning = feature_learning
         self.uncertainty_model = uncertainty_model
         self.uc_results = uc_results
+        self.training_prediction_intervals = training_prediction_intervals
+        self.min_step_improvement = min_step_improvement
+        self.interval_predictors = interval_predictors
 
 
         if self.type_of_estimator == 'classifier':
-            self._scorer = scoring_method
+            self._scorer = _scorer
         else:
-            self._scorer = scoring_method
+            self._scorer = _scorer
 
 
     def get(self, prop_name, default=None):
@@ -123,6 +127,71 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 # print(self.model)
                 # TODO: load best model from file, save to self.model
                 # TODO: delete temp file
+
+            elif self.model_name[:4] == 'LGBM':
+
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
+                if self.type_of_estimator == 'regressor':
+                    eval_metric = 'rmse'
+                elif self.type_of_estimator == 'classifier':
+                    if len(set(y_test)) > 2:
+                        eval_metric = 'multi_logloss'
+                    else:
+                        eval_metric = 'binary_logloss'
+
+
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
+
+            elif self.model_name[:16] == 'GradientBoosting':
+                if scipy.sparse.issparse(X_fit):
+                    X_fit = X_fit.todense()
+
+                patience = 20
+                best_val_loss = -10000000000
+                num_worse_rounds = 0
+                best_model = deepcopy(self.model)
+                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
+                # Add a variable number of trees each time, depending how far into the process we are
+                if os.environ.get('is_test_suite', False) == 'True':
+                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3))
+                else:
+                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
+
+                try:
+                    for num_iter in num_iters:
+                        warm_start = True
+                        if num_iter == 1:
+                            warm_start = False
+
+                        self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
+                        self.model.fit(X_fit, y)
+
+                        if self.training_prediction_intervals == True:
+                            val_loss = self.model.score(X_test, y_test)
+                        else:
+                            try:
+                                val_loss = self._scorer.score(self, X_test, y_test)
+                            except Exception as e:
+                                val_loss = self.model.score(X_test, y_test)
+
+                        if val_loss - self.min_step_improvement > best_val_loss:
+                            best_val_loss = val_loss
+                            num_worse_rounds = 0
+                            best_model = deepcopy(self.model)
+                        else:
+                            num_worse_rounds += 1
+                        print('[' + str(num_iter) + '] random_holdout_set_from_training_data\'s score is: ' + str(round(val_loss, 3)))
+                        if num_worse_rounds >= patience:
+                            break
+                except KeyboardInterrupt:
+                    print('Heard KeyboardInterrupt. Stopping training, and using the best checkpointed GradientBoosting model')
+                    pass
+
+                self.model = best_model
+                print('The number of estimators that were the best for this training dataset: ' + str(self.model.get_params()['n_estimators']))
+                print('The best score on a random 15 percent holdout set of the training data: ' + str(best_val_loss))
 
             else:
                 self.model.fit(X_fit, y)
@@ -300,10 +369,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X = X.todense()
 
         try:
-            predictions = self.model.predict_proba(X)
+            if self.model_name[:4] == 'LGBM':
+                predictions = self.model.predict_proba(X, num_iteration=self.model.best_iteration)
+            else:
+                predictions = self.model.predict_proba(X)
 
         except AttributeError as e:
-            # print('This model has no predict_proba method. Returning results of .predict instead.')
             try:
                 predictions = self.model.predict(X)
             except TypeError as e:
@@ -349,32 +420,87 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             X_predict = X
 
-        prediction = self.model.predict(X_predict)
+        if self.model_name[:4] == 'LGBM':
+            predictions = self.model.predict(X_predict, num_iteration=self.model.best_iteration)
+        else:
+            predictions = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
         # It makes a cleaner interface just to get just the single prediction back, rather than a list with the prediction hidden inside.
 
-        if isinstance(prediction, np.ndarray):
-            prediction = prediction.tolist()
-            if isinstance(prediction, float) or isinstance(prediction, int) or isinstance(prediction, str):
-                return prediction
+        if isinstance(predictions, np.ndarray):
+            predictions = predictions.tolist()
+            if isinstance(predictions, float) or isinstance(predictions, int) or isinstance(predictions, str):
+                return predictions
 
-        if len(prediction) == 1:
-            return prediction[0]
+        if len(predictions) == 1:
+            return predictions[0]
         else:
-            return prediction
+            return predictions
+
+    def predict_intervals(self, X, return_type=None):
+
+        if self.interval_predictors is None:
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            print('This model was not trained to predict intervals')
+            print('Please follow the documentation to tell this model at training time to learn how to predict intervals')
+            print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+            raise ValueError('This model was not trained to predict intervals')
+
+        base_prediction = self.predict(X)
+        lower_prediction = self.interval_predictors[0].predict(X)
+        median_prediction = self.interval_predictors[1].predict(X)
+        upper_prediction = self.interval_predictors[2].predict(X)
+
+        if scipy.sparse.issparse(X):
+            len_input = X.shape[0]
+        else:
+            len_input = len(X)
+
+        if len_input == 1:
+            if return_type is None or return_type == 'dict':
+                return {
+                    'prediction': base_prediction
+                    , 'prediction_lower': lower_prediction
+                    , 'prediction_median': median_prediction
+                    , 'prediction_upper': upper_prediction
+                }
+            else:
+                return [base_prediction, lower_prediction, median_prediction, upper_prediction]
+        else:
+            if return_type is None or return_type == 'list':
+                # kinda tough...
+                results = []
+                for idx in range(len(base_prediction)):
+                    row_result = []
+                    row_result.append(base_prediction[idx])
+                    row_result.append(lower_prediction[idx])
+                    row_result.append(median_prediction[idx])
+                    row_result.append(upper_prediction[idx])
+                    results.append(row_result)
+
+                return results
+
+            elif return_type == 'df':
+                dict_for_df = {
+                    'prediction': base_prediction
+                    , 'prediction_lower': lower_prediction
+                    , 'prediction_median': median_prediction
+                    , 'prediction_upper': upper_prediction
+                }
+                df = pd.DataFrame(dict_for_df)
+                return df
+
 
     # transform is initially designed to be used with feature_learning
     def transform(self, X):
         predicted_features = self.predict(X)
         predicted_features = list(predicted_features)
 
-        if scipy.sparse.issparse(X):
-            X = scipy.sparse.hstack([X, predicted_features], format='csr')
-        else:
-            print('Figuring out what type X is')
-            print(type(X))
-            print('If you see this message, please file a bug at https://github.com/ClimbsRocks/auto_ml')
+        X = scipy.sparse.hstack([X, predicted_features], format='csr')
+        return X
 
+    # Allows the user to get the fully transformed data
+    def transform_only(self, X):
         return X
 
     def predict_uncertainty(self, X):
