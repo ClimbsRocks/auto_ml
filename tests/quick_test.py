@@ -1,5 +1,6 @@
 """
 nosetests -sv --nologcapture tests/quick_test.py
+nosetests --verbosity=2 --detailed-errors --nologcapture --processes=4 --process-restartworker --process-timeout=1000 tests/quick_test.py
 """
 
 import datetime
@@ -24,6 +25,7 @@ import utils_testing as utils
 # def regression_test():
 #     # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
 #     np.random.seed(0)
+#     model_name = 'DeepLearningRegressor'
 
 #     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
 
@@ -41,28 +43,43 @@ import utils_testing as utils
 #     print('test_score')
 #     print(test_score)
 
-#     assert -3.35 < test_score < -2.8
+#     lower_bound = -3.2
+#     if model_name == 'DeepLearningRegressor':
+#         lower_bound = -7.8
+#     if model_name == 'LGBMRegressor':
+#         lower_bound = -4.95
+#     if model_name == 'XGBRegressor':
+#         lower_bound = -3.4
+
+#     assert lower_bound < first_score < -2.8
 
 
-def classification_test(model_name=None):
-    np.random.seed(0)
+# def classification_test():
+#     np.random.seed(0)
+#     model_name = 'DeepLearningClassifier'
 
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+#     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
-    column_descriptions = {
-        'survived': 'output'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
+#     column_descriptions = {
+#         'survived': 'output'
+#         , 'embarked': 'categorical'
+#         , 'pclass': 'categorical'
+#     }
 
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+#     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names=['DeepLearningClassifier'])
+#     ml_predictor.train(df_titanic_train, model_names=model_name)
 
-    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+#     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
-    print('test_score')
-    print(test_score)
+#     print('test_score')
+#     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+#     lower_bound = -0.215
+#     if model_name == 'DeepLearningClassifier':
+#         lower_bound = -0.245
+#     if model_name == 'LGBMClassifier':
+#         lower_bound = -0.225
+
+#     assert lower_bound < test_score < -0.17
 
