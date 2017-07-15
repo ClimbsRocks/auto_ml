@@ -166,24 +166,6 @@ class ExtendedPipeline(Pipeline):
         return self.steps[-1][-1].score_uncertainty(Xt)
 
 
-def clean_params(params):
-    cleaned_params = {}
-    for k, v in params.items():
-
-        if k[:7] == 'model__':
-            cleaned_params[k[7:]] = v
-
-    return cleaned_params
-
-
-class ExtendedKerasRegressor(KerasRegressor):
-
-    def __init__(self, build_fn=None, **sk_params):
-        super(self.__class__, self).__init__(build_fn, sk_params)
-
-    def load_saved_model(self, model_name):
-        self.model = keras_load_model(temp_file_name)
-
     @if_delegate_has_method(delegate='_final_estimator')
     def transform_only(self, X):
         Xt = X
@@ -201,3 +183,22 @@ class ExtendedKerasRegressor(KerasRegressor):
                 Xt = transform.transform(Xt)
 
         return self.steps[-1][-1].predict_intervals(Xt, return_type=return_type)
+
+
+def clean_params(params):
+    cleaned_params = {}
+    for k, v in params.items():
+
+        if k[:7] == 'model__':
+            cleaned_params[k[7:]] = v
+
+    return cleaned_params
+
+
+class ExtendedKerasRegressor(KerasRegressor):
+
+    def __init__(self, build_fn=None, **sk_params):
+        super(self.__class__, self).__init__(build_fn, sk_params)
+
+    def load_saved_model(self, model_name):
+        self.model = keras_load_model(temp_file_name)
