@@ -108,7 +108,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 temp_file_name = 'tmp_dl_model_checkpoint_' + time_string + str(random.random()) + '.h5'
                 model_checkpoint = ModelCheckpoint(temp_file_name, monitor='val_loss', save_best_only=True, mode='min', period=1)
                 # TODO: add in model checkpointer
+                # TODO: if is_hpsearch then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
                 self.model.fit(X_fit, y, callbacks=[early_stopping, terminate_on_nan, model_checkpoint], validation_data=(X_val, y_val))
+
+                # TODO: give some kind of logging on how the model did here! best epoch, best accuracy, etc.
 
                 print('self.model right after fit and before overwriting')
                 print(self.model)
@@ -431,6 +434,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             predictions = predictions.tolist()
             if isinstance(predictions, float) or isinstance(predictions, int) or isinstance(predictions, str):
                 return predictions
+
+        if isinstance(predictions[0], list):
+            predictions = [row[0] for row in predictions]
 
         if len(predictions) == 1:
             return predictions[0]
