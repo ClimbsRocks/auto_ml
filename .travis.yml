@@ -12,12 +12,12 @@ python:
 
 # Command to install dependencies
 install:
-  - docker pull climbsrocks/auto_ml_tests:0.0.5
+  - docker pull climbsrocks/auto_ml_tests:0.0.6
   - pip install coveralls
 
 # Command to run tests
-script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:0.0.5 python setup.py nosetests
+script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:0.0.6 python setup.py nosetests
 
 after_success:
-  - docker cp climbsrocks/auto_ml_tests:0.0.5:/.coverage
+  - docker cp climbsrocks/auto_ml_tests:0.0.6:/.coverage
   - coveralls
