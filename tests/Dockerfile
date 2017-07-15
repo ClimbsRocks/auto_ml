@@ -2,6 +2,7 @@ FROM ubuntu
 
     # Use a fixed apt-get repo to stop intermittent failures due to flaky httpredir connections,
     # as described by Lionel Chan at http://stackoverflow.com/a/37426929/5881346
+
 RUN sed -i "s/httpredir.debian.org/debian.uchicago.edu/" /etc/apt/sources.list && \
     apt-get update && apt-get install -y build-essential python-pip apt-utils git cmake && \
     pip install pandas numpy scipy && \
@@ -20,5 +21,5 @@ RUN pip install --upgrade numpy dill h5py scikit-learn scipy python-dateutil pan
 
 # To update this image and upload it:
 # docker build -t testdocker .
-# docker tag testdocker climbsrocks/auto_ml_tests:0.0.6
-# docker push climbsrocks/auto_ml_tests:0.0.6
+# docker tag testdocker climbsrocks/auto_ml_tests:0.0.7
+# docker push climbsrocks/auto_ml_tests:0.0.7
