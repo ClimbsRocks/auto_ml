@@ -1080,12 +1080,13 @@ class Predictor(object):
 
         if refit == True:
             trained_final_model = gs.best_estimator_
+            model_name = utils_models.get_name_from_model(trained_final_model)
             self.print_results(model_name, trained_final_model, X_df, y)
 
 
-        # self.trained_final_model = gs.best_estimator_
-        if 'model' in gs.best_params_:
-            model_name = gs.best_params_['model']
+        # # self.trained_final_model = gs.best_estimator_
+        # if 'model' in gs.best_params_:
+        #     model_name = gs.best_params_['model']
 
         return gs
 
@@ -1539,7 +1540,10 @@ class Predictor(object):
                 if k != 'model':
                     printing_copy[k] = v
                 else:
-                    printing_copy[k] = utils_models.get_name_from_model(v)
+                    if isinstance(v, str):
+                        printing_copy[k] = v
+                    else:
+                        printing_copy[k] = utils_models.get_name_from_model(v)
         else:
             printing_copy = gs.best_params_
 
