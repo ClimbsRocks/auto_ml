@@ -46,7 +46,7 @@ from auto_ml import utils
 
 
 
-def get_model_from_name(model_name, training_params=None):
+def get_model_from_name(model_name, training_params=None, is_hp_search=False):
 
     # For Keras
     epochs = 250
@@ -80,12 +80,19 @@ def get_model_from_name(model_name, training_params=None):
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
     }
 
-    if os.environ.get('is_test_suite', 0) == 'True':
-        all_model_params
+    # if os.environ.get('is_test_suite', 0) == 'True':
+    #     all_model_params
 
     model_params = all_model_params.get(model_name, None)
     if model_params is None:
         model_params = {}
+
+    if is_hp_search == True:
+        if model_name[:12] == 'DeepLearning':
+            model_params['epochs'] = 100
+        if model_name[:4] == 'LGBM':
+            model_params['n_estimators'] = 500
+
 
     if training_params is not None:
         print('Now using the model training_params that you passed in:')
