@@ -29,7 +29,7 @@ from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import GridSearchCV, KFold, train_test_split
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 # from sklearn.pipeline import Pipeline
-from sklearn.preprocessing import FunctionTransformer
+from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 
 from auto_ml import DataFrameVectorizer
@@ -151,7 +151,12 @@ class Predictor(object):
             if trained_pipeline is not None:
                 pipeline_list.append(('scaler', trained_pipeline.named_steps['scaler']))
             else:
-                pipeline_list.append(('scaler', utils_scaling.CustomSparseScaler(self.column_descriptions)))
+                if model_name[:12] == 'DeepLearning':
+                    min_percentile = 0.0
+                    max_percentile = 1.0
+                    pipeline_list.append(('scaler', utils_scaling.CustomSparseScaler(self.column_descriptions, truncate_large_values=True)))
+                else:
+                    pipeline_list.append(('scaler', utils_scaling.CustomSparseScaler(self.column_descriptions)))
 
 
         if trained_pipeline is not None:
@@ -360,7 +365,10 @@ class Predictor(object):
             self.perform_feature_scaling = perform_feature_scaling
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
-        self.training_params = training_params
+        if training_params is None:
+            self.training_params = {}
+        else:
+            self.training_params = training_params
         self.user_gs_params = grid_search_params
         if self.user_gs_params is not None:
             self.optimize_final_model = True
@@ -976,15 +984,16 @@ class Predictor(object):
         gene_mutation_prob = 0.1
         generations_number = 3
 
-        # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
-        # However, it does, itself,
-        if model_name in ['LGBMRegressor', 'LGBMClassifier', 'DeepLearningRegressor', 'DeeplearningClassifier']:
-            n_jobs = 2
 
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
-            population_size = 10
+            population_size = 5
             generations_number = 1
+
+        # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
+        # However, it does, itself, parallelize pretty nicely. So let lgbm take care of the parallelization itself, which will be less memory intensive than having to duplicate the data for all the cores on the machine
+        elif model_name in ['LGBMRegressor', 'LGBMClassifier', 'DeepLearningRegressor', 'DeeplearningClassifier']:
+            n_jobs = 2
 
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
@@ -1021,7 +1030,10 @@ class Predictor(object):
                 population_size=population_size,
                 gene_mutation_prob=gene_mutation_prob,
                 tournament_size=tournament_size,
-                generations_number=generations_number
+                generations_number=generations_number,
+                # Do not fit the best estimator on all the data- we will do that later, possibly after increasing epochs or n_estimators
+                refit=False
+
             )
 
         else:
@@ -1040,7 +1052,8 @@ class Predictor(object):
                 error_score=-1000000000,
                 scoring=self._scorer.score,
                 # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
-                pre_dispatch='1.5*n_jobs'
+                pre_dispatch='1.5*n_jobs',
+                refit=False
             )
 
         if self.verbose:
@@ -1068,12 +1081,6 @@ class Predictor(object):
         # self.trained_final_model = gs.best_estimator_
         if 'model' in gs.best_params_:
             model_name = gs.best_params_['model']
-
-
-        # Don't report feature_responses (or nearly anything else) if this is just the feature_learning stage
-        # That saves a considerable amount of time
-        if feature_learning == False:
-            self.print_results(model_name, gs.best_estimator_, X_df, y)
 
         return gs
 
@@ -1122,6 +1129,11 @@ class Predictor(object):
 
             gscv_results = self.fit_grid_search(X_df, y, grid_search_params)
 
+            # TODO: get model_name from best_params
+            model_name = gscv_results.best_params_['model_name']
+
+            self.print_results(model_name, gs.best_estimator_, X_df, y)
+
             trained_final_model = gscv_results.best_estimator_
 
         # Use Case 3: One model, and optimize it!
@@ -1148,12 +1160,57 @@ class Predictor(object):
             # self.trained_final_model = all_gs_results[0].best_estimator_
             trained_final_model = all_gs_results[0].best_estimator_
             best_score = all_gs_results[0].best_score_
+            best_params = all_gs_results[0].best_params_
+            model_name = estimator_names[0]
 
             # Iterate through the rest, and see if any are better!
             for result in all_gs_results[1:]:
                 if result.best_score_ > best_score:
                     trained_final_model = result.best_estimator_
                     best_score = result.best_score_
+                    best_params = result.best_params_
+                    if 'model_name' in best_params:
+                        model_name = best_params['model_name']
+
+            # print('trained_final_model')
+            # print(trained_final_model)
+            # print('trained_final_model.model')
+            # print(trained_final_model.model)
+            # TODO TODO: get the best model, and train it up on more epochs, or more num trees.
+            print('best_params')
+            print(best_params)
+
+            cleaned_best_params = {}
+            for k, v in best_params.items():
+                if k in ['_scorer']:
+                    continue
+                elif k[:7] == 'model__':
+                    cleaned_best_params[k[7:]] = v
+                else:
+                    cleaned_best_params[k] = v
+            best_params = cleaned_best_params
+
+            if 'epochs' in best_params:
+                epochs = self.training_params.get('epochs', 250)
+                best_params['epochs'] = epochs
+                # We are overwriting the user's input with whatever the best params were
+            elif 'n_estimators' in best_params:
+                n_estimators = self.training_params.get('n_estimators', 2000)
+                best_params['n_estimators'] = n_estimators
+
+            print('estimator_names')
+            print(estimator_names)
+            self.training_params = best_params
+
+            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=False)
+
+            # Don't report feature_responses (or nearly anything else) if this is just the feature_learning stage
+            # That saves a considerable amount of time
+            if feature_learning == False:
+                self.print_results(model_name, trained_final_model, X_df, y)
+
+
+
 
             # If we wanted to do something tricky, here would be the place to do it
                 # Train the final model up on more epochs, or with more trees
