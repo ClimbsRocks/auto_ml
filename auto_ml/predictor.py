@@ -1534,18 +1534,19 @@ class Predictor(object):
         print('The best params were')
 
         # Remove 'final_model__model' from what we print- it's redundant with model name, and is difficult to read quickly in a list since it's a python object.
-        if 'model' in gs.best_params_:
-            printing_copy = {}
-            for k, v in gs.best_params_.items():
-                if k != 'model':
+        print(gs.best_params_)
+        print(gs.best_params_)
+        printing_copy = {}
+        for k, v in gs.best_params_.items():
+            if k == 'model':
+                if isinstance(v, str):
                     printing_copy[k] = v
                 else:
-                    if isinstance(v, str):
-                        printing_copy[k] = v
-                    else:
-                        printing_copy[k] = utils_models.get_name_from_model(v)
-        else:
-            printing_copy = gs.best_params_
+                    printing_copy[k] = utils_models.get_name_from_model(v)
+            elif k == '_scorer':
+                pass
+            else:
+                printing_copy[k] = v
 
         print(printing_copy)
 
