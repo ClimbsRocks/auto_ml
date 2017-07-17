@@ -96,17 +96,19 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         try:
             if self.model_name[:12] == 'DeepLearning':
 
-                print('\nWe will stop training early if we have not seen an improvement in validation accuracy in 10 epochs')
-                print('To measure validation accuracy, we will split off a random 10 percent of your data set')
-
-                X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
-
                 if self.is_hp_search == True:
                     patience = 5
                     verbose = 0
                 else:
                     patience = 25
-                    verbose = 1
+                    verbose = 2
+
+                X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
+                if not self.is_hp_search:
+                    print('\nWe will stop training early if we have not seen an improvement in validation accuracy in {} epochs'.format(patience))
+                    print('To measure validation accuracy, we will split off a random 10 percent of your data set')
+
+
 
                 early_stopping = EarlyStopping(monitor='val_loss', patience=patience, verbose=verbose)
                 terminate_on_nan = TerminateOnNaN()
@@ -124,12 +126,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                 # TODO: add in model checkpointer
                 # TODO: if is_hp_search then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
-                self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_val, y_val))
+                self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_val, y_val), verbose=verbose)
 
                 # TODO: give some kind of logging on how the model did here! best epoch, best accuracy, etc.
 
-                print('self.model right after fit and before overwriting')
-                print(self.model)
                 if self.is_hp_search is False:
                     self.model = keras_load_model(temp_file_name)
                 # if self.type_of_estimator == 'classifier':
@@ -139,8 +139,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 #     self.model.model = keras_load_model(temp_file_name)
                 #     # self.model = ExtendedKerasRegressor()
                 #     # self.model.load_saved_model(temp_file_name)
-                print('self.model right after overwriting')
-                print(self.model)
                 # os.remove(temp_file_name)
                 # print('self.model right after deleting temp file name')
                 # print(self.model)
@@ -177,6 +175,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3))
                 else:
                     num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
+                    # TODO: get n_estimators from the model itself, and reduce this list to only those values that come under the value from the model
 
                 try:
                     for num_iter in num_iters:
