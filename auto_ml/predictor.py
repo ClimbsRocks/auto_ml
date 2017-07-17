@@ -949,7 +949,7 @@ class Predictor(object):
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
 
 
-    def fit_grid_search(self, X_df, y, gs_params, feature_learning=False):
+    def fit_grid_search(self, X_df, y, gs_params, feature_learning=False, refit=False):
 
         model = gs_params['model']
         # Sometimes we're optimizing just one model, sometimes we're comparing a bunch of non-optimized models.
@@ -1032,7 +1032,7 @@ class Predictor(object):
                 tournament_size=tournament_size,
                 generations_number=generations_number,
                 # Do not fit the best estimator on all the data- we will do that later, possibly after increasing epochs or n_estimators
-                refit=False
+                refit=refit
 
             )
 
@@ -1053,7 +1053,7 @@ class Predictor(object):
                 scoring=self._scorer.score,
                 # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
                 pre_dispatch='1.5*n_jobs',
-                refit=False
+                refit=refit
             )
 
         if self.verbose:
@@ -1077,6 +1077,11 @@ class Predictor(object):
 
         if self.verbose:
             self.print_training_summary(gs)
+
+        if refit == True:
+            trained_final_model = gs.best_estimator_
+            self.print_results(model_name, trained_final_model, X_df, y)
+
 
         # self.trained_final_model = gs.best_estimator_
         if 'model' in gs.best_params_:
@@ -1127,19 +1132,19 @@ class Predictor(object):
 
             self.grid_search_params = grid_search_params
 
-            gscv_results = self.fit_grid_search(X_df, y, grid_search_params)
+            gscv_results = self.fit_grid_search(X_df, y, grid_search_params, refit=True)
 
-            # TODO: get model_name from best_params
-            print('gscv_results.best_params_')
-            print(gscv_results.best_params_)
-            best_model = gscv_results.best_params_['model']
-            print('best_model')
-            print(best_model)
-            model_name = utils_models.get_name_from_model(best_model)
-            print('model_name')
-            print(model_name)
+            # # TODO: get model_name from best_params
+            # print('gscv_results.best_params_')
+            # print(gscv_results.best_params_)
+            # best_model = gscv_results.best_params_['model']
+            # print('best_model')
+            # print(best_model)
+            # model_name = utils_models.get_name_from_model(best_model)
+            # print('model_name')
+            # print(model_name)
 
-            self.print_results(model_name, gscv_results.best_estimator_, X_df, y)
+            # self.print_results(model_name, gscv_results.best_estimator_, X_df, y)
 
             trained_final_model = gscv_results.best_estimator_
 
@@ -1187,6 +1192,7 @@ class Predictor(object):
             print('best_params')
             print(best_params)
 
+            # Now that we've got the best model, train it on quite a few more iterations/epochs/trees if applicable
             cleaned_best_params = {}
             for k, v in best_params.items():
                 if k in ['_scorer']:
@@ -1201,7 +1207,7 @@ class Predictor(object):
                 epochs = self.training_params.get('epochs', 250)
                 best_params['epochs'] = epochs
                 # We are overwriting the user's input with whatever the best params were
-            elif 'n_estimators' in best_params:
+            elif 'n_estimators' in best_params and model_name in ['LGBMClassifier', 'LGBMRegressor', 'GradientBoostingClassifier', 'GradientBoostingRegressor']:
                 n_estimators = self.training_params.get('n_estimators', 2000)
                 best_params['n_estimators'] = n_estimators
 
@@ -1209,15 +1215,12 @@ class Predictor(object):
             print(estimator_names)
             self.training_params = best_params
 
-            trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=False)
+            trained_final_model = self.fit_single_pipeline(X_df, y, model_name, feature_learning=feature_learning, prediction_interval=False)
 
             # Don't report feature_responses (or nearly anything else) if this is just the feature_learning stage
             # That saves a considerable amount of time
             if feature_learning == False:
                 self.print_results(model_name, trained_final_model, X_df, y)
-
-
-
 
             # If we wanted to do something tricky, here would be the place to do it
                 # Train the final model up on more epochs, or with more trees
