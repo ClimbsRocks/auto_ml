@@ -1130,9 +1130,16 @@ class Predictor(object):
             gscv_results = self.fit_grid_search(X_df, y, grid_search_params)
 
             # TODO: get model_name from best_params
-            model_name = gscv_results.best_params_['model_name']
+            print('gscv_results.best_params_')
+            print(gscv_results.best_params_)
+            best_model = gscv_results.best_params_['model']
+            print('best_model')
+            print(best_model)
+            model_name = utils_models.get_model_from_name(best_model)
+            print('model_name')
+            print(model_name)
 
-            self.print_results(model_name, gs.best_estimator_, X_df, y)
+            self.print_results(model_name, gscv_results.best_estimator_, X_df, y)
 
             trained_final_model = gscv_results.best_estimator_
 
