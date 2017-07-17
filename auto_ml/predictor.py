@@ -1135,7 +1135,7 @@ class Predictor(object):
             best_model = gscv_results.best_params_['model']
             print('best_model')
             print(best_model)
-            model_name = utils_models.get_model_from_name(best_model)
+            model_name = utils_models.get_name_from_model(best_model)
             print('model_name')
             print(model_name)
 
