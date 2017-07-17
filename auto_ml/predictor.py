@@ -1171,19 +1171,21 @@ class Predictor(object):
 
             # Grab the first one by default
             # self.trained_final_model = all_gs_results[0].best_estimator_
-            trained_final_model = all_gs_results[0].best_estimator_
+            # trained_final_model = all_gs_results[0].best_estimator_
             best_score = all_gs_results[0].best_score_
             best_params = all_gs_results[0].best_params_
             model_name = estimator_names[0]
 
             # Iterate through the rest, and see if any are better!
-            for result in all_gs_results[1:]:
+            for idx, result in enumerate(all_gs_results):
                 if result.best_score_ > best_score:
-                    trained_final_model = result.best_estimator_
+                    # trained_final_model = result.best_estimator_
                     best_score = result.best_score_
                     best_params = result.best_params_
                     if 'model_name' in best_params:
                         model_name = best_params['model_name']
+                    else:
+                        model_name = estimator_names[idx]
 
             # print('trained_final_model')
             # print(trained_final_model)
@@ -1554,7 +1556,12 @@ class Predictor(object):
             print('Here are all the hyperparameters that were tried:')
             raw_scores = gs.cv_results_
             df_raw_scores = pd.DataFrame(raw_scores)
+
+            print('df_raw_scores')
+            print(df_raw_scores)
             df_raw_scores = df_raw_scores.sort_values(by='mean_test_score', ascending=False)
+            print('df_raw_scores')
+            print(df_raw_scores)
             col_name_map = {
                 'mean_test_score': 'mean_score'
                 , 'min_test_score': 'DROPME'
@@ -1566,8 +1573,13 @@ class Predictor(object):
             }
             new_cols = []
             for col in df_raw_scores.columns:
-                new_cols.append(col_name_map.get(col, col))
+                if col in col_name_map:
+                    new_cols.append(col_name_map.get(col, col))
+                else:
+                    new_cols.append(col)
             df_raw_scores.columns = new_cols
+            print('df_raw_scores')
+            print(df_raw_scores)
             try:
                 df_raw_scores = df_raw_scores.drop('DROPME', axis=1)
             except:
