@@ -79,6 +79,9 @@ def categorical_ensembling_classification(model_name=None):
         lower_bound = -0.22
     if model_name == 'GradientBoostingClassifier':
         lower_bound = -0.23
+    if model_name == 'CatBoostClassifier':
+        lower_bound = -0.25
+
 
     assert lower_bound < test_score < -0.17
 
@@ -136,6 +139,8 @@ def getting_single_predictions_classification(model_name=None):
     lower_bound = -0.215
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.245
+    if model_name == 'CatBoostClassifier':
+        lower_bound = -0.22
 
     assert lower_bound < first_score < -0.17
 
@@ -180,7 +185,7 @@ def getting_single_predictions_classification(model_name=None):
 
 def getting_single_predictions_multilabel_classification(model_name=None):
     # auto_ml does not support multilabel classification for deep learning at the moment
-    if model_name == 'DeepLearningClassifier':
+    if model_name == 'DeepLearningClassifier' or model_name == 'CatBoostClassifier':
         return
 
     np.random.seed(0)
@@ -335,6 +340,9 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
         lower_bound = -0.227
     if model_name == 'XGBClassifier':
         lower_bound = -0.245
+    if model_name == 'CatBoostClassifier':
+        lower_bound = -0.235
+
 
     assert lower_bound < first_score < -0.17
 
@@ -434,6 +442,8 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
         lower_bound = -0.23
     if model_name == 'XGBClassifier':
         lower_bound = -0.25
+    if model_name == 'CatBoostClassifier':
+        lower_bound = -0.265
 
     assert lower_bound < first_score < -0.17
 
