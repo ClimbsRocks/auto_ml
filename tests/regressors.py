@@ -322,6 +322,8 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
         lower_bound = -3.6
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -3.95
+    if model_name == 'CatBoostRegressor':
+        lower_bound = -3.5
 
     assert lower_bound < first_score < -2.8
 
