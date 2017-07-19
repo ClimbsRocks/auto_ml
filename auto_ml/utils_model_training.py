@@ -107,6 +107,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                 self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
 
+            elif self.model_name[:8] == 'CatBoost':
+                X_fit = pd.DataFrame(X_fit.todense())
+
+                if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
+                    # TODO: we might have to modify the format of the y values, converting them all to ints, then back again somehow
+                    self.model.set_params(loss_function='MultiClass')
+
+                self.model.fit(X_fit, y)
             elif self.model_name[:16] == 'GradientBoosting':
                 if scipy.sparse.issparse(X_fit):
                     X_fit = X_fit.todense()
@@ -322,6 +330,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
+        elif self.model_name[:8] == 'CatBoost' and scipy.sparse.issparse(X):
+            X = X.toarray()
 
         try:
             if self.model_name[:4] == 'LGBM':
@@ -371,7 +381,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()
-
+        elif self.model_name[:8] == 'CatBoost' and scipy.sparse.issparse(X):
+            X_predict = X.toarray()
         else:
             X_predict = X
 

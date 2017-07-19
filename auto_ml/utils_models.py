@@ -26,6 +26,15 @@ try:
 except ImportError:
     pass
 
+catboost_installed = False
+try:
+    from catboost import CatBoostRegressor, CatBoostClassifier
+    catboost_installed = True
+except ImportError:
+    pass
+
+
+
 # Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
 keras_installed = False
 try:
@@ -83,7 +92,9 @@ def get_model_from_name(model_name, training_params=None):
         'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
         'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.05, 'num_leaves': 8, 'lambda_l2': 0.001},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
-        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
+        'CatBoostRegressor': {},
+        'CatBoostClassifier': {}
     }
 
     model_params = all_model_params.get(model_name, None)
@@ -144,6 +155,10 @@ def get_model_from_name(model_name, training_params=None):
     if lgb_installed:
         model_map['LGBMRegressor'] = LGBMRegressor()
         model_map['LGBMClassifier'] = LGBMClassifier()
+
+    if catboost_installed:
+        model_map['CatBoostRegressor'] = CatBoostRegressor(calc_feature_importance=True)
+        model_map['CatBoostClassifier'] = CatBoostClassifier(calc_feature_importance=True)
 
     if keras_installed:
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
@@ -232,6 +247,12 @@ def get_name_from_model(model):
             return 'LGBMClassifier'
         if isinstance(model, LGBMRegressor):
             return 'LGBMRegressor'
+
+    if catboost_installed:
+        if isinstance(model, CatBoostClassifier):
+            return 'CatBoostClassifier'
+        if isinstance(model, CatBoostRegressor):
+            return 'CatBoostRegressor'
 
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):
@@ -474,6 +495,24 @@ def get_search_params(model_name):
             # , 'subsample_for_bin': [1000, 10000]
             # , 'n_estimators': [5, 20, 50, 200]
 
+        }
+
+        , 'CatBoostClassifier': {
+            'depth': [1, 2, 3, 5, 7, 9, 12, 15, 20, 32]
+            , 'l2_leaf_reg': [.0000001, .000001, .00001, .0001, .001, .01, .1]
+            , 'learning_rate': [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]
+
+            # , random_strength
+            # , bagging_temperature
+        }
+
+        , 'CatBoostRegressor': {
+            'depth': [1, 2, 3, 5, 7, 9, 12, 15, 20, 32]
+            , 'l2_leaf_reg': [.0000001, .000001, .00001, .0001, .001, .01, .1]
+            , 'learning_rate': [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]
+
+            # , random_strength
+            # , bagging_temperature
         }
 
         , 'LinearSVR': {
