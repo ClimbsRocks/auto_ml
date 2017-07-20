@@ -114,7 +114,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer, and adds final_model back in if we did grid search on it
-    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False):
+    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False, keep_cat_features=False):
 
         pipeline_list = []
 
@@ -143,7 +143,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
-            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions)))
+            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions, keep_cat_features=keep_cat_features)))
 
 
         if self.perform_feature_selection == True:
@@ -562,7 +562,7 @@ class Predictor(object):
         if self.feature_learning == True:
             X_df = self.fit_feature_learning_and_transformation_pipeline(X_df, fl_data, y)
         else:
-            X_df = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+            X_df = self.fit_transformation_pipeline(X_df, y, estimator_names)
 
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(estimator_names, self._scorer, X_df, y)
@@ -776,8 +776,19 @@ class Predictor(object):
 
     # We have broken our model training into separate components. The first component is always going to be fitting a transformation pipeline. The great part about separating the feature transformation step is that now we can perform other work on the final step, and not have to repeat the sometimes time-consuming step of the transformation pipeline.
     # NOTE: if included, we will be fitting a feature selection step here. This can get messy later on with ensembling if we end up training on different y values.
-    def fit_transformation_pipeline(self, X_df, y, model_name):
-        ppl = self._construct_pipeline(model_name=model_name)
+    def fit_transformation_pipeline(self, X_df, y, model_names):
+
+        keep_cat_features = False
+        model_is_ok = True
+        for model_name in model_names:
+            if model_is_ok and  (model_name[:8] == 'CatBoost'):
+            # if model_is_ok and  (model_name[:4] == 'LGBM' or model_name[:8] == 'CatBoost'):
+                model_is_ok = True
+            else:
+                model_is_ok = False
+        keep_cat_features = model_is_ok
+
+        ppl = self._construct_pipeline(model_name=model_names[0], keep_cat_features=keep_cat_features)
         ppl.steps.pop()
 
         # We are intentionally overwriting X_df here to try to save some memory space

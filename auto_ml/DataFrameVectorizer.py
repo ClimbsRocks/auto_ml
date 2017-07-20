@@ -19,7 +19,7 @@ def strip_non_ascii(string):
 
 class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
-    def __init__(self, column_descriptions=None, dtype=np.float32, separator="=", sparse=True, sort=True):
+    def __init__(self, column_descriptions=None, dtype=np.float32, separator="=", sparse=True, sort=True, keep_cat_features=False):
         self.dtype = dtype
         self.separator = separator
         self.sparse = sparse
@@ -29,6 +29,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         self.column_descriptions = column_descriptions
         self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
         self.has_been_restricted = False
+        self.keep_cat_features = keep_cat_features
 
 
     def get(self, prop_name, default=None):
@@ -45,7 +46,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         for col_name in X.columns:
             # Ignore 'ignore', 'output', etc.
             if self.column_descriptions.get(col_name, False) not in self.vals_to_drop:
-                if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical':
+                if X[col_name].dtype == 'object' or self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == False:
                     # If this is a categorical column, or the dtype continues to be object, iterate through each row to get all the possible values that we are one-hot-encoding.
                     for val in X[col_name]:
                         val = str(val)
