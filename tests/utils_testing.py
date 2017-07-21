@@ -39,6 +39,7 @@ def get_titanic_binary_classification_dataset(basic=True):
 def train_basic_binary_classifier(df_titanic_train):
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
