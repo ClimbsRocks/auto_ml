@@ -17,6 +17,7 @@ def test_binary_classification():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }

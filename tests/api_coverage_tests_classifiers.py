@@ -18,140 +18,132 @@ from sklearn.model_selection import train_test_split
 
 import utils_testing as utils
 
-def test_perform_feature_selection_false_classification(model_name=None):
+def test_perform_feature_selection_false_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_selection=False, model_names=model_name)
+    ml_predictor.train(df_titanic_train, perform_feature_selection=False)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    lower_bound = -0.215
-
-    if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.221
-
-    assert lower_bound < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 # For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
 # home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
 # It didn't error previously
 # It appears to be an environment issue (possibly cuased by running too many parallelized things, which only happens in a test suite), not an issue with auto_ml. So we'll run this test to make sure the library functionality works, but only on some environments
 if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
-    def test_compare_all_models_classification(model_name=None):
+    def test_compare_all_models_classification():
         np.random.seed(0)
 
         df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
         column_descriptions = {
             'survived': 'output'
+            , 'sex': 'categorical'
             , 'embarked': 'categorical'
             , 'pclass': 'categorical'
         }
 
         ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-        ml_predictor.train(df_titanic_train, compare_all_models=True, model_names=model_name)
+        ml_predictor.train(df_titanic_train, compare_all_models=True)
 
         test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
         print('test_score')
         print(test_score)
 
-        assert -0.215 < test_score < -0.17
+        assert -0.16 < test_score < -0.14
 
 
 
 
-def test_perform_feature_selection_true_classification(model_name=None):
+def test_perform_feature_selection_true_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_selection=True, model_names=model_name)
+    ml_predictor.train(df_titanic_train, perform_feature_selection=True)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.225 < test_score < -0.17
+    assert -0.16 < test_score < -0.135
 
 
-def test_perform_feature_scaling_true_classification(model_name=None):
+def test_perform_feature_scaling_true_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_scaling=True, model_names=model_name)
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=True)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    lower_bound = -0.215
-    if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.235
+    assert -0.16 < test_score < -0.14
 
-    assert lower_bound < test_score < -0.17
-
-def test_perform_feature_scaling_false_classification(model_name=None):
+def test_perform_feature_scaling_false_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, model_names=model_name)
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=False)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    lower_bound = -0.215
-    if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.235
-
-    assert lower_bound < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 
-def test_user_input_func_classification(model_name=None):
+def test_user_input_func_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
@@ -177,6 +169,7 @@ def test_user_input_func_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
         , 'age_bucket': 'categorical'
@@ -184,7 +177,7 @@ def test_user_input_func_classification(model_name=None):
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, user_input_func=age_bucketing, model_names=model_name)
+    ml_predictor.train(df_titanic_train, perform_feature_scaling=False, user_input_func=age_bucketing)
 
 
     file_name = ml_predictor.save(str(random.random()))
@@ -222,11 +215,9 @@ def test_user_input_func_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -0.215
-    if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.237
+    lower_bound = -0.16
 
-    assert lower_bound < first_score < -0.17
+    assert -0.16 < first_score < -0.14
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -263,7 +254,7 @@ def test_user_input_func_classification(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.17
+    assert -0.16 < second_score < -0.14
 
     # test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
@@ -276,7 +267,7 @@ def test_user_input_func_classification(model_name=None):
 
     # assert lower_bound < test_score < -0.17
 
-def test_binary_classification_predict_on_Predictor_instance(model_name=None):
+def test_binary_classification_predict_on_Predictor_instance():
     np.random.seed(0)
 
 
@@ -289,11 +280,11 @@ def test_binary_classification_predict_on_Predictor_instance(model_name=None):
     # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert .65 < test_score < .75
+    assert .76 < test_score < .79
 
 
 
-def test_multilabel_classification_predict_on_Predictor_instance(model_name=None):
+def test_multilabel_classification_predict_on_Predictor_instance():
     np.random.seed(0)
 
     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
@@ -308,7 +299,7 @@ def test_multilabel_classification_predict_on_Predictor_instance(model_name=None
     assert 0.67 < test_score < 0.79
 
 
-def test_binary_classification_predict_proba_on_Predictor_instance(model_name=None):
+def test_binary_classification_predict_proba_on_Predictor_instance():
     np.random.seed(0)
 
 
@@ -322,16 +313,17 @@ def test_binary_classification_predict_proba_on_Predictor_instance(model_name=No
     # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert -0.215 < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 
-def test_pass_in_list_of_dictionaries_train_classification(model_name=None):
+def test_pass_in_list_of_dictionaries_train_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -340,23 +332,24 @@ def test_pass_in_list_of_dictionaries_train_classification(model_name=None):
 
     list_titanic_train = df_titanic_train.to_dict('records')
 
-    ml_predictor.train(list_titanic_train, model_names=model_name)
+    ml_predictor.train(list_titanic_train)
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 
-def test_pass_in_list_of_dictionaries_predict_classification(model_name=None):
+def test_pass_in_list_of_dictionaries_predict_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -365,78 +358,82 @@ def test_pass_in_list_of_dictionaries_predict_classification(model_name=None):
 
     list_titanic_train = df_titanic_train.to_dict('records')
 
-    ml_predictor.train(df_titanic_train, model_names=model_name)
+    ml_predictor.train(df_titanic_train)
 
     test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 
-def test_include_bad_y_vals_train_classification(model_name=None):
+def test_include_bad_y_vals_train_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    df_titanic_train.ix[1, 'survived'] = None
-    df_titanic_train.ix[8, 'survived'] = None
-    df_titanic_train.ix[26, 'survived'] = None
+    df_titanic_train.iloc[1]['survived'] = None
+    df_titanic_train.iloc[8]['survived'] = None
+    df_titanic_train.iloc[26]['survived'] = None
 
-    ml_predictor.train(df_titanic_train, model_names=model_name)
+    ml_predictor.train(df_titanic_train)
 
     test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.17 < test_score < -0.14
 
 
 
-def test_include_bad_y_vals_predict_classification(model_name=None):
+def test_include_bad_y_vals_predict_classification():
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    df_titanic_test.ix[1, 'survived'] = float('nan')
-    df_titanic_test.ix[8, 'survived'] = float('inf')
-    df_titanic_test.ix[26, 'survived'] = None
+    df_titanic_test.iloc[1]['survived'] = float('nan')
+    df_titanic_test.iloc[8]['survived'] = float('inf')
+    df_titanic_test.iloc[26]['survived'] = None
 
-    ml_predictor.train(df_titanic_train, model_names=model_name)
+    ml_predictor.train(df_titanic_train)
 
     test_score = ml_predictor.score(df_titanic_test.to_dict('records'), df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 
-def test_list_of_single_model_name_classification(model_name=None):
+def test_list_of_single_model_name_classification():
     np.random.seed(0)
+    model_name = 'GradientBoostingClassifier'
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -450,13 +447,10 @@ def test_list_of_single_model_name_classification(model_name=None):
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.16 < test_score < -0.14
 
 if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
-    def test_getting_single_predictions_nlp_date_multilabel_classification(model_name=None):
-        # auto_ml does not support multilabel classification for deep learning at the moment
-        if model_name == 'DeepLearningClassifier':
-            return
+    def test_getting_single_predictions_nlp_date_multilabel_classification():
 
         np.random.seed(0)
 
@@ -472,7 +466,7 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         }
 
         ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-        ml_predictor.train(df_twitter_train, model_names=model_name)
+        ml_predictor.train(df_twitter_train)
 
         file_name = ml_predictor.save(str(random.random()))
 

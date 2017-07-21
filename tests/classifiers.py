@@ -24,6 +24,7 @@ def optimize_final_model_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -38,14 +39,16 @@ def optimize_final_model_classification(model_name=None):
     print(test_score)
 
     # Small sample sizes mean there's a fair bit of noise here
-    lower_bound = -0.215
+    lower_bound = -0.18
 
-    if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.235
-    if model_name == 'LGBMClassifier':
-        lower_bound = -0.221
+    # if model_name == 'DeepLearningClassifier':
+    #     lower_bound = -0.235
+    # if model_name == 'LGBMClassifier':
+    #     lower_bound = -0.221
+    if model_name == 'CatBoostClassifier':
+        lower_bound = -0.22
 
-    assert lower_bound < test_score < -0.17
+    assert lower_bound < test_score < -0.135
 
 
 
@@ -56,6 +59,7 @@ def categorical_ensembling_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -69,21 +73,21 @@ def categorical_ensembling_classification(model_name=None):
     print('test_score')
     print(test_score)
 
-    lower_bound = -0.215
+    lower_bound = -0.18
 
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.237
-    if model_name == 'XGBClassifier':
-        lower_bound = -0.235
-    if model_name == 'LGBMClassifier':
-        lower_bound = -0.22
-    if model_name == 'GradientBoostingClassifier':
-        lower_bound = -0.23
+        lower_bound = -0.215
+    # if model_name == 'XGBClassifier':
+    #     lower_bound = -0.235
+    # if model_name == 'LGBMClassifier':
+    #     lower_bound = -0.22
+    # if model_name == 'GradientBoostingClassifier':
+    #     lower_bound = -0.23
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.25
 
 
-    assert lower_bound < test_score < -0.17
+    assert lower_bound < test_score < -0.145
 
 
 def getting_single_predictions_classification(model_name=None):
@@ -93,6 +97,7 @@ def getting_single_predictions_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -136,13 +141,13 @@ def getting_single_predictions_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -0.215
+    lower_bound = -0.18
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.245
+        lower_bound = -0.195
     if model_name == 'CatBoostClassifier':
-        lower_bound = -0.22
+        lower_bound = -0.215
 
-    assert lower_bound < first_score < -0.17
+    assert lower_bound < first_score < -0.135
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -179,7 +184,7 @@ def getting_single_predictions_classification(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.17
+    assert lower_bound < second_score < -0.135
 
 
 
@@ -239,8 +244,8 @@ def getting_single_predictions_multilabel_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
     lower_bound = 0.67
-    if model_name == 'LGBMClassifier':
-        lower_bound = 0.655
+    # if model_name == 'LGBMClassifier':
+    #     lower_bound = 0.655
     assert lower_bound < first_score < 0.79
 
     # 2. make sure the speed is reasonable (do it a few extra times)
@@ -290,6 +295,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -331,20 +337,20 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -0.215
+    lower_bound = -0.18
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.245
-    if model_name == 'GradientBoostingClassifier' or model_name is None:
-        lower_bound = -0.23
-    if model_name == 'LGBMClassifier':
-        lower_bound = -0.227
-    if model_name == 'XGBClassifier':
-        lower_bound = -0.245
-    if model_name == 'CatBoostClassifier':
-        lower_bound = -0.235
+        lower_bound = -0.187
+    # if model_name == 'GradientBoostingClassifier' or model_name is None:
+    #     lower_bound = -0.23
+    # if model_name == 'LGBMClassifier':
+    #     lower_bound = -0.227
+    # if model_name == 'XGBClassifier':
+    #     lower_bound = -0.245
+    # if model_name == 'CatBoostClassifier':
+    #     lower_bound = -0.235
 
 
-    assert lower_bound < first_score < -0.17
+    assert lower_bound < first_score < -0.145
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -381,7 +387,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.17
+    assert lower_bound < second_score < -0.145
 
 
 def feature_learning_categorical_ensembling_getting_single_predictions_classification(model_name=None):
@@ -391,6 +397,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -433,19 +440,19 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -0.215
+    lower_bound = -0.18
     if model_name == 'DeepLearningClassifier':
-        lower_bound = -0.24
-    if model_name == 'GradientBoostingClassifier' or model_name is None:
-        lower_bound = -0.25
-    if model_name == 'LGBMClassifier':
-        lower_bound = -0.23
-    if model_name == 'XGBClassifier':
-        lower_bound = -0.25
+        lower_bound = -0.245
+    # if model_name == 'GradientBoostingClassifier' or model_name is None:
+    #     lower_bound = -0.25
+    # if model_name == 'LGBMClassifier':
+    #     lower_bound = -0.23
+    # if model_name == 'XGBClassifier':
+    #     lower_bound = -0.25
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.265
 
-    assert lower_bound < first_score < -0.17
+    assert lower_bound < first_score < -0.16
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -482,5 +489,5 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.17
+    assert lower_bound < second_score < -0.16
 

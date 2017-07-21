@@ -27,6 +27,7 @@ def test_linear_model_analytics_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -51,6 +52,7 @@ def test_all_algos_classification(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -64,7 +66,7 @@ def test_all_algos_classification(model_name=None):
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.215 < test_score < -0.14
 
 def test_all_algos_regression():
     # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
@@ -122,6 +124,7 @@ def test_model_uses_user_provided_training_params(model_name=None):
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
