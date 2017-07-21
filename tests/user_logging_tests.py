@@ -21,6 +21,7 @@ def test_bad_val_in_column_descriptions():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
         , 'fare': 'this_is_a_bad_value'
@@ -32,6 +33,8 @@ def test_bad_val_in_column_descriptions():
         print('we should be throwing a warning for the user to give them useful feedback')
         assert len(w) == 1
 
+    assert True
+
 @raises(ValueError)
 def test_missing_output_col_in_column_descriptions():
     np.random.seed(0)
@@ -40,7 +43,8 @@ def test_missing_output_col_in_column_descriptions():
 
     column_descriptions = {
         # 'survived': 'output'
-        'embarked': 'categorical'
+        'sex': 'categorical'
+        , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
@@ -54,7 +58,8 @@ def test_bad_val_for_type_of_estimator():
 
     column_descriptions = {
         # 'survived': 'output'
-        'embarked': 'categorical'
+        'sex': 'categorical'
+        , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
 
@@ -68,6 +73,7 @@ def test_nans_in_output_column():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -81,7 +87,7 @@ def test_nans_in_output_column():
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.17
+    assert -0.215 < test_score < -0.13
 
 def test_verify_features_does_not_work_by_default():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
@@ -110,6 +116,8 @@ def test_verify_features_does_not_work_by_default():
 
         assert results == None
 
+    assert True
+
 
 def test_verify_features_finds_missing_prediction_features():
     np.random.seed(0)
@@ -118,9 +126,9 @@ def test_verify_features_finds_missing_prediction_features():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
-        , 'sex': 'categorical'
     }
 
 
@@ -165,9 +173,9 @@ def test_verify_features_finds_missing_training_features():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
-        , 'sex': 'categorical'
     }
 
     # Remove the "sibsp" column from our training data
@@ -211,9 +219,9 @@ def test_verify_features_finds_no_missing_features_when_none_are_missing():
 
         column_descriptions = {
             'survived': 'output'
+            , 'sex': 'categorical'
             , 'embarked': 'categorical'
             , 'pclass': 'categorical'
-            , 'sex': 'categorical'
         }
 
 
@@ -244,6 +252,7 @@ def test_throws_warning_when_fl_data_equals_df_train():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -256,10 +265,11 @@ def test_throws_warning_when_fl_data_equals_df_train():
             ml_predictor.train(df_titanic_train, feature_learning=True, fl_data=df_titanic_train)
         except KeyError as e:
             pass
-    # We should not be getting to this line- we should be throwing an error above
+        # We should not be getting to this line- we should be throwing an error above
         for thing in w:
             print(thing)
         assert len(w) == 1
+    assert True
 
 
 def test_unexpected_datetime_column_handled_without_errors():
@@ -267,6 +277,7 @@ def test_unexpected_datetime_column_handled_without_errors():
 
     column_descriptions = {
         'survived': 'output'
+        , 'sex': 'categorical'
         , 'embarked': 'categorical'
         , 'pclass': 'categorical'
     }
@@ -281,6 +292,31 @@ def test_unexpected_datetime_column_handled_without_errors():
     test_dict['anoter_unexpected_column'] = datetime.datetime.today()
 
     ml_predictor.predict(test_dict)
+
+    # We want to make sure the above does not throw an error
+    assert True
+
+def test_unmarked_categorical_column_throws_warning():
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        # This is the column we are "forgetting" to mark as categorical
+        # , 'sex': 'categorical'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    with warnings.catch_warnings(record=True) as caught_w:
+
+        ml_predictor.train(df_titanic_train)
+        print('we should be throwing a warning for the user to give them useful feedback on the unlabeled categorical column')
+        assert len(caught_w) == 1
+
+
+    ml_predictor.predict(df_titanic_test)
 
     # We want to make sure the above does not throw an error
     assert True
