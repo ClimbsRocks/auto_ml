@@ -109,13 +109,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         if isinstance(X, dict):
             for f, val in X.items():
                 if isinstance(val, six.string_types) or self.column_descriptions.get(f, False) == 'categorical':
-                    if self.keep_cat_features == False:
-                        f = f + self.separator + val
+                    if self.get('keep_cat_features', False) == False:
+                        f = f + self.separator + str(val)
                         val = 1
                     else:
                         if str(val) in bad_vals_as_strings:
                             val = '_None'
-                        val = self.label_encoders[f].transform([val])
+                        val = self.get('label_encoders')[f].transform([val])
                     indices.append(vocab[f])
                     # Convert the val to the correct dtype, then append to our values list
                     values.append(dtype(val))
@@ -134,13 +134,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                     f = X.columns[col_idx]
 
                     if isinstance(val, six.string_types) or self.column_descriptions.get(f, False) == 'categorical':
-                        if self.keep_cat_features == False:
-                            f = f + self.separator + val
+                        if self.get('keep_cat_features', False) == False:
+                            f = f + self.separator + str(val)
                             val = 1
                         else:
                             if str(val) in bad_vals_as_strings:
                                 val = '_None'
-                            val = self.label_encoders[f].transform([val])
+                            val = self.get('label_encoders')[f].transform([val])
 
                     # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
                     if f in vocab and str(val) not in bad_vals_as_strings:
