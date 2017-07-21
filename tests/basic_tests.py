@@ -42,7 +42,7 @@ def test_linear_model_analytics_classification(model_name=None):
     print(test_score)
 
     # Linear models aren't super great on this dataset...
-    assert -0.37 < test_score < -0.17
+    assert -0.21 < test_score < -0.17
 
 
 def test_all_algos_classification(model_name=None):
@@ -59,14 +59,14 @@ def test_all_algos_classification(model_name=None):
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier', 'DeepLearningClassifier', 'XGBClassifier', 'LGBMClassifier'])
+    ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier', 'DeepLearningClassifier', 'XGBClassifier', 'LGBMClassifier', 'CatBoostClassifier'])
 
     test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
 
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.14
+    assert -0.16 < test_score < -0.14
 
 def test_all_algos_regression():
     # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
@@ -81,14 +81,14 @@ def test_all_algos_regression():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor', 'Lasso', 'LassoLars', 'ElasticNet', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'ARDRegression', 'MiniBatchKMeans', 'DeepLearningRegressor'])
+    ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'GradientBoostingRegressor', 'ExtraTreesRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor', 'Lasso', 'LassoLars', 'ElasticNet', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'ARDRegression', 'MiniBatchKMeans', 'DeepLearningRegressor', 'LGBMRegressor', 'XGBRegressor', 'CatBoostRegressor'])
 
     test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
 
     print('test_score')
     print(test_score)
 
-    assert -3.35 < test_score < -2.8
+    assert -3.4 < test_score < -2.8
 
 def test_input_df_unmodified():
     np.random.seed(42)
@@ -197,6 +197,8 @@ def test_is_backwards_compatible_with_models_trained_using_1_9_6():
     print('second_score')
     print(second_score)
 
+    assert -2.8 < second_score < -2.1
+
 
 def test_ignores_new_invalid_features():
 
@@ -254,8 +256,8 @@ def test_ignores_new_invalid_features():
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -3.2
-    assert lower_bound < first_score < -2.8
+    lower_bound = -3.0
+    assert lower_bound < first_score < -2.7
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_boston_test_dictionaries)
@@ -288,4 +290,4 @@ def test_ignores_new_invalid_features():
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -2.8
+    assert lower_bound < second_score < -2.7
