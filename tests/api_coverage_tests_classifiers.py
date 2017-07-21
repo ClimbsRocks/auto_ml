@@ -182,13 +182,6 @@ def test_user_input_func_classification():
 
     file_name = ml_predictor.save(str(random.random()))
 
-    # if model_name == 'DeepLearningClassifier':
-    #     from auto_ml.utils_models import load_keras_model
-
-    #     saved_ml_pipeline = load_keras_model(file_name)
-    # else:
-    #     with open(file_name, 'rb') as read_file:
-    #         saved_ml_pipeline = dill.load(read_file)
     saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
@@ -256,16 +249,6 @@ def test_user_input_func_classification():
 
     assert -0.16 < second_score < -0.14
 
-    # test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
-
-    # print('test_score')
-    # print(test_score)
-
-    # lower_bound = -0.215
-    # if model_name == 'DeepLearningClassifier':
-    #     lower_bound = -0.235
-
-    # assert lower_bound < test_score < -0.17
 
 def test_binary_classification_predict_on_Predictor_instance():
     np.random.seed(0)
@@ -274,10 +257,8 @@ def test_binary_classification_predict_on_Predictor_instance():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
     ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
 
-    #
     predictions = ml_predictor.predict(df_titanic_test)
     test_score = accuracy_score(predictions, df_titanic_test.survived)
-    # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print(test_score)
     assert .76 < test_score < .79
@@ -292,7 +273,6 @@ def test_multilabel_classification_predict_on_Predictor_instance():
 
     predictions = ml_predictor.predict(df_twitter_test)
     test_score = accuracy_score(predictions, df_twitter_test.airline_sentiment)
-    # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print('test_score')
     print(test_score)
@@ -310,7 +290,6 @@ def test_binary_classification_predict_proba_on_Predictor_instance():
     predictions = ml_predictor.predict_proba(df_titanic_test)
     predictions = [pred[1] for pred in predictions]
     test_score = utils.calculate_brier_score_loss(df_titanic_test.survived, predictions)
-    # Right now we're getting a score of -.205
     # Make sure our score is good, but not unreasonably good
     print(test_score)
     assert -0.16 < test_score < -0.14
@@ -470,13 +449,6 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
 
         file_name = ml_predictor.save(str(random.random()))
 
-        # if model_name == 'DeepLearningClassifier':
-        #     from auto_ml.utils_models import load_keras_model
-
-        #     saved_ml_pipeline = load_keras_model(file_name)
-        # else:
-        #     with open(file_name, 'rb') as read_file:
-        #         saved_ml_pipeline = dill.load(read_file)
         saved_ml_pipeline = load_ml_model(file_name)
 
         os.remove(file_name)
@@ -502,8 +474,6 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         print(first_score)
         # Make sure our score is good, but not unreasonably good
         lower_bound = 0.73
-        # if model_name == 'LGBMClassifier':
-        #     lower_bound = 0.655
         assert lower_bound < first_score < 0.79
 
         # 2. make sure the speed is reasonable (do it a few extra times)
@@ -523,9 +493,6 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         # That's about 1 millisecond per prediction
         # Assuming we might be running on a test box that's pretty weak, multiply by 3
         # Also make sure we're not running unreasonably quickly
-        # time_upper_bound = 3
-        # if model_name == 'XGBClassifier':
-        #     time_upper_bound = 4
         assert 0.2 < duration.total_seconds() < 15
 
 
