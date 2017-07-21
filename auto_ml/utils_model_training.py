@@ -108,13 +108,17 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
 
             elif self.model_name[:8] == 'CatBoost':
-                X_fit = pd.DataFrame(X_fit.todense())
+                X_fit = X_fit.toarray()
 
                 if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
-                    # TODO: we might have to modify the format of the y values, converting them all to ints, then back again somehow
+                    # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
                     self.model.set_params(loss_function='MultiClass')
 
-                self.model.fit(X_fit, y)
+                cat_feature_names = [k for k, v in self.column_descriptions.items() if v == 'categorical']
+                cat_feature_indices = [self.training_features.index(cat_name) for cat_name in cat_feature_names]
+
+                self.model.fit(X_fit, y, cat_features=cat_feature_indices)
+
             elif self.model_name[:16] == 'GradientBoosting':
                 if scipy.sparse.issparse(X_fit):
                     X_fit = X_fit.todense()
