@@ -116,6 +116,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                         if str(val) in bad_vals_as_strings:
                             val = '_None'
                         val = self.get('label_encoders')[f].transform([val])
+
+                if f in vocab and str(val) not in bad_vals_as_strings:
+
                     indices.append(vocab[f])
                     # Convert the val to the correct dtype, then append to our values list
                     values.append(dtype(val))
