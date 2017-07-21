@@ -170,6 +170,10 @@ class Predictor(object):
             #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
 
+            try:
+                training_features = self._get_trained_feature_names()
+            except:
+                training_features = None
             training_prediction_intervals = False
             params = None
 
@@ -184,7 +188,7 @@ class Predictor(object):
                 params = self.training_params
 
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -516,7 +520,7 @@ class Predictor(object):
             fl_estimator_names = ['DeepLearningRegressor']
 
         # For performance reasons, I believe it is critical to only have one transformation pipeline, no matter how many estimators we eventually build on top. Getting predictions from a trained estimator is typically super quick. We can easily get predictions from 10 trained models in a production-ready amount of time.But the transformation pipeline is not so quick that we can duplicate it 10 times.
-        combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, fl_estimator_names[0])
+        combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, fl_estimator_names)
 
         fl_indices = [i for i in range(len_X_df, combined_transformed_data.shape[0])]
         fl_data_transformed = combined_transformed_data[fl_indices]
@@ -829,7 +833,7 @@ class Predictor(object):
         for idx, col_name in enumerate(feature_names):
             col_result = {}
             col_result['Feature Name'] = col_name
-            if col_name[:4] != 'nlp_' and '=' not in col_name:
+            if col_name[:4] != 'nlp_' and '=' not in col_name and self.column_descriptions.get(col_name, False) != 'categorical':
 
                 col_std = np.std(X[:, idx])
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
@@ -1093,7 +1097,7 @@ class Predictor(object):
             # Then, each categorical model will determine which features (if any) are useful for it's particular category
             X_df_transformed = self.fit_feature_learning_and_transformation_pipeline(X_df, kwargs['fl_data'], y)
         else:
-            X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names[0])
+            X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names)
 
         unique_categories = X_df[categorical_column].unique()
 
