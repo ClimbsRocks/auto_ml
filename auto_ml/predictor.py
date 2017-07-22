@@ -188,7 +188,7 @@ class Predictor(object):
                 params = self.training_params
 
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -785,7 +785,7 @@ class Predictor(object):
         keep_cat_features = False
         model_is_ok = True
         for model_name in model_names:
-            if model_is_ok and  (model_name[:8] == 'CatBoost'):
+            if model_is_ok and  (model_name[:8] == 'CatBoost' or model_name[:4] == 'LGBM'):
             # if model_is_ok and  (model_name[:4] == 'LGBM' or model_name[:8] == 'CatBoost'):
                 model_is_ok = True
             else:
