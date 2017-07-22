@@ -8,8 +8,9 @@ import scipy.sparse as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.externals import six
 # from sklearn.preprocessing import LabelEncoder
-from utils import ExtendedLabelEncoder
 from sklearn.utils.fixes import frombuffer_empty
+
+from auto_ml.utils import ExtendedLabelEncoder
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
@@ -137,12 +138,15 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             separator = self.separator
             indices_append = indices.append
             values_append = values.append
+            keep_cat_features = self.get('keep_cat_features', False) == False
+            is_categorical = [self.column_descriptions.get(f, False) == 'categorical' for f in X_columns]
+
             for row in X.itertuples():
                 for col_idx, val in enumerate(row[1:]):
                     f = X_columns[col_idx]
 
-                    if self.column_descriptions.get(f, False) == 'categorical':
-                        if self.get('keep_cat_features', False) == False:
+                    if is_categorical[col_idx]:
+                        if keep_cat_features:
                             f = f + separator + str(val)
                             val = 1
                         else:
