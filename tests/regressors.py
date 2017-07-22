@@ -273,7 +273,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
 
     # NOTE: this is bad practice to pass in our same training set as our fl_data set, but we don't have enough data to do it any other way
     df_boston_train, fl_data = train_test_split(df_boston_train, test_size=0.2)
-    ml_predictor.train_categorical_ensemble(df_boston_train, model_names=model_name, feature_learning=False, fl_data=fl_data, categorical_column='CHAS')
+    ml_predictor.train_categorical_ensemble(df_boston_train, model_names=model_name, feature_learning=True, fl_data=fl_data, categorical_column='CHAS')
 
     # print('Score on training data')
     # ml_predictor.score(df_boston_train, df_boston_train.MEDV)
@@ -318,7 +318,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -3.95
     if model_name == 'CatBoostRegressor':
-        lower_bound = -3.65
+        lower_bound = -3.9
 
     assert lower_bound < first_score < -2.8
 
