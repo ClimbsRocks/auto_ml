@@ -372,13 +372,20 @@ class Predictor(object):
 
         self.perform_feature_selection = perform_feature_selection
 
+        # Let the user pass in 'prediction_intervals' and 'predict_intervals' interchangeably
         if predict_intervals is not None and prediction_intervals is None:
             prediction_intervals = predict_intervals
+
 
         if prediction_intervals is None:
             self.calculate_prediction_intervals = False
         else:
-            self.calculate_prediction_intervals = True
+            if isinstance(prediction_intervals, bool):
+                # This is to allow the user to pass in their own bounds here, rather than having to just use our 5% and 95% bounds
+                self.calculate_prediction_intervals = prediction_intervals
+            else:
+                self.calculate_prediction_intervals = True
+
             if prediction_intervals == True:
                 self.prediction_intervals = [0.05, 0.95]
             else:
