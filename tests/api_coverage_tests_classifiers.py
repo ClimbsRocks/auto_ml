@@ -67,7 +67,7 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         print('test_score')
         print(test_score)
 
-        assert -0.16 < test_score < -0.14
+        assert -0.16 < test_score < -0.135
 
 
 
