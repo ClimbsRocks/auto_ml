@@ -13,16 +13,6 @@ import warnings
 from auto_ml import utils_models
 from auto_ml.utils_models import get_name_from_model
 
-keras_installed = False
-try:
-    # Suppress some level of logs
-    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-    keras_installed = True
-except:
-    pass
-
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
@@ -73,6 +63,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit = X_fit.todense()
 
             if self.model_name[:12] == 'DeepLearning':
+                if keras_imported == False:
+                    # Suppress some level of logs
+                    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+                    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+                    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+                    keras_imported = True
+
 
                 # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
                 num_cols = X_fit.shape[1]

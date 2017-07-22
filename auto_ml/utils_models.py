@@ -34,27 +34,8 @@ except ImportError:
     pass
 
 
-
+keras_imported = False
 # Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
-keras_installed = False
-try:
-    # Suppress some level of logs
-    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
-    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-    from tensorflow import logging
-    logging.set_verbosity(logging.INFO)
-    from keras.constraints import maxnorm
-    from keras.layers import Dense, Dropout
-    from keras.layers.advanced_activations import LeakyReLU, PReLU
-    from keras.models import Sequential
-    from keras.models import load_model as keras_load_model
-    from keras import regularizers
-    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-    keras_installed = True
-except ImportError as e:
-    print('error importing keras')
-    print(e)
-    pass
 
 from auto_ml import utils
 
@@ -160,7 +141,26 @@ def get_model_from_name(model_name, training_params=None):
         model_map['CatBoostRegressor'] = CatBoostRegressor(calc_feature_importance=True)
         model_map['CatBoostClassifier'] = CatBoostClassifier(calc_feature_importance=True)
 
-    if keras_installed:
+    if model_name[:12] == 'DeepLearning':
+        if keras_imported == False:
+            # Suppress some level of logs if TF is installed (but allow it to not be installed, and use Theano instead)
+            try:
+                os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+                os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+                from tensorflow import logging
+                logging.set_verbosity(logging.INFO)
+            except:
+                pass
+
+            from keras.constraints import maxnorm
+            from keras.layers import Dense, Dropout
+            from keras.layers.advanced_activations import LeakyReLU, PReLU
+            from keras.models import Sequential
+            from keras.models import load_model as keras_load_model
+            from keras import regularizers
+            from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+            keras_imported = True
+
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
         model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model)
 
@@ -236,7 +236,7 @@ def get_name_from_model(model):
         if isinstance(model, XGBRegressor):
             return 'XGBRegressor'
 
-    if keras_installed:
+    if keras_imported:
         if isinstance(model, KerasRegressor):
             return 'DeepLearningRegressor'
         if isinstance(model, KerasClassifier):

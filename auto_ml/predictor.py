@@ -46,14 +46,6 @@ try:
 except ImportError:
     pass
 
-keras_installed = False
-try:
-    from keras.models import Model
-    keras_installed = True
-except ImportError as e:
-    keras_import_error = e
-    pass
-
 class Predictor(object):
 
 
@@ -454,14 +446,6 @@ class Predictor(object):
                 print('ml_predictor.train(df_train, feature_learning=True, fl_data=df_train.copy())')
                 warnings.warn('Your fl_data and df_train must be different datasets. Use train_test_split, or at least copy the data for your fl_data')
 
-            if keras_installed != True:
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                print('feature_learning requires Keras to be installed.')
-                print('When we tried to import Model from Keras, we ran into the following error:')
-                print(keras_import_error)
-                print('Raising that error now, since feature_learning will not run without Keras')
-                raise(keras_import_error)
-
         self.transformation_pipeline = None
 
 
@@ -508,6 +492,9 @@ class Predictor(object):
 
 
     def fit_feature_learning_and_transformation_pipeline(self, X_df, fl_data, y):
+        # Only import this if we have to, because it takes a while to import in some environments
+        from keras.models import Model
+
         fl_data_cleaned, fl_y, _ = self._clean_data_and_prepare_for_training(fl_data, self.scoring)
 
         len_X_df = len(X_df)
