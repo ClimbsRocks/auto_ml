@@ -94,13 +94,6 @@ def getting_single_predictions_regression(model_name=None):
 
     file_name = ml_predictor.save(str(random.random()))
 
-    # if model_name == 'DeepLearningRegressor':
-    #     from auto_ml.utils_models import load_keras_model
-
-    #     saved_ml_pipeline = load_keras_model(file_name)
-    # else:
-    #     with open(file_name, 'rb') as read_file:
-    #         saved_ml_pipeline = dill.load(read_file)
     saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
@@ -130,15 +123,17 @@ def getting_single_predictions_regression(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -3.2
+    lower_bound = -2.9
     if model_name == 'DeepLearningRegressor':
         lower_bound = -7.8
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
     if model_name == 'XGBRegressor':
         lower_bound = -3.4
+    if model_name == 'CatBoostRegressor':
+        lower_bound = -3.2
 
-    assert lower_bound < first_score < -2.8
+    assert lower_bound < first_score < -2.7
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_boston_test_dictionaries)
@@ -171,7 +166,7 @@ def getting_single_predictions_regression(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -2.8
+    assert lower_bound < second_score < -2.7
 
 
 def feature_learning_getting_single_predictions_regression(model_name=None):

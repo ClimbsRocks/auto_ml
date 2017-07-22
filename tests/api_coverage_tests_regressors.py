@@ -66,14 +66,9 @@ def test_perform_feature_selection_false_regression(model_name=None):
     print('test_score')
     print(test_score)
 
-    lower_bound = -3.2
-    if model_name == 'DeepLearningRegressor':
-        lower_bound = -11.9
-    if model_name == 'LGBMRegressor':
-        lower_bound = -4.95
+    lower_bound = -3.0
 
-
-    assert lower_bound < test_score < -2.8
+    assert lower_bound < test_score < -2.7
 
 def test_perform_feature_scaling_true_regression(model_name=None):
     np.random.seed(0)
@@ -94,7 +89,7 @@ def test_perform_feature_scaling_true_regression(model_name=None):
     print('test_score')
     print(test_score)
 
-    assert -3.2 < test_score < -2.8
+    assert -3.0 < test_score < -2.7
 
 def test_perform_feature_scaling_false_regression(model_name=None):
     np.random.seed(0)
@@ -115,13 +110,9 @@ def test_perform_feature_scaling_false_regression(model_name=None):
     print('test_score')
     print(test_score)
 
-    lower_bound = -3.2
-    if model_name == 'DeepLearningRegressor':
-        lower_bound = -8.8
-    if model_name == 'LGBMRegressor':
-        lower_bound = -4.95
+    lower_bound = -3.0
 
-    assert lower_bound < test_score < -2.8
+    assert lower_bound < test_score < -2.7
 
 def test_compare_all_models_regression():
     np.random.seed(0)

@@ -89,36 +89,6 @@ def test_nans_in_output_column():
 
     assert -0.215 < test_score < -0.13
 
-def test_verify_features_does_not_work_by_default():
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-    ml_predictor = utils.train_basic_binary_classifier(df_titanic_train)
-
-    file_name = ml_predictor.save(str(random.random()))
-
-    with open(file_name, 'rb') as read_file:
-        saved_ml_pipeline = dill.load(read_file)
-    os.remove(file_name)
-    try:
-        keras_file_name = file_name[:-5] + '_keras_deep_learning_model.h5'
-        os.remove(keras_file_name)
-    except:
-        pass
-
-
-    with warnings.catch_warnings(record=True) as w:
-
-        results = saved_ml_pipeline.named_steps['final_model'].verify_features(df_titanic_test)
-
-        print('Here are the caught warnings:')
-        print(w)
-
-        assert len(w) == 1
-
-        assert results == None
-
-    assert True
-
-
 def test_verify_features_finds_missing_prediction_features():
     np.random.seed(0)
 

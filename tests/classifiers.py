@@ -41,10 +41,6 @@ def optimize_final_model_classification(model_name=None):
     # Small sample sizes mean there's a fair bit of noise here
     lower_bound = -0.18
 
-    # if model_name == 'DeepLearningClassifier':
-    #     lower_bound = -0.235
-    # if model_name == 'LGBMClassifier':
-    #     lower_bound = -0.221
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.22
 
@@ -77,12 +73,6 @@ def categorical_ensembling_classification(model_name=None):
 
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.215
-    # if model_name == 'XGBClassifier':
-    #     lower_bound = -0.235
-    # if model_name == 'LGBMClassifier':
-    #     lower_bound = -0.22
-    # if model_name == 'GradientBoostingClassifier':
-    #     lower_bound = -0.23
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.25
 
@@ -109,13 +99,6 @@ def getting_single_predictions_classification(model_name=None):
     file_name = ml_predictor.save(str(random.random()))
 
     saved_ml_pipeline = load_ml_model(file_name)
-    # if model_name == 'DeepLearningClassifier':
-    #     from auto_ml.utils_models import load_keras_model
-
-    #     saved_ml_pipeline = load_keras_model(file_name)
-    # else:
-    #     with open(file_name, 'rb') as read_file:
-    #         saved_ml_pipeline = dill.load(read_file)
 
     os.remove(file_name)
     try:
@@ -211,13 +194,6 @@ def getting_single_predictions_multilabel_classification(model_name=None):
 
     file_name = ml_predictor.save(str(random.random()))
 
-    # if model_name == 'DeepLearningClassifier':
-    #     from auto_ml.utils_models import load_keras_model
-
-    #     saved_ml_pipeline = load_keras_model(file_name)
-    # else:
-    #     with open(file_name, 'rb') as read_file:
-    #         saved_ml_pipeline = dill.load(read_file)
     saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
@@ -244,8 +220,6 @@ def getting_single_predictions_multilabel_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
     lower_bound = 0.67
-    # if model_name == 'LGBMClassifier':
-    #     lower_bound = 0.655
     assert lower_bound < first_score < 0.79
 
     # 2. make sure the speed is reasonable (do it a few extra times)
@@ -265,9 +239,6 @@ def getting_single_predictions_multilabel_classification(model_name=None):
     # That's about 1 millisecond per prediction
     # Assuming we might be running on a test box that's pretty weak, multiply by 3
     # Also make sure we're not running unreasonably quickly
-    # time_upper_bound = 10
-    # if model_name == 'XGBClassifier':
-    #     time_upper_bound = 4
     assert 0.2 < duration.total_seconds() < 15
 
 
@@ -308,9 +279,6 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
 
     file_name = ml_predictor.save(str(random.random()))
 
-
-    # from auto_ml.utils_models import load_keras_model
-
     saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
@@ -337,20 +305,11 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -0.18
+    lower_bound = -0.16
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.187
-    # if model_name == 'GradientBoostingClassifier' or model_name is None:
-    #     lower_bound = -0.23
-    # if model_name == 'LGBMClassifier':
-    #     lower_bound = -0.227
-    # if model_name == 'XGBClassifier':
-    #     lower_bound = -0.245
-    # if model_name == 'CatBoostClassifier':
-    #     lower_bound = -0.235
 
-
-    assert lower_bound < first_score < -0.145
+    assert lower_bound < first_score < -0.14
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -387,7 +346,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.145
+    assert lower_bound < second_score < -0.14
 
 
 def feature_learning_categorical_ensembling_getting_single_predictions_classification(model_name=None):
@@ -406,12 +365,10 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
 
     # NOTE: this is bad practice to pass in our same training set as our fl_data set, but we don't have enough data to do it any other way
     df_titanic_train, fl_data = train_test_split(df_titanic_train, test_size=0.2)
-    ml_predictor.train_categorical_ensemble(df_titanic_train, model_names=model_name, feature_learning=False, fl_data=fl_data, categorical_column='embarked')
+    ml_predictor.train_categorical_ensemble(df_titanic_train, model_names=model_name, feature_learning=True, fl_data=fl_data, categorical_column='embarked')
 
     file_name = ml_predictor.save(str(random.random()))
 
-    # with open(file_name, 'rb') as read_file:
-    #     saved_ml_pipeline = dill.load(read_file)
     from auto_ml.utils_models import load_ml_model
 
     saved_ml_pipeline = load_ml_model(file_name)
@@ -440,19 +397,13 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -0.18
+    lower_bound = -0.17
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.245
-    # if model_name == 'GradientBoostingClassifier' or model_name is None:
-    #     lower_bound = -0.25
-    # if model_name == 'LGBMClassifier':
-    #     lower_bound = -0.23
-    # if model_name == 'XGBClassifier':
-    #     lower_bound = -0.25
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.265
 
-    assert lower_bound < first_score < -0.16
+    assert lower_bound < first_score < -0.147
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -489,5 +440,5 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.16
+    assert lower_bound < second_score < -0.147
 

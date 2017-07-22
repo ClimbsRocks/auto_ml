@@ -39,7 +39,7 @@ def test_perform_feature_selection_false_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 # For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
 # home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
@@ -117,7 +117,7 @@ def test_perform_feature_scaling_true_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 def test_perform_feature_scaling_false_classification():
     np.random.seed(0)
@@ -210,7 +210,7 @@ def test_user_input_func_classification():
 
     lower_bound = -0.16
 
-    assert -0.16 < first_score < -0.14
+    assert -0.16 < first_score < -0.135
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -247,7 +247,7 @@ def test_user_input_func_classification():
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert -0.16 < second_score < -0.14
+    assert -0.16 < second_score < -0.135
 
 
 def test_binary_classification_predict_on_Predictor_instance():
@@ -261,7 +261,7 @@ def test_binary_classification_predict_on_Predictor_instance():
     test_score = accuracy_score(predictions, df_titanic_test.survived)
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert .76 < test_score < .79
+    assert .77 < test_score < .805
 
 
 
@@ -269,6 +269,7 @@ def test_multilabel_classification_predict_on_Predictor_instance():
     np.random.seed(0)
 
     df_twitter_train, df_twitter_test = utils.get_twitter_sentiment_multilabel_classification_dataset()
+    # Note that this does not take 'text' into account, intentionally (as that takes a while longer to train)
     ml_predictor = utils.train_basic_multilabel_classifier(df_twitter_train)
 
     predictions = ml_predictor.predict(df_twitter_test)
@@ -276,7 +277,7 @@ def test_multilabel_classification_predict_on_Predictor_instance():
     # Make sure our score is good, but not unreasonably good
     print('test_score')
     print(test_score)
-    assert 0.67 < test_score < 0.79
+    assert 0.72 < test_score < 0.77
 
 
 def test_binary_classification_predict_proba_on_Predictor_instance():
@@ -292,7 +293,7 @@ def test_binary_classification_predict_proba_on_Predictor_instance():
     test_score = utils.calculate_brier_score_loss(df_titanic_test.survived, predictions)
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 
 def test_pass_in_list_of_dictionaries_train_classification():
@@ -318,7 +319,7 @@ def test_pass_in_list_of_dictionaries_train_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 
 def test_pass_in_list_of_dictionaries_predict_classification():
@@ -344,7 +345,7 @@ def test_pass_in_list_of_dictionaries_predict_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 
 def test_include_bad_y_vals_train_classification():
@@ -372,7 +373,7 @@ def test_include_bad_y_vals_train_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.17 < test_score < -0.14
+    assert -0.17 < test_score < -0.135
 
 
 
@@ -401,7 +402,7 @@ def test_include_bad_y_vals_predict_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 
 def test_list_of_single_model_name_classification():
@@ -426,7 +427,7 @@ def test_list_of_single_model_name_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.135
 
 if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
     def test_getting_single_predictions_nlp_date_multilabel_classification():

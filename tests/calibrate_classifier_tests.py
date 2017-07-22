@@ -36,7 +36,7 @@ def test_calibrate_final_model_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.13
+    assert -0.14 < test_score < -0.12
 
 def test_calibrate_final_model_missing_X_test_y_test_classification():
     np.random.seed(0)
@@ -64,5 +64,5 @@ def test_calibrate_final_model_missing_X_test_y_test_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.215 < test_score < -0.13
+    assert -0.14 < test_score < -0.12
 
