@@ -279,6 +279,7 @@ class ClassificationScorer(object):
         print('This is likely the result of a model being trained on too little data, or with a bad set of hyperparameters. If you get this warning while doing a hyperparameter search, for instance, you can probably safely ignore it')
         print('We will cap those values at 0 or 1 for the purposes of scoring, but you should be careful to have similar safeguards in place in prod if you use this model')
         if not isinstance(probas[0], list):
+            probas = [val if str(val) not in bad_vals_as_strings else 0 for val in probas]
             probas = [min(max(pred, 0), 1) for pred in probas]
             return probas
         else:
@@ -286,6 +287,8 @@ class ClassificationScorer(object):
             for proba_tuple in probas:
                 cleaned_tuple = []
                 for item in proba_tuple:
+                    if str(item) in bad_vals_as_strings:
+                        item = 0
                     cleaned_tuple.append(max(min(item, 1), 0))
                 cleaned_probas.append(cleaned_tuple)
             return cleaned_probas
