@@ -12,6 +12,7 @@ import warnings
 
 from auto_ml import utils_models
 from auto_ml.utils_models import get_name_from_model
+keras_imported = False
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -54,6 +55,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+        global keras_imported, KerasRegressor, KerasClassifier
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X

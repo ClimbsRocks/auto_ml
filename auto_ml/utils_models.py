@@ -2,6 +2,7 @@ import dill
 import os
 import sys
 
+from auto_ml import utils
 from auto_ml import utils_categorical_ensembling
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
@@ -35,14 +36,25 @@ except ImportError:
 
 
 keras_imported = False
+maxnorm = None
+Dense = None
+Dropout = None
+LeakyReLU = None
+PReLU = None
+Sequential = None
+keras_load_model = None
+regularizers = None
+KerasRegressor = None
+KerasClassifier = None
+
 # Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
 
-from auto_ml import utils
 
 
 
 
 def get_model_from_name(model_name, training_params=None):
+    global keras_imported
 
     # For Keras
     epochs = 250
@@ -152,6 +164,14 @@ def get_model_from_name(model_name, training_params=None):
             except:
                 pass
 
+            global maxnorm
+            global Dense, Dropout
+            global LeakyReLU, PReLU
+            global Sequential
+            global keras_load_model
+            global regularizers
+            global KerasRegressor, KerasClassifier
+
             from keras.constraints import maxnorm
             from keras.layers import Dense, Dropout
             from keras.layers.advanced_activations import LeakyReLU, PReLU
@@ -159,6 +179,16 @@ def get_model_from_name(model_name, training_params=None):
             from keras.models import load_model as keras_load_model
             from keras import regularizers
             from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+            maxnorm
+            Dense
+            Dropout
+            LeakyReLU
+            PReLU
+            Sequential
+            keras_load_model
+            regularizers
+            KerasRegressor
+            KerasClassifier
             keras_imported = True
 
         model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
