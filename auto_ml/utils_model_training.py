@@ -32,7 +32,7 @@ except:
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False):
 
         self.model = model
         self.model_name = model_name
@@ -47,6 +47,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.training_prediction_intervals = training_prediction_intervals
         self.min_step_improvement = min_step_improvement
         self.interval_predictors = interval_predictors
+        self.keep_cat_features = keep_cat_features
 
 
         if self.type_of_estimator == 'classifier':
@@ -105,7 +106,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         eval_metric = 'binary_logloss'
 
 
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
+                cat_feature_indices = self.get_categorical_feature_indices()
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], categorical_feature=cat_feature_indices)
 
             elif self.model_name[:8] == 'CatBoost':
                 X_fit = X_fit.toarray()
@@ -114,8 +116,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
                     self.model.set_params(loss_function='MultiClass')
 
-                cat_feature_names = [k for k, v in self.column_descriptions.items() if v == 'categorical']
-                cat_feature_indices = [self.training_features.index(cat_name) for cat_name in cat_feature_names]
+                cat_feature_indices = self.get_categorical_feature_indices()
 
                 self.model.fit(X_fit, y, cat_features=cat_feature_indices)
 
@@ -545,6 +546,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def score_uncertainty(self, X, y, verbose=False):
         return self.uncertainty_model.score(X, y, verbose=False)
+
+
+    def get_categorical_feature_indices(self):
+        cat_feature_indices = None
+        if self.keep_cat_features == True:
+            cat_feature_names = [k for k, v in self.column_descriptions.items() if v == 'categorical']
+            cat_feature_indices = [self.training_features.index(cat_name) for cat_name in cat_feature_names]
+
+        return cat_feature_indices
 
 
 
