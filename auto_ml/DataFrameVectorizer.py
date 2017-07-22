@@ -108,7 +108,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
         if isinstance(X, dict):
             for f, val in X.items():
-                if isinstance(val, six.string_types) or self.column_descriptions.get(f, False) == 'categorical':
+                if self.column_descriptions.get(f, False) == 'categorical':
                     if self.get('keep_cat_features', False) == False:
                         f = f + self.separator + str(val)
                         val = 1
@@ -136,13 +136,14 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 for col_idx, val in enumerate(row):
                     f = X.columns[col_idx]
 
-                    if isinstance(val, six.string_types) or self.column_descriptions.get(f, False) == 'categorical':
+                    if self.column_descriptions.get(f, False) == 'categorical':
                         if self.get('keep_cat_features', False) == False:
                             f = f + self.separator + str(val)
                             val = 1
                         else:
                             if str(val) in bad_vals_as_strings:
                                 val = '_None'
+
                             val = self.get('label_encoders')[f].transform([val])
 
                     # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
