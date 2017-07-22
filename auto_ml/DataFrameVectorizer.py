@@ -132,13 +132,18 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         else:
             # collect all the possible feature names and build sparse matrix at
             # same time
-            for row_idx, row in X.iterrows():
-                for col_idx, val in enumerate(row):
-                    f = X.columns[col_idx]
+            X_columns = X.columns
+            string_types = six.string_types
+            separator = self.separator
+            indices_append = indices.append
+            values_append = values.append
+            for row in X.itertuples():
+                for col_idx, val in enumerate(row[1:]):
+                    f = X_columns[col_idx]
 
                     if self.column_descriptions.get(f, False) == 'categorical':
                         if self.get('keep_cat_features', False) == False:
-                            f = f + self.separator + str(val)
+                            f = f + separator + str(val)
                             val = 1
                         else:
                             if str(val) in bad_vals_as_strings:
@@ -149,9 +154,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                     # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
                     if f in vocab and str(val) not in bad_vals_as_strings:
                         # Get the index position from vocab, then append that index position to indices
-                        indices.append(vocab[f])
+                        indices_append(vocab[f])
                         # Convert the val to the correct dtype, then append to our values list
-                        values.append(dtype(val))
+                        values_append(dtype(val))
 
                 indptr.append(len(indices))
 
