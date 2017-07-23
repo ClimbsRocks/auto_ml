@@ -25,19 +25,18 @@ Here's the whole code block that will get you analytics results in your console:
   # If you pass in any categorical data as a number, tell us here and we'll take care of it.
   col_desc_dictionary = {col_to_predict: 'output', state_code: 'categorical'}
 
-  ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
   # Can pass in type_of_estimator='regressor' as well
+  ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=col_desc_dictionary)
 
-  ml_predictor.train(df, ml_for_analytics=True)
   # Wait for the machine to learn all the complex and beautiful patterns in your data...
+  ml_predictor.train(df, ml_for_analytics=True)
 
   # And this time, in your shell, it will print out the results for what it found was useful in making predictions!
 
-  ml_predictor.predict(new_data)
   # Where new_data is a single dictionary, or a DataFrame
+  ml_predictor.predict(new_data)
 
-
-Tangent time- what do you mean analytics from machine learning?
+Tangent time - what do you mean analytics from machine learning?
 ---------------------------------------------------------------
 One of my favorite analogies for this (and really, for machine learning in general), is to think of a loan officer at a regional bank in, say, the 1940's or some other pre-computer era. She's been there for 30 years. She's seen thousands of loans cross her desk, and over time she's figured out what makes a loan likely to default, or likely to be healthy.
 
@@ -48,7 +47,7 @@ It's the exact same process with machine learning. You feed the machine a ton of
 And just like our awesome loan officer, we can ask the machine to tell us what it learned.
 
 
-Note- no free lunch
+Note - no free lunch
 -------------------
 As with nearly everything in life (other than that occasional post-climb burrito where they get the crispiness just right, or that parallel parking job in the tight space you get on the first go), this isn't perfect. Once you dive deeper into the weeds, there are, of course, all kinds of caveats. However, this approach to analytics is typically much more robust than simply building a chart to compare two variables without considering anything else. The approach of just taking two variables and charting them against each other opens us up to huge classes of errors. The approaches used here will usually knock out most of those huge classes of errors, and instead open us up to much smaller classes of errors.
 
@@ -70,7 +69,7 @@ Interpreting Predicted Probability Buckets for Classifiers
 
 Sometimes, it's useful to know how a classifier is doing very granularly, beyond just accuracy. For instance, pretend an expensive event (say, burning a whole batch of pastries) has a 5% chance of occurring.
 
-If you train a model, obtaining 95% accuracy looks pretty bad on the surface- it's no better htan average! And in fact, you'll probably find that most (or all) of the predictions are 0- predicting that the pastries will not burn.
+If you train a model, obtaining 95% accuracy looks pretty bad on the surface - it's no better htan average! And in fact, you'll probably find that most (or all) of the predictions are 0 - predicting that the pastries will not burn.
 
 It's easy to disregard the model at this point.
 
@@ -95,4 +94,3 @@ A collection of random thoughts that are much deeper into the weeds, and should 
 #. We scale all features to the range of roughly [0,1], so when you're interpreting the coefficients, they're fairly directly comparable in scale. For example, say we have two variables: number of items in order, and order total, in cents. Your order total variable might reasonably range from 50 to 10,000, while your number of items might only range from 1 - 10. Thus, the coefficient on the raw order total is going to be much smaller than the coefficient on number of items. But this might not accurately reflect the relative impact of these two features, because the order total feature can multiply that coefficient by a mugh larger range. When we scale both features to fall in the range of [0,1], we can now directly compare the coefficients. The way to read this then changes slightly. It's now "if we go from being the smallest to largest on this measure, what impact would we expect this to have on our output variable?".
 #. Features with more granularity are typically more useful for models to differentiate on. Going back to our order total vs. number of items example, order total can potentially take on one of 10,000 values, while number of items can only take on 10 values. All else equal, the model will find order total more useful, simply because it has more options to perform the differentiation on.
 #. The random forest will report results on features that are most broadly applicable, since it reports results on what reduces global variance/error. The regression models will report results on which features have the strongest impact WHEN THEY ARE PRESENT. So being in the state of Hawaii might come up very highly for our regression, because we find that when a row holds data form the state of Hawaii, we need to make a large adjustment. However, the tree-based model likely won't report that variable to be too useful, since very little of your data likely comes from the state of Hawaii. It will likely find a more global variable like income (which is likely present in every row) to be more useful to reduce overall error/variance.
-
