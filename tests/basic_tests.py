@@ -66,7 +66,7 @@ def test_all_algos_classification(model_name=None):
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.16 < test_score < -0.131
 
 def test_all_algos_regression():
     # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
