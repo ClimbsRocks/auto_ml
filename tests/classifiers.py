@@ -312,7 +312,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.187
 
-    assert lower_bound < first_score < -0.14
+    assert lower_bound < first_score < -0.133
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -349,7 +349,7 @@ def feature_learning_getting_single_predictions_classification(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.14
+    assert lower_bound < second_score < -0.133
 
 
 def feature_learning_categorical_ensembling_getting_single_predictions_classification(model_name=None):
