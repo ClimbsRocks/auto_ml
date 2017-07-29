@@ -158,20 +158,12 @@ class ExtendedLabelEncoder(LabelEncoder):
         -------
         y : array-like of shape [n_samples]
         """
-        # check_is_fitted(self, 'classes_')
         y = column_or_1d(y, warn=True)
 
         classes = np.unique(y)
         if len(np.intersect1d(classes, self.classes_)) < len(classes):
             diff = np.setdiff1d(classes, self.classes_)
-            # print('self.classes_')
-            # print(self.classes_)
-            # print('type(self.classes_)')
-            # print(type(self.classes_))
-            # print('diff')
-            # print(diff)
             self.classes_ = np.hstack((self.classes_, diff))
-            # raise ValueError("y contains new labels: %s" % str(diff))
         return np.searchsorted(self.classes_, y)
 
 class ExtendedPipeline(Pipeline):
