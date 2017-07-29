@@ -225,12 +225,3 @@ def clean_params(params):
             cleaned_params[k[7:]] = v
 
     return cleaned_params
-
-
-class ExtendedKerasRegressor(KerasRegressor):
-
-    def __init__(self, build_fn=None, **sk_params):
-        super(self.__class__, self).__init__(build_fn, sk_params)
-
-    def load_saved_model(self, model_name):
-        self.model = keras_load_model(temp_file_name)
