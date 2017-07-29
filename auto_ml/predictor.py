@@ -595,6 +595,12 @@ class Predictor(object):
         if self.feature_learning == True:
             X_df = self.fit_feature_learning_and_transformation_pipeline(X_df, fl_data, y)
         else:
+            # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
+            if self.model_names is not None and not (len(self.model_names) == 1 and self.model_names[0] is None):
+                estimator_names = self.model_names
+            else:
+                estimator_names = self._get_estimator_names()
+
             X_df = self.fit_transformation_pipeline(X_df, y, estimator_names)
 
         # This is our main logic for how we train the final model
@@ -1301,6 +1307,12 @@ class Predictor(object):
             # Then, each categorical model will determine which features (if any) are useful for it's particular category
             X_df_transformed = self.fit_feature_learning_and_transformation_pipeline(X_df, kwargs['fl_data'], y)
         else:
+            # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
+            if self.model_names is not None and not (len(self.model_names) == 1 and self.model_names[0] is None):
+                estimator_names = self.model_names
+            else:
+                estimator_names = self._get_estimator_names()
+
             X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names)
 
         unique_categories = X_df[categorical_column].unique()
