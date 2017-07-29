@@ -52,8 +52,6 @@ try:
 except ImportError:
     pass
 
-
-
 def _pickle_method(m):
     if m.im_self is None:
         return getattr, (m.im_class, m.im_func.func_name)
@@ -128,7 +126,7 @@ class Predictor(object):
     # We use _construct_pipeline at both the start and end of our training.
     # At the start, it constructs the pipeline from scratch
     # At the end, it takes FeatureSelection out after we've used it to restrict DictVectorizer, and adds final_model back in if we did grid search on it
-    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False, is_hp_search=False):
+    def _construct_pipeline(self, model_name='LogisticRegression', trained_pipeline=None, final_model=None, feature_learning=False, final_model_step_name='final_model', prediction_interval=False, keep_cat_features=False, is_hp_search=False):
 
         pipeline_list = []
 
@@ -162,7 +160,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
-            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions)))
+            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions, keep_cat_features=keep_cat_features)))
 
 
         if self.perform_feature_selection == True:
@@ -189,6 +187,10 @@ class Predictor(object):
             #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
 
+            try:
+                training_features = self._get_trained_feature_names()
+            except:
+                training_features = None
             training_prediction_intervals = False
             params = None
 
@@ -203,7 +205,7 @@ class Predictor(object):
                 params = self.training_params
 
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, is_hp_search=is_hp_search)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -412,13 +414,20 @@ class Predictor(object):
 
         self.perform_feature_selection = perform_feature_selection
 
+        # Let the user pass in 'prediction_intervals' and 'predict_intervals' interchangeably
         if predict_intervals is not None and prediction_intervals is None:
             prediction_intervals = predict_intervals
+
 
         if prediction_intervals is None:
             self.calculate_prediction_intervals = False
         else:
-            self.calculate_prediction_intervals = True
+            if isinstance(prediction_intervals, bool):
+                # This is to allow the user to pass in their own bounds here, rather than having to just use our 5% and 95% bounds
+                self.calculate_prediction_intervals = prediction_intervals
+            else:
+                self.calculate_prediction_intervals = True
+
             if prediction_intervals == True:
                 self.prediction_intervals = [0.05, 0.95]
             else:
@@ -527,6 +536,8 @@ class Predictor(object):
 
     def fit_feature_learning_and_transformation_pipeline(self, X_df, fl_data, y):
         fl_data_cleaned, fl_y = self._clean_data_and_prepare_for_training(fl_data, self.scoring)
+        # Only import this if we have to, because it takes a while to import in some environments
+        from keras.models import Model
 
         len_X_df = len(X_df)
         combined_training_data = pd.concat([X_df, fl_data_cleaned], axis=0)
@@ -538,7 +549,7 @@ class Predictor(object):
             fl_estimator_names = ['DeepLearningRegressor']
 
         # For performance reasons, I believe it is critical to only have one transformation pipeline, no matter how many estimators we eventually build on top. Getting predictions from a trained estimator is typically super quick. We can easily get predictions from 10 trained models in a production-ready amount of time.But the transformation pipeline is not so quick that we can duplicate it 10 times.
-        combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, fl_estimator_names[0])
+        combined_transformed_data = self.fit_transformation_pipeline(combined_training_data, combined_y, fl_estimator_names)
 
         fl_indices = [i for i in range(len_X_df, combined_transformed_data.shape[0])]
         fl_data_transformed = combined_transformed_data[fl_indices]
@@ -584,7 +595,7 @@ class Predictor(object):
         if self.feature_learning == True:
             X_df = self.fit_feature_learning_and_transformation_pipeline(X_df, fl_data, y)
         else:
-            X_df = self.fit_transformation_pipeline(X_df, y, self.model_names[0])
+            X_df = self.fit_transformation_pipeline(X_df, y, estimator_names)
 
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(self.model_names, self._scorer, X_df, y)
@@ -800,8 +811,19 @@ class Predictor(object):
 
     # We have broken our model training into separate components. The first component is always going to be fitting a transformation pipeline. The great part about separating the feature transformation step is that now we can perform other work on the final step, and not have to repeat the sometimes time-consuming step of the transformation pipeline.
     # NOTE: if included, we will be fitting a feature selection step here. This can get messy later on with ensembling if we end up training on different y values.
-    def fit_transformation_pipeline(self, X_df, y, model_name):
-        ppl = self._construct_pipeline(model_name=model_name)
+    def fit_transformation_pipeline(self, X_df, y, model_names):
+
+        keep_cat_features = False
+        model_is_ok = True
+        for model_name in model_names:
+            if model_is_ok and  (model_name[:8] == 'CatBoost' or model_name[:4] == 'LGBM'):
+            # if model_is_ok and  (model_name[:4] == 'LGBM' or model_name[:8] == 'CatBoost'):
+                model_is_ok = True
+            else:
+                model_is_ok = False
+        keep_cat_features = model_is_ok
+
+        ppl = self._construct_pipeline(model_name=model_names[0], keep_cat_features=keep_cat_features)
         ppl.steps.pop()
 
         # We are intentionally overwriting X_df here to try to save some memory space
@@ -855,7 +877,7 @@ class Predictor(object):
                 continue
             col_result = {}
             col_result['Feature Name'] = col_name
-            if col_name[:4] != 'nlp_' and '=' not in col_name:
+            if col_name[:4] != 'nlp_' and '=' not in col_name and self.column_descriptions.get(col_name, False) != 'categorical':
 
                 col_std = np.std(X[:, col_idx])
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
@@ -927,7 +949,7 @@ class Predictor(object):
             feature_responses = self.create_feature_responses(model, X, y, top_features)
             self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
 
-        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier']:
+        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
             df_model_results = self._print_ml_analytics_results_random_forest(model)
             sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
             sorted_model_results = sorted_model_results.reset_index(drop=True)
@@ -935,6 +957,7 @@ class Predictor(object):
 
             feature_responses = self.create_feature_responses(model, X, y, top_features)
             self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
+
 
         else:
             feature_responses = self.create_feature_responses(model, X, y)
@@ -1278,7 +1301,7 @@ class Predictor(object):
             # Then, each categorical model will determine which features (if any) are useful for it's particular category
             X_df_transformed = self.fit_feature_learning_and_transformation_pipeline(X_df, kwargs['fl_data'], y)
         else:
-            X_df_transformed = self.fit_transformation_pipeline(X_df, y, self.model_names[0])
+            X_df_transformed = self.fit_transformation_pipeline(X_df, y, estimator_names)
 
         unique_categories = X_df[categorical_column].unique()
 

@@ -120,6 +120,16 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         # See if we should fit TfidfVectorizer or not
         for key in X_df.columns:
 
+            if X_df[key].dtype == 'object' and self.column_descriptions.get(key, False) not in ['categorical', 'ignore', 'nlp']:
+                print('\n')
+                print('Encountered a column that is not marked as categorical, but is an "object" pandas type, which typically indicates a categorical column.')
+                print('The name of this columns is: "{}"'.format(key))
+                print('Some example features in this column are: {}'.format(list(X_df[key].head(5))))
+                print('If this is a categorical column, please mark it as `{}: "categorical"` as part of your column_descriptions'.format(key))
+                print('If this is not a categorical column, please consider converting its dtype before passing data into auto_ml')
+                print('\n')
+                warnings.warn('Consider marking the "{}" column as categorical'.format(key))
+
             if self.transformed_column_descriptions.get(key) is None:
                 self.transformed_column_descriptions[key] = 'continuous'
 
@@ -144,6 +154,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, X, y=None):
+
         ignore_none_fields = False
         if self.get('transformed_column_descriptions', None) is not None:
             ignore_none_fields = True

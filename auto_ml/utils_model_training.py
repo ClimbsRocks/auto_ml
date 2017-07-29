@@ -13,15 +13,7 @@ import warnings
 
 from auto_ml import utils_models
 from auto_ml.utils_models import get_name_from_model
-
-# Suppress some level of logs
-os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
-os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
-# os.environ['KERAS_BACKEND'] = 'theano'
-from keras.callbacks import EarlyStopping, ModelCheckpoint, TerminateOnNaN
-from keras.models import load_model as keras_load_model
-from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
-from auto_ml.utils import ExtendedKerasRegressor
+keras_imported = False
 
 
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
@@ -32,7 +24,7 @@ from auto_ml.utils import ExtendedKerasRegressor
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, is_hp_search=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, is_hp_search=None):
 
         self.model = model
         self.model_name = model_name
@@ -48,6 +40,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.min_step_improvement = min_step_improvement
         self.interval_predictors = interval_predictors
         self.is_hp_search = is_hp_search
+        self.keep_cat_features = keep_cat_features
 
 
         if self.type_of_estimator == 'classifier':
@@ -64,6 +57,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+        global keras_imported, KerasRegressor, KerasClassifier
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X
@@ -73,6 +67,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_fit = X_fit.todense()
 
             if self.model_name[:12] == 'DeepLearning':
+                if keras_imported == False:
+                    # Suppress some level of logs
+                    os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+                    os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+                    from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+                    keras_imported = True
+
 
                 # For Keras, we need to tell it how many input nodes to expect, which is our num_cols
                 num_cols = X_fit.shape[1]
@@ -160,7 +161,20 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 verbose = True
                 if self.is_hp_search == True:
                     verbose = False
-                self.model.fit(X_fit, y, verbose=verbose, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'])
+
+                cat_feature_indices = self.get_categorical_feature_indices()
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], categorical_feature=cat_feature_indices, verbose=verbose)
+
+            elif self.model_name[:8] == 'CatBoost':
+                X_fit = X_fit.toarray()
+
+                if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
+                    # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
+                    self.model.set_params(loss_function='MultiClass')
+
+                cat_feature_indices = self.get_categorical_feature_indices()
+
+                self.model.fit(X_fit, y, cat_features=cat_feature_indices)
 
             elif self.model_name[:16] == 'GradientBoosting':
                 if scipy.sparse.issparse(X_fit):
@@ -387,6 +401,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
+        elif self.model_name[:8] == 'CatBoost' and scipy.sparse.issparse(X):
+            X = X.toarray()
 
         try:
             if self.model_name[:4] == 'LGBM':
@@ -436,7 +452,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()
-
+        elif self.model_name[:8] == 'CatBoost' and scipy.sparse.issparse(X):
+            X_predict = X.toarray()
         else:
             X_predict = X
 
@@ -598,6 +615,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def score_uncertainty(self, X, y, verbose=False):
         return self.uncertainty_model.score(X, y, verbose=False)
+
+
+    def get_categorical_feature_indices(self):
+        cat_feature_indices = None
+        if self.keep_cat_features == True:
+            cat_feature_names = [k for k, v in self.column_descriptions.items() if v == 'categorical']
+            cat_feature_indices = [self.training_features.index(cat_name) for cat_name in cat_feature_names]
+
+        return cat_feature_indices
 
 
 

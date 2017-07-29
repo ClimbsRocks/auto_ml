@@ -3,6 +3,7 @@ import os
 import random
 import sys
 
+from auto_ml import utils
 from auto_ml import utils_categorical_ensembling
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
@@ -27,26 +28,34 @@ try:
 except ImportError:
     pass
 
-# Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
-# Suppress some level of logs
-# from tensorflow import logging
-# logging.set_verbosity(logging.INFO)
-# os.environ['KERAS_BACKEND'] = 'theano'
-from keras.constraints import maxnorm
-from keras.layers import Activation, Dense, Dropout
-from keras.layers.advanced_activations import LeakyReLU, PReLU, ELU, ThresholdedReLU
-from keras.models import Sequential
-from keras.models import load_model as keras_load_model
-from keras import optimizers
-from keras import regularizers
-from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+catboost_installed = False
+try:
+    from catboost import CatBoostRegressor, CatBoostClassifier
+    catboost_installed = True
+except ImportError:
+    pass
 
-from auto_ml import utils
+
+keras_imported = False
+maxnorm = None
+Dense = None
+Dropout = None
+LeakyReLU = None
+PReLU = None
+Sequential = None
+keras_load_model = None
+regularizers = None
+KerasRegressor = None
+KerasClassifier = None
+
+# Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
+
 
 
 
 
 def get_model_from_name(model_name, training_params=None, is_hp_search=False):
+    global keras_imported
 
     # For Keras
     epochs = 250
@@ -77,7 +86,9 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.1, 'num_leaves': 8, 'lambda_l2': 0.001},
         'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.1, 'num_leaves': 8, 'lambda_l2': 0.001},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
-        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2}
+        'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
+        'CatBoostRegressor': {},
+        'CatBoostClassifier': {}
     }
 
     # if os.environ.get('is_test_suite', 0) == 'True':
@@ -151,6 +162,40 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         model_map['LGBMRegressor'] = LGBMRegressor()
         model_map['LGBMClassifier'] = LGBMClassifier()
 
+    if catboost_installed:
+        model_map['CatBoostRegressor'] = CatBoostRegressor(calc_feature_importance=True)
+        model_map['CatBoostClassifier'] = CatBoostClassifier(calc_feature_importance=True)
+
+    if model_name[:12] == 'DeepLearning':
+        if keras_imported == False:
+            # Suppress some level of logs if TF is installed (but allow it to not be installed, and use Theano instead)
+            try:
+                os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
+                os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+                from tensorflow import logging
+                logging.set_verbosity(logging.INFO)
+            except:
+                pass
+
+            global maxnorm
+            global Dense, Dropout
+            global LeakyReLU, PReLU
+            global Sequential
+            global keras_load_model
+            global regularizers
+            global KerasRegressor, KerasClassifier
+
+            from keras.constraints import maxnorm
+            from keras.layers import Dense, Dropout
+            from keras.layers.advanced_activations import LeakyReLU, PReLU
+            from keras.models import Sequential
+            from keras.models import load_model as keras_load_model
+            from keras import regularizers
+            from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+            keras_imported = True
+
+        model_map['DeepLearningClassifier'] = KerasClassifier(build_fn=make_deep_learning_classifier)
+        model_map['DeepLearningRegressor'] = KerasRegressor(build_fn=make_deep_learning_model)
 
     try:
         model_without_params = model_map[model_name]
@@ -229,12 +274,23 @@ def get_name_from_model(model):
         if isinstance(model, XGBRegressor):
             return 'XGBRegressor'
 
+    if keras_imported:
+        if isinstance(model, KerasRegressor):
+            return 'DeepLearningRegressor'
+        if isinstance(model, KerasClassifier):
+            return 'DeepLearningClassifier'
 
     if lgb_installed:
         if isinstance(model, LGBMClassifier):
             return 'LGBMClassifier'
         if isinstance(model, LGBMRegressor):
             return 'LGBMRegressor'
+
+    if catboost_installed:
+        if isinstance(model, CatBoostClassifier):
+            return 'CatBoostClassifier'
+        if isinstance(model, CatBoostRegressor):
+            return 'CatBoostRegressor'
 
 # Hyperparameter search spaces for each model
 def get_search_params(model_name):
@@ -478,6 +534,24 @@ def get_search_params(model_name):
             , 'subsample': [0.7, 0.9, 1.0]
             , 'learning_rate': [0.01, 0.05, 0.1]
             , 'n_estimators': [5, 20, 35, 50, 75, 100, 150, 200, 350, 500, 750, 1000]
+        }
+
+        , 'CatBoostClassifier': {
+            'depth': [1, 2, 3, 5, 7, 9, 12, 15, 20, 32]
+            , 'l2_leaf_reg': [.0000001, .000001, .00001, .0001, .001, .01, .1]
+            , 'learning_rate': [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]
+
+            # , random_strength
+            # , bagging_temperature
+        }
+
+        , 'CatBoostRegressor': {
+            'depth': [1, 2, 3, 5, 7, 9, 12, 15, 20, 32]
+            , 'l2_leaf_reg': [.0000001, .000001, .00001, .0001, .001, .01, .1]
+            , 'learning_rate': [0.01, 0.05, 0.1, 0.15, 0.2, 0.3]
+
+            # , random_strength
+            # , bagging_temperature
         }
 
         , 'LinearSVR': {

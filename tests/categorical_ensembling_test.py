@@ -21,6 +21,7 @@ def test_categorical_ensemble_basic_classifier():
         'survived': 'output'
         , 'pclass': 'categorical'
         , 'embarked': 'categorical'
+        , 'sex': 'categorical'
     }
 
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
@@ -33,6 +34,6 @@ def test_categorical_ensemble_basic_classifier():
     print(test_score)
 
     # Small sample sizes mean there's a fair bit of noise here
-    assert -0.226 < test_score < -0.17
+    assert -0.155 < test_score < -0.135
 
 
