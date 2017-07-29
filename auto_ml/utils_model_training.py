@@ -110,6 +110,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     print('To measure validation accuracy, we will split off a random 10 percent of your data set')
 
 
+                from keras.callbacks import EarlyStopping
 
                 early_stopping = EarlyStopping(monitor='val_loss', patience=patience, verbose=verbose)
                 terminate_on_nan = TerminateOnNaN()
