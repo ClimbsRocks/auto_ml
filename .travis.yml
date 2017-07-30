@@ -6,15 +6,10 @@ services:
 
 python:
   - "2.7"
-  # - "3.5"
-  # - "3.6"
-  # Right now we're using Docker, which only has Python 2 installed by default. Over time we can certainly create a more complicated docker that has multiple versions of Python installed, and programmatically determine which one to use
 
-# Command to install dependencies
   - docker pull climbsrocks/auto_ml_tests:latest
   - pip install coveralls
 
-# Command to run tests
 script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:latest python setup.py nosetests
 
 after_success:
