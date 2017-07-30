@@ -71,7 +71,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     # Suppress some level of logs
                     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
                     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+                    from keras.callbacks import EarlyStopping, ModelCheckpoint, TerminateOnNaN
+                    from keras.models import load_model as keras_load_model
                     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+
                     keras_imported = True
 
 
@@ -108,9 +111,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 if not self.is_hp_search:
                     print('\nWe will stop training early if we have not seen an improvement in validation accuracy in {} epochs'.format(patience))
                     print('To measure validation accuracy, we will split off a random 10 percent of your data set')
-
-
-                from keras.callbacks import EarlyStopping, TerminateOnNaN
 
                 early_stopping = EarlyStopping(monitor='val_loss', patience=patience, verbose=verbose)
                 terminate_on_nan = TerminateOnNaN()
