@@ -57,7 +57,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
-        global keras_imported, KerasRegressor, KerasClassifier
+        global keras_imported, KerasRegressor, KerasClassifier, EarlyStopping, ModelCheckpoint, TerminateOnNaN, keras_load_model
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X

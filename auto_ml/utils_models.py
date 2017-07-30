@@ -41,12 +41,16 @@ maxnorm = None
 Dense = None
 Dropout = None
 LeakyReLU = None
+ThresholdedReLU = None
 PReLU = None
+ELU = None
 Sequential = None
 keras_load_model = None
 regularizers = None
+optimizers = None
 KerasRegressor = None
 KerasClassifier = None
+Activation = None
 
 # Note: it's important that importing tensorflow come last. We can run into OpenCL issues if we import it ahead of some other packages. At the moment, it's a known behavior with tensorflow, but everyone's ok with this workaround.
 
@@ -177,18 +181,19 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
 
             global maxnorm
             global Dense, Dropout
-            global LeakyReLU, PReLU
+            global LeakyReLU, PReLU, ThresholdedReLU, ELU
             global Sequential
             global keras_load_model
-            global regularizers
+            global regularizers, optimizers
+            global Activation
             global KerasRegressor, KerasClassifier
 
             from keras.constraints import maxnorm
-            from keras.layers import Dense, Dropout
-            from keras.layers.advanced_activations import LeakyReLU, PReLU
+            from keras.layers import Activation, Dense, Dropout
+            from keras.layers.advanced_activations import LeakyReLU, PReLU, ThresholdedReLU, ELU
             from keras.models import Sequential
             from keras.models import load_model as keras_load_model
-            from keras import regularizers
+            from keras import regularizers, optimizers
             from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
             keras_imported = True
 
@@ -260,11 +265,6 @@ def get_name_from_model(model):
         return 'LinearSVR'
     if isinstance(model, LinearSVC):
         return 'LinearSVC'
-
-    if isinstance(model, KerasRegressor):
-        return 'DeepLearningRegressor'
-    if isinstance(model, KerasClassifier):
-        return 'DeepLearningClassifier'
 
     if xgb_installed:
         if isinstance(model, XGBClassifier):
