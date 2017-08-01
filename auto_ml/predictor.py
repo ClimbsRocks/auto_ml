@@ -1027,18 +1027,11 @@ class Predictor(object):
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
 
-
-        if total_combinations >= 50:
-            pool = pathos.multiprocessing.ProcessPool()
-
-            # Since we may have already closed the pool, try to restart it
-            try:
-                pool.restart()
-            except AssertionError as e:
-                pass
-            toolbox = Toolbox()
-            toolbox.register('map', pool.map)
-
+        fit_evolutionary_search = False
+        if total_combinations >= 50 and model_name not in ['CatBoostClassifier', 'CatBoostRegressor']:
+            fit_evolutionary_search = True
+        # For some reason, EASCV doesn't play nicely with CatBoost. It blows up the memory hugely, and takes forever to train
+        if fit_evolutionary_search == True:
             gs = EvolutionaryAlgorithmSearchCV(
                 # Fit on the pipeline.
                 ppl,
@@ -1061,7 +1054,7 @@ class Predictor(object):
                 tournament_size=tournament_size,
                 generations_number=generations_number,
                 # Do not fit the best estimator on all the data- we will do that later, possibly after increasing epochs or n_estimators
-                refit=refit
+                refit=True
 
             )
 
@@ -1089,9 +1082,9 @@ class Predictor(object):
             print('\n\n********************************************************************************************')
             if self.optimize_final_model == True:
                 print('Optimizing the hyperparameters for your model now')
-                if total_combinations < 50:
+                if fit_evolutionary_search == False:
                     print('About to run GridSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
-                elif total_combinations >= 50:
+                else:
                     print('About to run EvolutionaryAlgorithmSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
                     print('Population size each generation: ' + str(population_size))
                     print('Number of generations: ' + str(generations_number))
@@ -1564,15 +1557,13 @@ class Predictor(object):
 
 
     def print_training_summary(self, gs):
-        print('The best CV score from GridSearchCV (by default averaging across k-fold CV) for ' + self.output_column + ' is:')
+        print('The best CV score from our hyperparameter search (by default averaging across k-fold CV) for ' + self.output_column + ' is:')
         if self.took_log_of_y:
             print('    Note that this score is calculated using the natural logs of the y values.')
         print(gs.best_score_)
         print('The best params were')
 
         # Remove 'final_model__model' from what we print- it's redundant with model name, and is difficult to read quickly in a list since it's a python object.
-        print(gs.best_params_)
-        print(gs.best_params_)
         printing_copy = {}
         for k, v in gs.best_params_.items():
             if k == 'model':
@@ -1592,11 +1583,9 @@ class Predictor(object):
             raw_scores = gs.cv_results_
             df_raw_scores = pd.DataFrame(raw_scores)
 
-            print('df_raw_scores')
-            print(df_raw_scores)
             df_raw_scores = df_raw_scores.sort_values(by='mean_test_score', ascending=False)
-            print('df_raw_scores')
-            print(df_raw_scores)
+            # print('df_raw_scores')
+            # print(df_raw_scores)
             col_name_map = {
                 'mean_test_score': 'mean_score'
                 , 'min_test_score': 'DROPME'
@@ -1613,8 +1602,6 @@ class Predictor(object):
                 else:
                     new_cols.append(col)
             df_raw_scores.columns = new_cols
-            print('df_raw_scores')
-            print(df_raw_scores)
             try:
                 df_raw_scores = df_raw_scores.drop('DROPME', axis=1)
             except:
