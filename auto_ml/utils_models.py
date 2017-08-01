@@ -63,9 +63,9 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
 
     # For Keras
     epochs = 250
-    if os.environ.get('is_test_suite', 0) == 'True' and model_name[:12] == 'DeepLearning':
-        print('Heard that this is the test suite. Limiting number of epochs, which will increase training speed dramatically at the expense of model accuracy')
-        epochs = 30
+    # if os.environ.get('is_test_suite', 0) == 'True' and model_name[:12] == 'DeepLearning':
+    #     print('Heard that this is the test suite. Limiting number of epochs, which will increase training speed dramatically at the expense of model accuracy')
+    #     epochs = 100
 
     all_model_params = {
         'LogisticRegression': {'n_jobs': -2},
@@ -565,12 +565,12 @@ def get_search_params(model_name):
 
     # Some of these are super expensive to compute. So if we're running this in a test suite, let's make sure the structure works, but reduce the compute time
     params = grid_search_params[model_name]
-    # if os.environ.get('is_test_suite', 0) == 'True' and random.random() > 0.5:
-    #     simplified_params = {}
-    #     for k, v in params.items():
-    #         # Grab the first two items for each thing we want to test
-    #         simplified_params[k] = v[:2]
-    #     params = simplified_params
+    if os.environ.get('is_test_suite', 0) == 'True' and model_name[:8] == 'CatBoost':
+        simplified_params = {}
+        for k, v in params.items():
+            # Grab the first two items for each thing we want to test
+            simplified_params[k] = v[:2]
+        params = simplified_params
 
     return params
 
