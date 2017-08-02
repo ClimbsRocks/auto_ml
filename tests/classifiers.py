@@ -21,6 +21,8 @@ def optimize_final_model_classification(model_name=None):
     np.random.seed(0)
 
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    # We just want to make sure these run, not necessarily make sure that they're super accurate (which takes more time, and is dataset dependent)
     df_titanic_train = df_titanic_train.sample(frac=0.5)
 
     column_descriptions = {

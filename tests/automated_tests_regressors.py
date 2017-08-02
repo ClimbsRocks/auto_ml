@@ -23,9 +23,6 @@ test_names = OrderedDict([
     # ('feature_learning_categorical_ensembling_getting_single_predictions_regression', regressor_tests.feature_learning_categorical_ensembling_getting_single_predictions_regression)
 ])
 
-def test_return_true():
-    assert True
-
 def test_generator():
     for model_name in training_parameters['model_names']:
         for test_name, test in test_names.items():

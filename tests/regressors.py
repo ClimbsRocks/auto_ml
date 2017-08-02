@@ -19,7 +19,8 @@ def optimize_final_model_regression(model_name=None):
 
     df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
 
-    df_boston_train = df_boston_train.sample(frac=0.2)
+    # We just want to make sure these run, not necessarily make sure that they're super accurate (which takes more time, and is dataset dependent)
+    df_boston_train = df_boston_train.sample(frac=0.5)
 
     column_descriptions = {
         'MEDV': 'output'
@@ -38,10 +39,10 @@ def optimize_final_model_regression(model_name=None):
     # the random seed gets a score of -3.21 on python 3.5
     # There's a ton of noise here, due to small sample sizes
     lower_bound = -3.4
-    # if model_name == 'DeepLearningRegressor':
-    #     lower_bound = -17
+    if model_name == 'DeepLearningRegressor':
+        lower_bound = -24
     if model_name == 'LGBMRegressor':
-        lower_bound = -5.9
+        lower_bound = -9.5
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -5.1
     if model_name == 'CatBoostRegressor':

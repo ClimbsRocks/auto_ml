@@ -105,7 +105,7 @@ def test_all_algos_classification(model_name=None):
     print(test_score)
 
     # Linear models aren't super great on this dataset...
-    assert -0.215 < test_score < -0.17
+    assert -0.215 < test_score < -0.131
 
 def test_linear_model_analytics_classification(model_name=None):
     np.random.seed(0)
@@ -128,7 +128,7 @@ def test_linear_model_analytics_classification(model_name=None):
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.131
+    assert -0.21 < test_score < -0.131
 
 def test_all_algos_regression():
     # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.

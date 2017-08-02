@@ -1,6 +1,7 @@
 # This file is just to test passing a bunch of different parameters into train to make sure that things work
 # At first, it is not necessarily testing whether those things have the intended effect or not
 
+import datetime
 import os
 import random
 import sys
