@@ -104,7 +104,7 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
 
     if is_hp_search == True:
         if model_name[:12] == 'DeepLearning':
-            model_params['epochs'] = 100
+            model_params['epochs'] = 50
         if model_name[:4] == 'LGBM':
             model_params['n_estimators'] = 500
 
