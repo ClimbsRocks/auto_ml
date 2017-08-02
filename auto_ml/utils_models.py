@@ -62,7 +62,7 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
     global keras_imported
 
     # For Keras
-    epochs = 250
+    epochs = 1000
     # if os.environ.get('is_test_suite', 0) == 'True' and model_name[:12] == 'DeepLearning':
     #     print('Heard that this is the test suite. Limiting number of epochs, which will increase training speed dramatically at the expense of model accuracy')
     #     epochs = 100

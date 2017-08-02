@@ -1229,7 +1229,7 @@ class Predictor(object):
             best_params = cleaned_best_params
 
             if 'epochs' in best_params:
-                epochs = self.training_params.get('epochs', 250)
+                epochs = self.training_params.get('epochs', 1000)
                 best_params['epochs'] = epochs
                 # We are overwriting the user's input with whatever the best params were
             elif 'n_estimators' in best_params and model_name in ['LGBMClassifier', 'LGBMRegressor', 'GradientBoostingClassifier', 'GradientBoostingRegressor']:
