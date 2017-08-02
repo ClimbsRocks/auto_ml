@@ -186,13 +186,7 @@ def test_feature_learning_getting_single_predictions_regression(model_name=None)
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -3.2
-    if model_name == 'DeepLearningRegressor':
-        lower_bound = -9.2
-    if model_name == 'LGBMRegressor':
-        lower_bound = -4.95
-    if model_name == 'XGBRegressor':
-        lower_bound = -3.3
+    lower_bound = -4.0
 
     assert lower_bound < first_score < -2.8
 
@@ -279,7 +273,7 @@ def test_feature_learning_categorical_ensembling_getting_single_predictions_regr
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -4.0
+    lower_bound = -4.5
 
     assert lower_bound < first_score < -3.4
 
