@@ -110,7 +110,7 @@ setup(
     # requirements files see:
     # https://packaging.python.org/en/latest/requirements.html
     # We will allow the user to install XGBoost themselves. However, since it can be difficult to install, we will not force them to go through that install challenge if they're just checking out the package and want to get running with it quickly.
-    install_requires=['dill', 'h5py', 'keras', 'numpy', 'pandas', 'pathos', 'python-dateutil', 'scikit-learn', 'scipy', 'tabulate', 'tensorflow'],
+    install_requires=['dill', 'h5py', 'keras', 'numpy', 'pandas', 'pathos', 'python-dateutil', 'scikit-learn', 'scipy', 'sklearn-deap', 'tabulate', 'tensorflow'],
 
     test_suite='nose.collector',
     tests_require=['nose', 'coveralls']
