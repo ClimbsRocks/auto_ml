@@ -83,6 +83,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
                 elif self.type_of_estimator == 'classifier':
                     self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
+        if self.model_name in ['LGBMClassifier', 'LGBMRegressor']:
+            X_fit = X.toarray()
 
         try:
             if self.model_name[:12] == 'DeepLearning':

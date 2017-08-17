@@ -7,8 +7,6 @@ import scipy.sparse as sp
 
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.externals import six
-# from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.fixes import frombuffer_empty
 
 from auto_ml.utils import ExtendedLabelEncoder
 
@@ -85,14 +83,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         return self
 
     def _transform(self, X):
-        # Sanity check: Python's array has no way of explicitly requesting the
-        # signed 32-bit integers that scipy.sparse needs, so we use the next
-        # best thing: typecode "i" (int). However, if that gives larger or
-        # smaller integers than 32-bit ones, np.frombuffer screws up.
-        assert array("i").itemsize == 4, (
-            "sizeof(int) != 4 on your platform; please report this at"
-            " https://github.com/scikit-learn/scikit-learn/issues and"
-            " include the output from platform.platform() in your bug report")
 
         dtype = self.dtype
         feature_names = self.feature_names_
@@ -167,7 +157,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             if len(indptr) == 1:
                 raise ValueError('The DataFrame passed into DataFrameVectorizer is empty')
 
-        indices = frombuffer_empty(indices, dtype=np.intc)
+        indices = np.frombuffer(indices, dtype=np.intc)
         indptr = np.frombuffer(indptr, dtype=np.intc)
         shape = (len(indptr) - 1, len(vocab))
 

@@ -117,7 +117,7 @@ class Predictor(object):
             elif self.transformation_pipeline is None:
                 print('Including the user_input_func in the pipeline! Please remember to return X, and not modify the length or order of X at all.')
                 print('Your function will be called as the first step of the pipeline at both training and prediction times.')
-                pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False)))
+                pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, validate=False)))
 
         # These parts will be included no matter what.
         if trained_pipeline is not None:
