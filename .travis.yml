@@ -21,3 +21,4 @@ script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/aut
 after_success:
   - docker cp climbsrocks/auto_ml_tests:latest:/.coverage
   - coveralls
+
