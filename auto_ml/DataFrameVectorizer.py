@@ -8,7 +8,7 @@ import scipy.sparse as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.externals import six
 # from sklearn.preprocessing import LabelEncoder
-from sklearn.utils.fixes import frombuffer_empty
+# from sklearn.utils.fixes import frombuffer_empty
 
 from auto_ml.utils import ExtendedLabelEncoder
 
@@ -167,7 +167,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             if len(indptr) == 1:
                 raise ValueError('The DataFrame passed into DataFrameVectorizer is empty')
 
-        indices = frombuffer_empty(indices, dtype=np.intc)
+        indices = np.frombuffer(indices, dtype=np.intc)
         indptr = np.frombuffer(indptr, dtype=np.intc)
         shape = (len(indptr) - 1, len(vocab))
 
