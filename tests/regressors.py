@@ -42,6 +42,8 @@ def optimize_final_model_regression(model_name=None):
         lower_bound = -5.5
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -3.5
+    if model_name == 'CatBoostRegressor':
+        lower_bound = -3.75
 
     assert lower_bound < test_score < -2.8
 
@@ -131,7 +133,7 @@ def getting_single_predictions_regression(model_name=None):
     if model_name == 'XGBRegressor':
         lower_bound = -3.4
     if model_name == 'CatBoostRegressor':
-        lower_bound = -3.2
+        lower_bound = -3.3
 
     assert lower_bound < first_score < -2.7
 
@@ -220,6 +222,8 @@ def feature_learning_getting_single_predictions_regression(model_name=None):
         lower_bound = -9.2
     if model_name == 'LGBMRegressor':
         lower_bound = -4.95
+    if model_name == 'CatBoostRegressor':
+        lower_bound = -3.5
     if model_name == 'XGBRegressor':
         lower_bound = -3.3
 

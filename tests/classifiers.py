@@ -73,14 +73,17 @@ def categorical_ensembling_classification(model_name=None):
     print(test_score)
 
     lower_bound = -0.18
+    upper_bound = -0.145
 
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.215
+
+    # CatBoost is super inconsistent
     if model_name == 'CatBoostClassifier':
-        lower_bound = -0.25
+        upper_bound = -0.137
 
 
-    assert lower_bound < test_score < -0.145
+    assert lower_bound < test_score < upper_bound
 
 
 def getting_single_predictions_classification(model_name=None):
