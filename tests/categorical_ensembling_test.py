@@ -56,14 +56,7 @@ def test_categorical_ensembling_regression(model_name=None):
     print('test_score')
     print(test_score)
 
-    # Bumping this up since without these features our score drops
-    lower_bound = -4.0
-    if model_name == 'DeepLearningRegressor':
-        # NOTE: the model fails to learn for one of the classes. might be worth looking into more
-        lower_bound = -16
-    if model_name == 'LGBMRegressor':
-        lower_bound = -4.95
-
+    lower_bound = -4.2
 
     assert lower_bound < test_score < -2.8
 
