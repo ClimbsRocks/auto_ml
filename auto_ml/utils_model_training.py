@@ -173,9 +173,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 else:
                     eval_metric = 'binary_logloss'
 
-                verbose = True
-                if self.is_hp_search == True:
-                    verbose = False
+            verbose = True
+            if self.is_hp_search == True:
+                verbose = False
 
             cat_feature_indices = self.get_categorical_feature_indices()
             if cat_feature_indices is None:
