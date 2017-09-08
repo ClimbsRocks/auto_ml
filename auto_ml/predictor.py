@@ -137,7 +137,7 @@ class Predictor(object):
             elif self.transformation_pipeline is None:
                 print('Including the user_input_func in the pipeline! Please remember to return X, and not modify the length or order of X at all.')
                 print('Your function will be called as the first step of the pipeline at both training and prediction times.')
-                pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, pass_y=False, validate=False)))
+                pipeline_list.append(('user_func', FunctionTransformer(func=self.user_input_func, validate=False)))
 
         # These parts will be included no matter what.
         if trained_pipeline is not None:
@@ -191,6 +191,8 @@ class Predictor(object):
                 training_features = self._get_trained_feature_names()
             except:
                 training_features = None
+
+            # TODO TODO: create kept_cat_features during transformation time, and use that at model training time.
             training_prediction_intervals = False
             params = None
 
@@ -786,7 +788,7 @@ class Predictor(object):
 
     def fit_single_pipeline(self, X_df, y, model_name, feature_learning=False, prediction_interval=False):
 
-        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, prediction_interval=prediction_interval)
+        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, prediction_interval=prediction_interval, keep_cat_features=self.keep_cat_features)
         ppl = full_pipeline.named_steps['final_model']
         if self.verbose:
             print('\n\n********************************************************************************************')
@@ -819,17 +821,12 @@ class Predictor(object):
     # NOTE: if included, we will be fitting a feature selection step here. This can get messy later on with ensembling if we end up training on different y values.
     def fit_transformation_pipeline(self, X_df, y, model_names):
 
-        keep_cat_features = False
-        model_is_ok = True
+        keep_cat_features = True
         for model_name in model_names:
-            if model_is_ok and  (model_name[:8] == 'CatBoost' or model_name[:4] == 'LGBM'):
-            # if model_is_ok and  (model_name[:4] == 'LGBM' or model_name[:8] == 'CatBoost'):
-                model_is_ok = True
-            else:
-                model_is_ok = False
-        keep_cat_features = model_is_ok
+            keep_cat_features = keep_cat_features and model_name in ['LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']
 
-        ppl = self._construct_pipeline(model_name=model_names[0], keep_cat_features=keep_cat_features)
+        self.keep_cat_features = keep_cat_features
+        ppl = self._construct_pipeline(model_name=model_names[0], keep_cat_features=self.keep_cat_features)
         ppl.steps.pop()
 
         # We are intentionally overwriting X_df here to try to save some memory space
@@ -992,7 +989,8 @@ class Predictor(object):
 
         gs_params['_scorer'] = [self._scorer]
 
-        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, is_hp_search=True)
+        full_pipeline = self._construct_pipeline(model_name=model_name, feature_learning=feature_learning, is_hp_search=True, keep_cat_features=self.keep_cat_features)
+
         ppl = full_pipeline.named_steps['final_model']
 
         if self.verbose:
@@ -1364,7 +1362,7 @@ class Predictor(object):
             try:
                 category_trained_final_model = self.train_ml_estimator(self.model_names, self._scorer, relevant_X, relevant_y)
             except ValueError as e:
-                if 'BinomialDeviance requires 2 classes' in str(e) or 'BinomialDeviance requires 2 classes' in e or 'BinomialDeviance requires 2 classes' in e.get('message', None):
+                if 'BinomialDeviance requires 2 classes' in str(e) or 'BinomialDeviance requires 2 classes' in e or 'BinomialDeviance requires 2 classes':
                     print('Found a category with only one label')
                     print('category: ' + str(category) + ', label: ' + str(relevant_y[0]))
                     print('We will put in place a weak estimator trained on only this category/single-label, but consider some feature engineering work to combine this with a different category, or remove it altogether and use the default category when getting predictions for this category.')

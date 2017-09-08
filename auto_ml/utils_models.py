@@ -8,7 +8,7 @@ from auto_ml import utils_categorical_ensembling
 
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor, ExtraTreesRegressor, AdaBoostRegressor, GradientBoostingRegressor, GradientBoostingClassifier, ExtraTreesClassifier, AdaBoostClassifier
 
-from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression, RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
+from sklearn.linear_model import RANSACRegressor, LinearRegression, Ridge, Lasso, ElasticNet, LassoLars, OrthogonalMatchingPursuit, BayesianRidge, ARDRegression, SGDRegressor, PassiveAggressiveRegressor, LogisticRegression, RidgeClassifier, SGDClassifier, Perceptron, PassiveAggressiveClassifier
 
 from sklearn.svm import LinearSVC, LinearSVR
 
@@ -85,10 +85,8 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'SGDRegressor': {'shuffle': False},
         'PassiveAggressiveRegressor': {'shuffle': False},
         'AdaBoostRegressor': {},
-        'XGBRegressor': {'n_jobs':-1, 'n_estimators': 200},
-        'XGBClassifier': {'n_jobs':-1, 'n_estimators': 200},
-        'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.1, 'num_leaves': 8, 'lambda_l2': 0.001},
-        'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.1, 'num_leaves': 8, 'lambda_l2': 0.001},
+        'LGBMRegressor': {'n_estimators': 2000, 'learning_rate': 0.15, 'num_leaves': 8, 'lambda_l2': 0.001},
+        'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.15, 'num_leaves': 8, 'lambda_l2': 0.001},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
         'CatBoostRegressor': {},
