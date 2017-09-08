@@ -131,12 +131,14 @@ def getting_single_predictions_classification(model_name=None):
     # Make sure our score is good, but not unreasonably good
 
     lower_bound = -0.18
+    upper_bound = -0.135
     if model_name == 'DeepLearningClassifier':
         lower_bound = -0.195
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.215
+        upper_bound = -0.128
 
-    assert lower_bound < first_score < -0.135
+    assert lower_bound < first_score < upper_bound
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
@@ -173,7 +175,7 @@ def getting_single_predictions_classification(model_name=None):
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -0.135
+    assert lower_bound < second_score < upper_bound
 
 
 
@@ -226,6 +228,9 @@ def getting_single_predictions_multilabel_classification(model_name=None):
     print(first_score)
     # Make sure our score is good, but not unreasonably good
     lower_bound = 0.67
+    # LGBM is super finnicky here- sometimes it's fine, but sometimes it does pretty terribly.
+    if model_name == 'LGBMClassifier':
+        lower_bound = 0.6
     assert lower_bound < first_score < 0.79
 
     # 2. make sure the speed is reasonable (do it a few extra times)

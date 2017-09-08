@@ -133,7 +133,7 @@ def getting_single_predictions_regression(model_name=None):
     if model_name == 'XGBRegressor':
         lower_bound = -3.4
     if model_name == 'CatBoostRegressor':
-        lower_bound = -3.3
+        lower_bound = -3.5
 
     assert lower_bound < first_score < -2.7
 
@@ -322,7 +322,7 @@ def feature_learning_categorical_ensembling_getting_single_predictions_regressio
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -3.95
     if model_name == 'CatBoostRegressor':
-        lower_bound = -3.9
+        lower_bound = -4.1
 
     assert lower_bound < first_score < -2.8
 
