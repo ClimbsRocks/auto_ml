@@ -133,7 +133,7 @@ def getting_single_predictions_regression(model_name=None):
     if model_name == 'XGBRegressor':
         lower_bound = -3.4
     if model_name == 'CatBoostRegressor':
-        lower_bound = -3.5
+        lower_bound = -3.7
 
     assert lower_bound < first_score < -2.7
 
