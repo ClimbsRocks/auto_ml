@@ -913,8 +913,6 @@ class Predictor(object):
             grid_search_verbose = 0
 
         n_jobs = -1
-        if os.environ.get('is_test_suite', 0) == 'True':
-            n_jobs = 1
 
         gs = GridSearchCV(
             # Fit on the pipeline.
@@ -1024,6 +1022,7 @@ class Predictor(object):
                 gscv_results = self.fit_grid_search(X_df, y, grid_search_params, feature_learning=feature_learning)
 
                 all_gs_results.append(gscv_results)
+
 
             # Grab the first one by default
             # self.trained_final_model = all_gs_results[0].best_estimator_
@@ -1182,7 +1181,7 @@ class Predictor(object):
 
         if os.environ.get('is_test_suite', False) == 'True':
             # If this is the test_suite, do not run things in parallel
-            results = list(map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
+            results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
         else:
             try:
                 results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
