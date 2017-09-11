@@ -7,6 +7,6 @@ pathos
 python-dateutil
 scikit-learn
 scipy
-sklearn-deap
+sklearn-deap2
 tabulate
 tensorflow
