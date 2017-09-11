@@ -57,18 +57,27 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
         true_count = len(df[(df.predicted==targets[i]) & (df.actuals == targets[i])])
         print('Class: ',targets[i],'=',float(true_count)/tot_count)
 
-    print('\nHere is the accuracy of our trained estimator at each level of predicted probabilities')
-    print('For a verbose description of what this means, please visit the docs:')
-    print('http://auto-ml.readthedocs.io/en/latest/analytics.html#interpreting-predicted-probability-buckets-for-classifiers')
 
-    bucket_results = pd.qcut(probas, q=10, duplicates='drop')
+    # qcut is super fickle. so, try to use 10 buckets first, then 5 if that fails, then nothing
+    try:
+        try:
+            bucket_results = pd.qcut(probas, q=10, duplicates='drop')
+        except:
+            bucket_results = pd.qcut(probas, q=5, duplicates='drop')
 
-    df_probas = pd.DataFrame(probas, columns=['Predicted Probability Of Bucket'])
-    df_probas['Actual Probability of Bucket'] = actuals
-    df_probas['Bucket Edges'] = bucket_results
+        df_probas = pd.DataFrame(probas, columns=['Predicted Probability Of Bucket'])
+        df_probas['Actual Probability of Bucket'] = actuals
+        df_probas['Bucket Edges'] = bucket_results
 
-    df_buckets = df_probas.groupby(df_probas['Bucket Edges'])
-    print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql', showindex='always'))
+        df_buckets = df_probas.groupby(df_probas['Bucket Edges'])
+        print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql', showindex='always'))
+        print('\nHere is the accuracy of our trained estimator at each level of predicted probabilities')
+        print('For a verbose description of what this means, please visit the docs:')
+        print('http://auto-ml.readthedocs.io/en/latest/analytics.html#interpreting-predicted-probability-buckets-for-classifiers')
+
+    except:
+        pass
+
 
     print('\n\n')
     return brier_score

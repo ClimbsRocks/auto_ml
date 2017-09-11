@@ -1011,7 +1011,6 @@ class Predictor(object):
         gene_mutation_prob = 0.1
         generations_number = 3
 
-
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
             population_size = 5
@@ -1188,6 +1187,7 @@ class Predictor(object):
                 gscv_results = self.fit_grid_search(X_df, y, grid_search_params, feature_learning=feature_learning)
 
                 all_gs_results.append(gscv_results)
+
 
             # Grab the first one by default
             # self.trained_final_model = all_gs_results[0].best_estimator_

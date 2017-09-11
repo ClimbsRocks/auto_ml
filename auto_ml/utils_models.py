@@ -68,7 +68,7 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
     #     epochs = 100
 
     all_model_params = {
-        'LogisticRegression': {'n_jobs': -2},
+        'LogisticRegression': {},
         'RandomForestClassifier': {'n_jobs': -2},
         'ExtraTreesClassifier': {'n_jobs': -1},
         'AdaBoostClassifier': {},
@@ -126,9 +126,9 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'AdaBoostClassifier': AdaBoostClassifier(),
 
 
-        'SGDClassifier': SGDClassifier(),
-        'Perceptron': Perceptron(),
-        'PassiveAggressiveClassifier': PassiveAggressiveClassifier(),
+        'SGDClassifier': SGDClassifier(max_iter=1000, tol=0.001),
+        'Perceptron': Perceptron(max_iter=1000, tol=0.001),
+        'PassiveAggressiveClassifier': PassiveAggressiveClassifier(max_iter=1000, tol=0.001),
         'LinearSVC': LinearSVC(),
 
         # Regressors
@@ -147,8 +147,8 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
         'BayesianRidge': BayesianRidge(),
         'ARDRegression': ARDRegression(),
-        'SGDRegressor': SGDRegressor(),
-        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(),
+        'SGDRegressor': SGDRegressor(max_iter=1000, tol=0.001),
+        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(max_iter=1000, tol=0.001),
 
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(),

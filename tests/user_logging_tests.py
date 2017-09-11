@@ -238,7 +238,7 @@ def test_throws_warning_when_fl_data_equals_df_train():
         # We should not be getting to this line- we should be throwing an error above
         for thing in w:
             print(thing)
-        assert len(w) == 1
+        assert len(w) >= 1
     assert True
 
 
