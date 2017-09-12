@@ -110,8 +110,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     verbose = 2
 
                 X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
-                X_fit = X_fit.toarray()
-                X_test = X_test.toarray()
+                try:
+                    X_test = X_test.toarray()
+                except AttributeError as e:
+                    pass
                 if not self.is_hp_search:
                     print('\nWe will stop training early if we have not seen an improvement in validation accuracy in {} epochs'.format(patience))
                     print('To measure validation accuracy, we will split off a random 10 percent of your training data set')
@@ -167,7 +169,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X.toarray()
 
             X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
-            X_test = X_test.toarray()
+            try:
+                X_test = X_test.toarray()
+            except AttributeError as e:
+                pass
 
             if self.type_of_estimator == 'regressor':
                 eval_metric = 'rmse'
