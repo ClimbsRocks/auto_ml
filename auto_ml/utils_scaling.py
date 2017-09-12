@@ -55,7 +55,7 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
 class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, column_descriptions, truncate_large_values=False, perform_feature_scaling=True):
+    def __init__(self, column_descriptions, truncate_large_values=False, perform_feature_scaling=True, min_percentile=0.05, max_percentile=0.95):
         self.column_descriptions = column_descriptions
 
         self.numeric_col_descs = set([None, 'continuous', 'numerical', 'numeric', 'float', 'int'])
@@ -67,6 +67,8 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
         # Essentially, it turns any really large (or small) values into reasonably large (or small) values.
         self.truncate_large_values = truncate_large_values
         self.perform_feature_scaling = perform_feature_scaling
+        self.min_percentile = min_percentile
+        self.max_percentile = max_percentile
 
 
     def get(self, prop_name, default=None):
@@ -84,7 +86,7 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
             for col in X.columns:
                 if col not in self.cols_to_avoid:
-                    col_summary = calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95)
+                    col_summary = calculate_scaling_ranges(X, col, min_percentile=self.min_percentile, max_percentile=self.max_percentile)
                     if col_summary == 'ignore':
                         self.cols_to_ignore.append(col)
                     elif col_summary == 'pass_on_col':

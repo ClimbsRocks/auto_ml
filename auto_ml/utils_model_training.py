@@ -1,4 +1,5 @@
 from collections import Iterable
+import datetime
 from copy import deepcopy
 import os
 import random
@@ -23,7 +24,7 @@ keras_imported = False
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, X_test=None, y_test=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, is_hp_search=None, X_test=None, y_test=None):
 
         self.model = model
         self.model_name = model_name
@@ -38,6 +39,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.training_prediction_intervals = training_prediction_intervals
         self.min_step_improvement = min_step_improvement
         self.interval_predictors = interval_predictors
+        self.is_hp_search = is_hp_search
         self.keep_cat_features = keep_cat_features
         self.X_test = X_test
         self.y_test = y_test
@@ -57,7 +59,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
-        global keras_imported, KerasRegressor, KerasClassifier
+        global keras_imported, KerasRegressor, KerasClassifier, EarlyStopping, ModelCheckpoint, TerminateOnNaN, keras_load_model
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X
@@ -71,7 +73,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     # Suppress some level of logs
                     os.environ['TF_CPP_MIN_VLOG_LEVEL'] = '3'
                     os.environ['TF_CPP_MIN_LOG_LEVEL'] = '3'
+                    from keras.callbacks import EarlyStopping, ModelCheckpoint, TerminateOnNaN
+                    from keras.models import load_model as keras_load_model
                     from keras.wrappers.scikit_learn import KerasRegressor, KerasClassifier
+
                     keras_imported = True
 
 
@@ -80,119 +85,180 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                 model_params = self.model.get_params()
                 del model_params['build_fn']
+                try:
+                    del model_params['feature_learning']
+                except:
+                    pass
+                try:
+                    del model_params['num_cols']
+                except:
+                    pass
 
                 if self.type_of_estimator == 'regressor':
                     self.model = KerasRegressor(build_fn=utils_models.make_deep_learning_model, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
                 elif self.type_of_estimator == 'classifier':
                     self.model = KerasClassifier(build_fn=utils_models.make_deep_learning_classifier, num_cols=num_cols, feature_learning=self.feature_learning, **model_params)
 
-        try:
-            if self.model_name[:12] == 'DeepLearning':
+        if self.model_name[:12] == 'DeepLearning':
+            try:
 
-                print('\nWe will stop training early if we have not seen an improvement in training accuracy in 25 epochs')
-                from keras.callbacks import EarlyStopping
-                # TODO: make sure we're using the correct X_test here once we've merged in master where we've got more robust deep learning early stopping
-                early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
-                self.model.fit(X_fit, y, callbacks=[early_stopping])
-
-            elif self.model_name[:4] == 'LGBM':
+                if self.is_hp_search == True:
+                    patience = 5
+                    verbose = 0
+                else:
+                    patience = 25
+                    verbose = 2
 
                 X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
                 X_fit = X_fit.toarray()
                 X_test = X_test.toarray()
+                if not self.is_hp_search:
+                    print('\nWe will stop training early if we have not seen an improvement in validation accuracy in {} epochs'.format(patience))
+                    print('To measure validation accuracy, we will split off a random 10 percent of your training data set')
+
+                early_stopping = EarlyStopping(monitor='val_loss', patience=patience, verbose=verbose)
+                terminate_on_nan = TerminateOnNaN()
+
+                now_time = datetime.datetime.now()
+                time_string = str(now_time.year) + '_' + str(now_time.month) + '_' + str(now_time.day) + '_' + str(now_time.hour) + '_' + str(now_time.minute)
 
 
-                if self.type_of_estimator == 'regressor':
-                    eval_metric = 'rmse'
-                elif self.type_of_estimator == 'classifier':
-                    if len(set(y_test)) > 2:
-                        eval_metric = 'multi_logloss'
-                    else:
-                        eval_metric = 'binary_logloss'
+                temp_file_name = 'tmp_dl_model_checkpoint_' + time_string + str(random.random()) + '.h5'
+                model_checkpoint = ModelCheckpoint(temp_file_name, monitor='val_loss', save_best_only=True, mode='min', period=1)
 
-                if self.X_test is not None:
-                    eval_name = 'X_test_the_user_passed_in'
+                callbacks = [early_stopping, terminate_on_nan]
+                if not self.is_hp_search:
+                    callbacks.append(model_checkpoint)
+
+                # TODO: add in model checkpointer
+                # TODO: if is_hp_search then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
+                self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_test, y_test), verbose=verbose)
+
+                # TODO: give some kind of logging on how the model did here! best epoch, best accuracy, etc.
+
+                if self.is_hp_search is False:
+                    self.model = keras_load_model(temp_file_name)
+                # if self.type_of_estimator == 'classifier':
+                #     self.model = KerasClassifier(keras_load_model(temp_file_name))
+                # else:
+                #     self.model = KerasRegressor()
+                #     self.model.model = keras_load_model(temp_file_name)
+                #     # self.model = ExtendedKerasRegressor()
+                #     # self.model.load_saved_model(temp_file_name)
+                # os.remove(temp_file_name)
+                # print('self.model right after deleting temp file name')
+                # print(self.model)
+                # TODO: load best model from file, save to self.model
+                # TODO: delete temp file
+            except KeyboardInterrupt as e:
+                print('Stopping training at this point because we heard a KeyboardInterrupt')
+                print('If the deep learning model is functional at this point, we will output the model in its latest form')
+                print('Note that this feature is an unofficial beta-release feature that is known to fail on occasion')
+                # TODO: try to load the best model we had
+                # self.model = keras_load_model(temp_file_name)
+                if self.type_of_estimator == 'classifier':
+                    self.model = KerasClassifier(keras_load_model(temp_file_name))
                 else:
-                    eval_name = 'random_holdout_set_from_training_data'
+                    self.model = KerasRegressor(keras_load_model(temp_file_name))
+                os.remove(temp_file_name)
 
-                cat_feature_indices = self.get_categorical_feature_indices()
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices)
 
-            elif self.model_name[:8] == 'CatBoost':
-                X_fit = X_fit.toarray()
+        elif self.model_name[:4] == 'LGBM':
+            X_fit = X.toarray()
 
-                if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
-                    # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
-                    self.model.set_params(loss_function='MultiClass')
+            X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+            X_test = X_test.toarray()
 
-                cat_feature_indices = self.get_categorical_feature_indices()
-
-                self.model.fit(X_fit, y, cat_features=cat_feature_indices)
-
-            elif self.model_name[:16] == 'GradientBoosting':
-                if scipy.sparse.issparse(X_fit):
-                    X_fit = X_fit.todense()
-
-                patience = 20
-                best_val_loss = -10000000000
-                num_worse_rounds = 0
-                best_model = deepcopy(self.model)
-                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
-
-                # Add a variable number of trees each time, depending how far into the process we are
-                if os.environ.get('is_test_suite', False) == 'True':
-                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3))
+            if self.type_of_estimator == 'regressor':
+                eval_metric = 'rmse'
+            elif self.type_of_estimator == 'classifier':
+                if len(set(y_test)) > 2:
+                    eval_metric = 'multi_logloss'
                 else:
-                    num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
+                    eval_metric = 'binary_logloss'
 
-                try:
-                    for num_iter in num_iters:
-                        warm_start = True
-                        if num_iter == 1:
-                            warm_start = False
+            verbose = True
+            if self.is_hp_search == True:
+                verbose = False
 
-                        self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
-                        self.model.fit(X_fit, y)
-
-                        if self.training_prediction_intervals == True:
-                            val_loss = self.model.score(X_test, y_test)
-                        else:
-                            try:
-                                val_loss = self._scorer.score(self, X_test, y_test)
-                            except Exception as e:
-                                val_loss = self.model.score(X_test, y_test)
-
-                        if val_loss - self.min_step_improvement > best_val_loss:
-                            best_val_loss = val_loss
-                            num_worse_rounds = 0
-                            best_model = deepcopy(self.model)
-                        else:
-                            num_worse_rounds += 1
-                        print('[' + str(num_iter) + '] random_holdout_set_from_training_data\'s score is: ' + str(round(val_loss, 3)))
-                        if num_worse_rounds >= patience:
-                            break
-                except KeyboardInterrupt:
-                    print('Heard KeyboardInterrupt. Stopping training, and using the best checkpointed GradientBoosting model')
-                    pass
-
-                self.model = best_model
-                print('The number of estimators that were the best for this training dataset: ' + str(self.model.get_params()['n_estimators']))
-                print('The best score on a random 15 percent holdout set of the training data: ' + str(best_val_loss))
-
+            if self.X_test is not None:
+                eval_name = 'X_test_the_user_passed_in'
             else:
-                self.model.fit(X_fit, y)
+                eval_name = 'random_holdout_set_from_training_data'
 
-        except TypeError as e:
-            if scipy.sparse.issparse(X_fit):
-                X_fit = X_fit.todense()
+            cat_feature_indices = self.get_categorical_feature_indices()
+            if cat_feature_indices is None:
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], verbose=verbose)
+            else:
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], categorical_feature=cat_feature_indices, verbose=verbose)
+
+        elif self.model_name[:8] == 'CatBoost':
+            X_fit = X_fit.toarray()
+
+            if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
+                # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
+                self.model.set_params(loss_function='MultiClass')
+
+            cat_feature_indices = self.get_categorical_feature_indices()
+
+            self.model.fit(X_fit, y, cat_features=cat_feature_indices)
+
+        elif self.model_name[:16] == 'GradientBoosting':
+
+            patience = 20
+            best_val_loss = -10000000000
+            num_worse_rounds = 0
+            best_model = deepcopy(self.model)
+            X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+            # X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+
+            # Add a variable number of trees each time, depending how far into the process we are
+            if os.environ.get('is_test_suite', False) == 'True':
+                num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3))
+            else:
+                num_iters = list(range(1, 50, 1)) + list(range(50, 100, 2)) + list(range(100, 250, 3)) + list(range(250, 500, 5)) + list(range(500, 1000, 10)) + list(range(1000, 2000, 20)) + list(range(2000, 10000, 100))
+            # TODO: get n_estimators from the model itself, and reduce this list to only those values that come under the value from the model
+
+            try:
+                for num_iter in num_iters:
+                    warm_start = True
+                    if num_iter == 1:
+                        warm_start = False
+
+                    self.model.set_params(n_estimators=num_iter, warm_start=warm_start)
+                    self.model.fit(X_fit, y)
+
+                    if self.training_prediction_intervals == True:
+                        val_loss = self.model.score(X_test, y_test)
+                    else:
+                        try:
+                            val_loss = self._scorer.score(self, X_test, y_test)
+                        except Exception as e:
+                            val_loss = self.model.score(X_test, y_test)
+
+                    if val_loss - self.min_step_improvement > best_val_loss:
+                        best_val_loss = val_loss
+                        num_worse_rounds = 0
+                        best_model = deepcopy(self.model)
+                    else:
+                        num_worse_rounds += 1
+                    print('[' + str(num_iter) + '] random_holdout_set_from_training_data\'s score is: ' + str(round(val_loss, 3)))
+                    if num_worse_rounds >= patience:
+                        break
+            except KeyboardInterrupt:
+                print('Heard KeyboardInterrupt. Stopping training, and using the best checkpointed GradientBoosting model')
+                pass
+
+            self.model = best_model
+            print('The number of estimators that were the best for this training dataset: ' + str(self.model.get_params()['n_estimators']))
+            print('The best score on the holdout set: ' + str(best_val_loss))
+
+        else:
             self.model.fit(X_fit, y)
 
-        except KeyboardInterrupt as e:
-            print('Stopping training at this point because we heard a KeyboardInterrupt')
-            print('If the model is functional at this point, we will output the model in its latest form')
-            print('Note that not all models can be interrupted and still used, and that this feature generally is an unofficial beta-release feature that is known to fail on occasion')
-            pass
 
+        # print('self at the end of .fit')
+        # print(self)
         return self
 
     def remove_categorical_values(self, features):
@@ -411,6 +477,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             predictions = predictions.tolist()
             if isinstance(predictions, float) or isinstance(predictions, int) or isinstance(predictions, str):
                 return predictions
+
+        if isinstance(predictions[0], list) and len(predictions[0]) == 1:
+            predictions = [row[0] for row in predictions]
 
         if len(predictions) == 1:
             return predictions[0]

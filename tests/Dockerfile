@@ -17,10 +17,10 @@ RUN sed -i "s/httpredir.debian.org/debian.uchicago.edu/" /etc/apt/sources.list &
     apt-get autoremove -y && apt-get clean
 
 RUN pip install --upgrade pip
-RUN pip install --upgrade numpy dill h5py scikit-learn scipy python-dateutil pandas pathos keras coveralls nose lightgbm tabulate imblearn sklearn-deap catboost
+RUN pip install --upgrade numpy dill h5py scikit-learn scipy python-dateutil pandas pathos keras coveralls nose lightgbm tabulate imblearn sklearn-deap2 catboost
 
 # To update this image and upload it:
 # Build the image (docker build .), and give it two separate tags (latest, and a version number)
-# docker build -t climbsrocks/auto_ml_tests:0.0.8 -t climbsrocks/auto_ml_tests:latest .
+# docker build --no-cache -t climbsrocks/auto_ml_tests:0.0.10 -t climbsrocks/auto_ml_tests:latest .
 # docker push climbsrocks/auto_ml_tests:latest
-# docker push climbsrocks/auto_ml_tests:0.0.8
+# docker push climbsrocks/auto_ml_tests:0.0.10

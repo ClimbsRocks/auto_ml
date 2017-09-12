@@ -1,6 +1,5 @@
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-from sklearn.linear_model import RandomizedLasso, RandomizedLogisticRegression
 
 
 import scipy
@@ -14,14 +13,12 @@ def get_feature_selection_model_from_name(type_of_estimator, model_name):
             'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1, max_depth=10, n_estimators=15), threshold='20*mean'),
             'RFECV': RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
             'GenericUnivariateSelect': GenericUnivariateSelect(),
-            'RandomizedSparse': RandomizedLogisticRegression(),
             'KeepAll': 'KeepAll'
         },
         'regressor': {
             'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1, max_depth=10, n_estimators=15), threshold='0.7*mean'),
             'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
             'GenericUnivariateSelect': GenericUnivariateSelect(),
-            'RandomizedSparse': RandomizedLasso(),
             'KeepAll': 'KeepAll'
         }
     }
