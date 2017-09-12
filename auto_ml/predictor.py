@@ -1019,7 +1019,7 @@ class Predictor(object):
 
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
-            population_size = 5
+            population_size = 6
             generations_number = 1
 
         # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
