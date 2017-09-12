@@ -23,7 +23,7 @@ keras_imported = False
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, X_test=None, y_test=None):
 
         self.model = model
         self.model_name = model_name
@@ -39,6 +39,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.min_step_improvement = min_step_improvement
         self.interval_predictors = interval_predictors
         self.keep_cat_features = keep_cat_features
+        self.X_test = X_test
+        self.y_test = y_test
 
 
         if self.type_of_estimator == 'classifier':
@@ -89,12 +91,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                 print('\nWe will stop training early if we have not seen an improvement in training accuracy in 25 epochs')
                 from keras.callbacks import EarlyStopping
+                # TODO: make sure we're using the correct X_test here once we've merged in master where we've got more robust deep learning early stopping
                 early_stopping = EarlyStopping(monitor='loss', patience=25, verbose=1)
                 self.model.fit(X_fit, y, callbacks=[early_stopping])
 
             elif self.model_name[:4] == 'LGBM':
 
-                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+                X_fit = X_fit.toarray()
+                X_test = X_test.toarray()
+
 
                 if self.type_of_estimator == 'regressor':
                     eval_metric = 'rmse'
@@ -104,9 +110,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     else:
                         eval_metric = 'binary_logloss'
 
+                if self.X_test is not None:
+                    eval_name = 'X_test_the_user_passed_in'
+                else:
+                    eval_name = 'random_holdout_set_from_training_data'
 
                 cat_feature_indices = self.get_categorical_feature_indices()
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], categorical_feature=cat_feature_indices)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices)
 
             elif self.model_name[:8] == 'CatBoost':
                 X_fit = X_fit.toarray()
@@ -127,7 +137,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 best_val_loss = -10000000000
                 num_worse_rounds = 0
                 best_model = deepcopy(self.model)
-                X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
 
                 # Add a variable number of trees each time, depending how far into the process we are
                 if os.environ.get('is_test_suite', False) == 'True':
@@ -554,6 +564,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             cat_feature_indices = [self.training_features.index(cat_name) for cat_name in cat_feature_names]
 
         return cat_feature_indices
+
+
+    def get_X_test(self, X_fit, y):
+
+        if self.X_test is not None:
+            return X_fit, y, self.X_test, self.y_test
+        else:
+            X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+            return X_fit, y, X_test, y_test
 
 
 
