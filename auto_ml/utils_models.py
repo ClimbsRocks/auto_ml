@@ -69,14 +69,14 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
 
     all_model_params = {
         'LogisticRegression': {},
-        'RandomForestClassifier': {'n_jobs': -2},
+        'RandomForestClassifier': {'n_jobs': -2, 'n_estimators': 30},
         'ExtraTreesClassifier': {'n_jobs': -1},
         'AdaBoostClassifier': {},
         'SGDClassifier': {'n_jobs': -1},
         'Perceptron': {'n_jobs': -1},
         'LinearSVC': {'dual': False},
         'LinearRegression': {'n_jobs': -2},
-        'RandomForestRegressor': {'n_jobs': -2},
+        'RandomForestRegressor': {'n_jobs': -2, 'n_estimators': 30},
         'LinearSVR': {'dual': False, 'loss': 'squared_epsilon_insensitive'},
         'ExtraTreesRegressor': {'n_jobs': -1},
         'MiniBatchKMeans': {'n_clusters': 8},
@@ -203,6 +203,10 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
     except KeyError as e:
         print('It appears you are trying to use a library that is not available when we try to import it, or using a value for model_names that we do not recognize')
         raise(e)
+
+    if os.environ.get('is_test_suite', False) == 'True':
+        if 'n_jobs' in model_params:
+            model_params['n_jobs'] = 1
     model_with_params = model_without_params.set_params(**model_params)
 
     return model_with_params
