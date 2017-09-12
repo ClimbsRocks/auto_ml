@@ -273,8 +273,6 @@ def getting_single_predictions_multilabel_classification(model_name=None):
     assert lower_bound < second_score < 0.79
 
 
-<<<<<<< HEAD
-=======
 def feature_learning_getting_single_predictions_classification(model_name=None):
     np.random.seed(0)
 
@@ -457,5 +455,3 @@ def feature_learning_categorical_ensembling_getting_single_predictions_classific
     # Make sure our score is good, but not unreasonably good
 
     assert lower_bound < second_score < -0.147
-
->>>>>>> 96df083f8056914a4dd549bfd44721e3931493e3
