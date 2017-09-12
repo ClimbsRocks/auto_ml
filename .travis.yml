@@ -4,6 +4,8 @@ language: python
 services:
   - docker
 
+install: 'skip'
+
 python:
   - "2.7"
 
