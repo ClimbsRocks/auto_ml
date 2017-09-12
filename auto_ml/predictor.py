@@ -36,6 +36,7 @@ from auto_ml import DataFrameVectorizer
 from auto_ml import utils
 from auto_ml import utils_categorical_ensembling
 from auto_ml import utils_data_cleaning
+from auto_ml import utils_ensembling
 from auto_ml import utils_feature_selection
 from auto_ml import utils_model_training
 from auto_ml import utils_models
@@ -183,8 +184,6 @@ class Predictor(object):
             # Handling the case where we have run gscv on just the final model itself, and we now need to integrate it back into the rest of the pipeline
             if final_model is not None:
                 pipeline_list.append((final_model_step_name, final_model))
-            # else:
-            #     pipeline_list.append(('final_model', trained_pipeline.named_steps['final_model']))
         else:
 
             try:
@@ -333,7 +332,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -377,6 +376,10 @@ class Predictor(object):
         if self.user_gs_params is not None:
             self.optimize_final_model = True
         self.cv = cv
+        if ensemble_config is None:
+            self.ensemble_config = []
+        else:
+            self.ensemble_config = ensemble_config
 
         self.calibrate_uncertainty = calibrate_uncertainty
         self.uncertainty_calibration_data = uncertainty_calibration_data
@@ -583,9 +586,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -607,6 +610,9 @@ class Predictor(object):
 
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(self.model_names, self._scorer, X_df, y)
+
+        if self.ensemble_config is not None and len(self.ensemble_config) > 0:
+            self._train_ensemble(X_df, y)
 
         if self.need_to_train_uncertainty_model == True:
             self._create_uncertainty_model(uncertainty_data, scoring, y, uncertainty_calibration_data)
@@ -1873,3 +1879,42 @@ class Predictor(object):
             print('It is worthwhile to make sure that you feed in all the most useful data points though, to make sure you can get the highest quality predictions.')
 
         return os.path.join(os.getcwd(), file_name)
+
+
+    def _train_ensemble(self, X_train, y_train):
+
+        print('We are now training an ensemble of different predictors')
+        print('We will print out analytics info for each one as we train it')
+        # loop through all the ensemble configs, and train one model per config
+
+        self.trained_final_model.name = 'default_estimator'
+
+        # Grab the trained_final_model we've already trained, and make that part of our ensemble
+        trained_ensemble_models = [self.trained_final_model]
+        for idx, model_params in enumerate(self.ensemble_config):
+            # FUTURE todo: subset the data here, pass through transformation_pipeline again to transform it
+            trained_model = self.train_ml_estimator([model_params['model_name']], scoring=self.scoring, X_df=X_train, y=y_train)
+
+            default_name = '{}_{}'.format(model_params['model_name'], idx)
+            predictor_name = model_params.get('model_name', default_name)
+
+            trained_model.name = predictor_name
+            trained_ensemble_models.append(trained_model)
+
+        ensemble_method = 'average'
+        if ensemble_method != 'average' and self.type_of_estimator == 'classifier':
+            print('Because we are taking the minimum prediction for each class, these predicted probabilities are not expected to sum to 1 for each row')
+            print('If you want the predicted probabilities to sum to 1, you should use ensemble_method="average"')
+            warnings.warn('Predicted probabilities are not expected to add up to 1 if ensemble_method is not "average"')
+
+        num_classes = None
+        if self.type_of_estimator == 'classifier':
+            num_classes = len(set(y_train))
+
+        # create Ensembler
+        ensembler = utils_ensembling.Ensembler(ensemble_predictors=trained_ensemble_models, type_of_estimator=self.type_of_estimator, ensemble_method=ensemble_method, num_classes = num_classes)
+
+        # ensembler will be added to pipeline later back inside main train section
+        self.trained_final_model = ensembler
+
+
