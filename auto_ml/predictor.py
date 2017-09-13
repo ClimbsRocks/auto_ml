@@ -1034,7 +1034,7 @@ class Predictor(object):
         # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
         # However, it does, itself, parallelize pretty nicely. So let lgbm take care of the parallelization itself, which will be less memory intensive than having to duplicate the data for all the cores on the machine
         elif model_name in ['LGBMRegressor', 'LGBMClassifier', 'DeepLearningRegressor', 'DeeplearningClassifier']:
-            n_jobs = 2
+            n_jobs = 1
 
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
