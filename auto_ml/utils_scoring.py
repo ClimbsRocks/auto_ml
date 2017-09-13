@@ -163,7 +163,7 @@ def advanced_scoring_regressors(predictions, actuals, verbose=2, name=None):
 
     if verbose > 2:
         print('Here\'s how the trained predictor did on each successive decile (ten percent chunk) of the predictions:')
-        for i in range(1,10):
+        for i in range(1,11):
             print('\n**************')
             print('Bucket number:')
             print(i)
