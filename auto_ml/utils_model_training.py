@@ -24,7 +24,7 @@ keras_imported = False
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, is_hp_search=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, is_hp_search=None, X_test=None, y_test=None):
 
         self.model = model
         self.model_name = model_name
@@ -41,6 +41,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.interval_predictors = interval_predictors
         self.is_hp_search = is_hp_search
         self.keep_cat_features = keep_cat_features
+        self.X_test = X_test
+        self.y_test = y_test
 
 
         if self.type_of_estimator == 'classifier':
@@ -107,7 +109,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     patience = 25
                     verbose = 2
 
-                X_fit, X_val, y, y_val = train_test_split(X_fit, y, test_size=0.1)
+                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+                try:
+                    X_test = X_test.toarray()
+                except AttributeError as e:
+                    pass
                 if not self.is_hp_search:
                     print('\nWe will stop training early if we have not seen an improvement in validation accuracy in {} epochs'.format(patience))
                     print('To measure validation accuracy, we will split off a random 10 percent of your training data set')
@@ -128,7 +134,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                 # TODO: add in model checkpointer
                 # TODO: if is_hp_search then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
-                self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_val, y_val), verbose=verbose)
+                self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_test, y_test), verbose=verbose)
 
                 # TODO: give some kind of logging on how the model did here! best epoch, best accuracy, etc.
 
@@ -163,6 +169,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X.toarray()
 
             X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+            try:
+                X_test = X_test.toarray()
+            except AttributeError as e:
+                pass
 
             if self.type_of_estimator == 'regressor':
                 eval_metric = 'rmse'
@@ -176,12 +186,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if self.is_hp_search == True:
                 verbose = False
 
+            if self.X_test is not None:
+                eval_name = 'X_test_the_user_passed_in'
+            else:
+                eval_name = 'random_holdout_set_from_training_data'
+
             cat_feature_indices = self.get_categorical_feature_indices()
             if cat_feature_indices is None:
                 self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], verbose=verbose)
             else:
                 self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], categorical_feature=cat_feature_indices, verbose=verbose)
-
 
         elif self.model_name[:8] == 'CatBoost':
             X_fit = X_fit.toarray()
@@ -195,15 +209,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self.model.fit(X_fit, y, cat_features=cat_feature_indices)
 
         elif self.model_name[:16] == 'GradientBoosting':
-            if scipy.sparse.issparse(X_fit):
-                X_fit = X_fit.todense()
-
 
             patience = 20
             best_val_loss = -10000000000
             num_worse_rounds = 0
             best_model = deepcopy(self.model)
-            X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+            X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+            # X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
 
             # Add a variable number of trees each time, depending how far into the process we are
             if os.environ.get('is_test_suite', False) == 'True':
@@ -244,7 +256,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             self.model = best_model
             print('The number of estimators that were the best for this training dataset: ' + str(self.model.get_params()['n_estimators']))
-            print('The best score on a random 15 percent holdout set of the training data: ' + str(best_val_loss))
+            print('The best score on the holdout set: ' + str(best_val_loss))
 
         else:
             self.model.fit(X_fit, y)
@@ -626,6 +638,15 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             cat_feature_indices = [self.training_features.index(cat_name) for cat_name in cat_feature_names]
 
         return cat_feature_indices
+
+
+    def get_X_test(self, X_fit, y):
+
+        if self.X_test is not None:
+            return X_fit, y, self.X_test, self.y_test
+        else:
+            X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+            return X_fit, y, X_test, y_test
 
 
 

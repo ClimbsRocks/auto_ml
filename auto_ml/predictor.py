@@ -206,7 +206,7 @@ class Predictor(object):
                 params = self.training_params
 
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list)
         return constructed_pipeline
@@ -338,8 +338,13 @@ class Predictor(object):
         self.optimize_final_model = optimize_final_model
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.ml_for_analytics = ml_for_analytics
+
+        if X_test is not None:
+            X_test, y_test = utils.drop_missing_y_vals(X_test, y_test, self.output_column)
+
         self.X_test = X_test
         self.y_test = y_test
+
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
 
@@ -597,6 +602,7 @@ class Predictor(object):
 
         X_df, y = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
 
+
         if self.feature_learning == True:
             X_df = self.fit_feature_learning_and_transformation_pipeline(X_df, fl_data, y)
         else:
@@ -607,6 +613,9 @@ class Predictor(object):
                 estimator_names = self._get_estimator_names()
 
             X_df = self.fit_transformation_pipeline(X_df, y, estimator_names)
+
+        if self.X_test is not None:
+            self.X_test = self.transformation_pipeline.transform(self.X_test)
 
         # This is our main logic for how we train the final model
         self.trained_final_model = self.train_ml_estimator(self.model_names, self._scorer, X_df, y)
@@ -1025,7 +1034,7 @@ class Predictor(object):
         # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
         # However, it does, itself, parallelize pretty nicely. So let lgbm take care of the parallelization itself, which will be less memory intensive than having to duplicate the data for all the cores on the machine
         elif model_name in ['LGBMRegressor', 'LGBMClassifier', 'DeepLearningRegressor', 'DeeplearningClassifier']:
-            n_jobs = 2
+            n_jobs = 1
 
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
