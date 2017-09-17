@@ -121,14 +121,27 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         for key in X_df.columns:
 
             if X_df[key].dtype == 'object' and self.column_descriptions.get(key, False) not in ['categorical', 'ignore', 'nlp']:
-                print('\n')
-                print('Encountered a column that is not marked as categorical, but is an "object" pandas type, which typically indicates a categorical column.')
-                print('The name of this columns is: "{}"'.format(key))
-                print('Some example features in this column are: {}'.format(list(X_df[key].head(5))))
-                print('If this is a categorical column, please mark it as `{}: "categorical"` as part of your column_descriptions'.format(key))
-                print('If this is not a categorical column, please consider converting its dtype before passing data into auto_ml')
-                print('\n')
-                warnings.warn('Consider marking the "{}" column as categorical'.format(key))
+
+                # First, make sure that the values in this column are not just ints, or float('nan')
+                vals = X_df[key].sample(n=10)
+                is_categorical = False
+                for val in vals:
+                    try:
+                        if val is not None:
+                            float(val)
+                    except Exception as e:
+                        print(e)
+                        is_categorical = True
+
+                if is_categorical:
+                    print('\n')
+                    print('Encountered a column that is not marked as categorical, but is an "object" pandas type, which typically indicates a categorical column.')
+                    print('The name of this columns is: "{}"'.format(key))
+                    print('Some example features in this column are: {}'.format(list(X_df[key].sample(n=5))))
+                    print('If this is a categorical column, please mark it as `{}: "categorical"` as part of your column_descriptions'.format(key))
+                    print('If this is not a categorical column, please consider converting its dtype before passing data into auto_ml')
+                    print('\n')
+                    warnings.warn('Consider marking the "{}" column as categorical'.format(key))
 
             if self.transformed_column_descriptions.get(key) is None:
                 self.transformed_column_descriptions[key] = 'continuous'
