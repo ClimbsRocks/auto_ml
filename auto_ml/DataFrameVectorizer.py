@@ -42,6 +42,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y=None):
+        print('Fitting DataFrameVectorizer')
 
         feature_names = []
         vocab = {}

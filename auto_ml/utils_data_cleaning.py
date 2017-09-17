@@ -116,6 +116,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             return default
 
     def fit(self, X_df, y=None):
+        print('Running basic data cleaning')
 
         # See if we should fit TfidfVectorizer or not
         for key in X_df.columns:
