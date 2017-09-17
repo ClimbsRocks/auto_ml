@@ -132,43 +132,34 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 if not self.is_hp_search:
                     callbacks.append(model_checkpoint)
 
-                # TODO: add in model checkpointer
-                # TODO: if is_hp_search then no model checkpointing, and reduce verbosity, and reduce patience (to 5?) and educe epochs
                 self.model.fit(X_fit, y, callbacks=callbacks, validation_data=(X_test, y_test), verbose=verbose)
 
                 # TODO: give some kind of logging on how the model did here! best epoch, best accuracy, etc.
 
                 if self.is_hp_search is False:
                     self.model = keras_load_model(temp_file_name)
-                # if self.type_of_estimator == 'classifier':
-                #     self.model = KerasClassifier(keras_load_model(temp_file_name))
-                # else:
-                #     self.model = KerasRegressor()
-                #     self.model.model = keras_load_model(temp_file_name)
-                #     # self.model = ExtendedKerasRegressor()
-                #     # self.model.load_saved_model(temp_file_name)
-                # os.remove(temp_file_name)
-                # print('self.model right after deleting temp file name')
-                # print(self.model)
-                # TODO: load best model from file, save to self.model
-                # TODO: delete temp file
+
+                try:
+                    os.remove(temp_file_name)
+                except OSError as e:
+                    pass
             except KeyboardInterrupt as e:
                 print('Stopping training at this point because we heard a KeyboardInterrupt')
                 print('If the deep learning model is functional at this point, we will output the model in its latest form')
                 print('Note that this feature is an unofficial beta-release feature that is known to fail on occasion')
-                # TODO: try to load the best model we had
-                # self.model = keras_load_model(temp_file_name)
-                if self.type_of_estimator == 'classifier':
-                    self.model = KerasClassifier(keras_load_model(temp_file_name))
-                else:
-                    self.model = KerasRegressor(keras_load_model(temp_file_name))
-                os.remove(temp_file_name)
+
+                if self.is_hp_search is False:
+                    self.model = keras_load_model(temp_file_name)
+                try:
+                    os.remove(temp_file_name)
+                except OSError as e:
+                    pass
 
 
         elif self.model_name[:4] == 'LGBM':
             X_fit = X.toarray()
 
-            X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
+            X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
             try:
                 X_test = X_test.toarray()
             except AttributeError as e:
@@ -193,9 +184,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             cat_feature_indices = self.get_categorical_feature_indices()
             if cat_feature_indices is None:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], verbose=verbose)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
             else:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=['random_holdout_set_from_training_data'], categorical_feature=cat_feature_indices, verbose=verbose)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
             X_fit = X_fit.toarray()
@@ -215,7 +206,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             num_worse_rounds = 0
             best_model = deepcopy(self.model)
             X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
-            # X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
 
             # Add a variable number of trees each time, depending how far into the process we are
             if os.environ.get('is_test_suite', False) == 'True':
@@ -262,8 +252,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self.model.fit(X_fit, y)
 
 
-        # print('self at the end of .fit')
-        # print(self)
         return self
 
     def remove_categorical_values(self, features):
