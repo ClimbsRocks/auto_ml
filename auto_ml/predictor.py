@@ -19,7 +19,6 @@ from tabulate import tabulate
 # Ultimately, we (the authors of auto_ml) are responsible for building a project that's robust against warnings.
 # The classes of warnings below are ones we've deemed acceptable. The user should be able to sit at a high level of abstraction, and not be bothered with the internals of how we're handing these things.
 # Ignore all warnings that are UserWarnings or DeprecationWarnings. We'll fix these ourselves as necessary.
-# warnings.filterwarnings("ignore", category=UserWarning)
 warnings.filterwarnings("ignore", category=DeprecationWarning)
 pd.options.mode.chained_assignment = None  # default='warn'
 
@@ -28,7 +27,6 @@ from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction import DictVectorizer
 from sklearn.model_selection import GridSearchCV, KFold, train_test_split
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
-# from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 
@@ -316,8 +314,6 @@ class Predictor(object):
         # This goes through and has DV only output the items that have passed our support mask
         # This has a number of benefits: speeds up computation, reduces memory usage, and combines several transforms into a single, easy step
         # It also significantly reduces the size of dv.vocabulary_ which can get quite large
-
-        # dv = transformation_pipeline.named_steps['dv']
 
         try:
             feature_selection = transformation_pipeline.named_steps['feature_selection']
@@ -641,12 +637,6 @@ class Predictor(object):
             interval_predictors = [lower_interval_predictor, median_interval_predictor, upper_interval_predictor]
             self.trained_final_model.interval_predictors = interval_predictors
 
-            # TODO: figure out what the heck to do with this now!
-            # Thoughts:
-                # probably add it to our FinalModelATC object inside the trained_final_model
-                # Make sure we've got a predict_intervals method on that object
-                # make sure we've got the same method here on predictor
-
 
         self.trained_pipeline = self._consolidate_pipeline(self.transformation_pipeline, self.trained_final_model)
 
@@ -953,15 +943,11 @@ class Predictor(object):
 
     def print_results(self, model_name, model, X, y):
 
-        # feature_responses = None
-        # if self.advanced_analytics == True:
-
-
         if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
             df_model_results = self._print_ml_analytics_results_linear_model(model)
-            # TODO: only grab the top 100 features from X
             sorted_model_results = df_model_results.sort_values(by='Coefficients', ascending=False)
             sorted_model_results = sorted_model_results.reset_index(drop=True)
+            # only grab the top 100 features from X
             top_features = set(sorted_model_results.head(n=100)['Feature Name'])
 
             feature_responses = self.create_feature_responses(model, X, y, top_features)
@@ -985,7 +971,6 @@ class Predictor(object):
             feature_responses = feature_responses.head(n=100)
             feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
             feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAP', 'FRI_MAP']]
-            # feature_responses = feature_responses.sort_values(by='Importance', ascending=True)
             print('Here are our feature responses for the trained model')
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
 
@@ -1106,9 +1091,6 @@ class Predictor(object):
 
         gs.fit(X_df, y)
 
-        # if self.write_gs_param_results_to_file:
-        #     utils.write_gs_param_results_to_file(gs, self.gs_param_file_name)
-
         if self.verbose:
             self.print_training_summary(gs)
 
@@ -1116,11 +1098,6 @@ class Predictor(object):
             trained_final_model = gs.best_estimator_
             model_name = utils_models.get_name_from_model(trained_final_model)
             self.print_results(model_name, trained_final_model, X_df, y)
-
-
-        # # self.trained_final_model = gs.best_estimator_
-        # if 'model' in gs.best_params_:
-        #     model_name = gs.best_params_['model']
 
         return gs
 
@@ -1169,18 +1146,6 @@ class Predictor(object):
 
             gscv_results = self.fit_grid_search(X_df, y, grid_search_params, refit=True)
 
-            # # TODO: get model_name from best_params
-            # print('gscv_results.best_params_')
-            # print(gscv_results.best_params_)
-            # best_model = gscv_results.best_params_['model']
-            # print('best_model')
-            # print(best_model)
-            # model_name = utils_models.get_name_from_model(best_model)
-            # print('model_name')
-            # print(model_name)
-
-            # self.print_results(model_name, gscv_results.best_estimator_, X_df, y)
-
             trained_final_model = gscv_results.best_estimator_
 
         # Use Case 3: One model, and optimize it!
@@ -1222,11 +1187,6 @@ class Predictor(object):
                     else:
                         model_name = estimator_names[idx]
 
-            # print('trained_final_model')
-            # print(trained_final_model)
-            # print('trained_final_model.model')
-            # print(trained_final_model.model)
-            # TODO TODO: get the best model, and train it up on more epochs, or more num trees.
             print('best_params')
             print(best_params)
 
@@ -1545,7 +1505,6 @@ class Predictor(object):
 
         if self.type_of_estimator == 'classifier':
             trained_coefficients = final_model_obj.model.coef_[0]
-            # Note to self: this used to be accessing the [0]th index of .coef_ for classifiers. Not sure why.
         else:
             trained_coefficients = final_model_obj.model.coef_
 
@@ -1561,12 +1520,6 @@ class Predictor(object):
         df_results.columns = ['Feature Name', 'Coefficients']
 
         return df_results
-
-        # print('The following is a list of feature names and their coefficients. By default, features are scaled to the range [0,1] in a way that is robust to outliers, so the coefficients are usually directly comparable to each other.')
-        # print('This printed list will contain at most the top 50 features.')
-        # for summary in sorted_feature_summary[-50:]:
-
-        #     print(str(summary[0]) + ': ' + str(round(summary[1], 4)))
 
 
     def print_training_summary(self, gs):
@@ -1597,8 +1550,6 @@ class Predictor(object):
             df_raw_scores = pd.DataFrame(raw_scores)
 
             df_raw_scores = df_raw_scores.sort_values(by='mean_test_score', ascending=False)
-            # print('df_raw_scores')
-            # print(df_raw_scores)
             col_name_map = {
                 'mean_test_score': 'mean_score'
                 , 'min_test_score': 'DROPME'
@@ -1626,14 +1577,6 @@ class Predictor(object):
             df_scores = df_scores.sort_values(by='mean_score', ascending=True)
             print('Score in the following columns always refers to cross-validation score')
             print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
-
-
-            # sorted_scores = sorted(raw_scores, key=lambda x: x[1], reverse=True)
-            # for score in sorted_scores:
-            #     for k, v in score[0].items():
-            #         if k == 'model':
-            #             score[0][k] = utils_models.get_name_from_model(v)
-            #     print(score)
 
 
     def predict(self, prediction_data):
