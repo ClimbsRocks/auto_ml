@@ -126,9 +126,6 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'AdaBoostClassifier': AdaBoostClassifier(),
 
 
-        'SGDClassifier': SGDClassifier(max_iter=1000, tol=0.001),
-        'Perceptron': Perceptron(max_iter=1000, tol=0.001),
-        'PassiveAggressiveClassifier': PassiveAggressiveClassifier(max_iter=1000, tol=0.001),
         'LinearSVC': LinearSVC(),
 
         # Regressors
@@ -147,12 +144,23 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'OrthogonalMatchingPursuit': OrthogonalMatchingPursuit(),
         'BayesianRidge': BayesianRidge(),
         'ARDRegression': ARDRegression(),
-        'SGDRegressor': SGDRegressor(max_iter=1000, tol=0.001),
-        'PassiveAggressiveRegressor': PassiveAggressiveRegressor(max_iter=1000, tol=0.001),
 
         # Clustering
         'MiniBatchKMeans': MiniBatchKMeans(),
     }
+
+    try:
+        model_map['SGDClassifier'] = SGDClassifier(max_iter=1000, tol=0.001)
+        model_map['Perceptron'] = Perceptron(max_iter=1000, tol=0.001)
+        model_map['PassiveAggressiveClassifier'] = PassiveAggressiveClassifier(max_iter=1000, tol=0.001)
+        model_map['SGDRegressor'] = SGDRegressor(max_iter=1000, tol=0.001)
+        model_map['PassiveAggressiveRegressor'] = PassiveAggressiveRegressor(max_iter=1000, tol=0.001)
+    except TypeError:
+        model_map['SGDClassifier'] = SGDClassifier()
+        model_map['Perceptron'] = Perceptron()
+        model_map['PassiveAggressiveClassifier'] = PassiveAggressiveClassifier()
+        model_map['SGDRegressor'] = SGDRegressor()
+        model_map['PassiveAggressiveRegressor'] = PassiveAggressiveRegressor()
 
     if xgb_installed:
         model_map['XGBClassifier'] = XGBClassifier()
