@@ -418,13 +418,13 @@ def get_search_params(model_name):
             'criterion': ['entropy', 'gini'],
             'class_weight': [None, 'balanced'],
             'max_features': ['sqrt', 'log2', None],
-            'min_samples_split': [1, 2, 5, 20, 50, 100],
+            'min_samples_split': [2, 5, 20, 50, 100],
             'min_samples_leaf': [1, 2, 5, 20, 50, 100],
             'bootstrap': [True, False]
         },
         'RandomForestRegressor': {
             'max_features': ['auto', 'sqrt', 'log2', None],
-            'min_samples_split': [1, 2, 5, 20, 50, 100],
+            'min_samples_split': [2, 5, 20, 50, 100],
             'min_samples_leaf': [1, 2, 5, 20, 50, 100],
             'bootstrap': [True, False]
         },
@@ -439,7 +439,7 @@ def get_search_params(model_name):
         },
         'ExtraTreesRegressor': {
             'max_features': ['auto', 'sqrt', 'log2', None],
-            'min_samples_split': [1, 2, 5, 20, 50, 100],
+            'min_samples_split': [2, 5, 20, 50, 100],
             'min_samples_leaf': [1, 2, 5, 20, 50, 100],
             'bootstrap': [True, False]
         },
