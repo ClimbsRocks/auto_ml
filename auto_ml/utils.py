@@ -168,8 +168,9 @@ class ExtendedLabelEncoder(LabelEncoder):
 
 class ExtendedPipeline(Pipeline):
 
-    def __init__(self, steps):
+    def __init__(self, steps, keep_cat_features=False):
         super(self.__class__, self).__init__(steps)
+        self.keep_cat_features = keep_cat_features
 
 
     @if_delegate_has_method(delegate='_final_estimator')
