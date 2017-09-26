@@ -160,6 +160,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_fit = X.toarray()
 
             X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+
             try:
                 X_test = X_test.toarray()
             except AttributeError as e:
@@ -184,9 +185,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             cat_feature_indices = self.get_categorical_feature_indices()
             if cat_feature_indices is None:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
             else:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
             X_fit = X_fit.toarray()
