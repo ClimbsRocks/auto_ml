@@ -10,7 +10,7 @@ auto_ml
   :param type_of_estimator: Whether you want a classifier or regressor
   :type type_of_estimator: 'regressor' or 'classifier'
   :param column_descriptions: A key/value map noting which column is ``'output'``, along with any columns that are ``'nlp'``, ``'date'``, ``'ignore'``, or ``'categorical'``. See below for more details.
-  :type column_descriptions: dictionary, where each attribute name represents a column of data in the training data, and each value describes that column as being either ['categorical', 'output', 'nlp', 'date', 'ignore']. Note that 'continuous' data does not need to be labeled as such (all columns are assumed to be continuous unless labeled otherwise.
+  :type column_descriptions: dictionary, where each attribute name represents a column of data in the training data, and each value describes that column as being either ['categorical', 'output', 'nlp', 'date', 'ignore']. Note that 'continuous' data does not need to be labeled as such: all columns are assumed to be continuous unless labeled otherwise.
 
 .. py:method:: ml_predictor.train(raw_training_data, user_input_func=None, optimize_final_model=False, perform_feature_selection=None, verbose=True, ml_for_analytics=True, take_log_of_y=None, model_names='GradientBoosting', perform_feature_scaling=True, calibrate_final_model=False, verify_features=False, cv=2, feature_learning=False, fl_data=None, prediction_intervals=False)
 
@@ -23,7 +23,7 @@ auto_ml
   :param optimize_final_model: [default- False] Whether or not to perform GridSearchCV on the final model. True increases computation time significantly, but will likely increase accuracy.
   :type optimize_final_model: Boolean
 
-  :param perform_feature_selection: [default- True for large datasets (&ge; 100,000 rows), False for small datasets] Whether or not to run feature selection before training the final model. Feature selection means picking only the most useful features, so we don't confuse the model with too much useless noise. Feature selection typically speeds up computation time by reducing the dimensionality of our dataset, and tends to combat overfitting as well.
+  :param perform_feature_selection: [default- True for large datasets (> 100,000 rows), False for small datasets] Whether or not to run feature selection before training the final model. Feature selection means picking only the most useful features, so we don't confuse the model with too much useless noise. Feature selection typically speeds up computation time by reducing the dimensionality of our dataset, and tends to combat overfitting as well.
   :type perform_feature_selection: Boolean
 
   :param verbose: [default- True] I try to give you as much information as possible throughout the process. But if you just want the trained pipeline with less verbose logging, set verbose=False and we'll reduce the amount of logging.
@@ -51,7 +51,7 @@ auto_ml
 
   :param prediction_intervals: [default- False] In addition to predicting a single value, regressors can return upper and lower bounds for that prediction as well. If you pass True, we will return the 95th and 5th percentile (the range we'd expect 90% of values to fall within) when you get predicted intervals. If you pass in two float values between 0 and 1, we will return those particular predicted percentiles when you get predicted intervals. To get these additional predicted values, you must pass in True (or two of your own float values) at training time, and at prediction time, call ``ml_predictor.predict_intervals()``. ``ml_predictor.predict()`` will still return just the prediction.
 
-  :rtype: None. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance.
+  :rtype: self. This is purely to fit the entire pipeline to the data. It doesn't return anything- it saves the fitted pipeline as a property of the ``Predictor`` instance. You can download the saved pipeline by calling .save() after fitting the model.
 
 .. py:method:: ml_predictor.train_categorical_ensemble(data, categorical_column, default_category='most_frequently_occurring_category', min_category_size=5)
 
@@ -70,7 +70,7 @@ auto_ml
 
 .. py:method:: ml_predictor.predict(prediction_data)
 
-  :param prediction_data: A single dictionary, or a DataFrame, or list of dictionaries. For production environments, the code is optimized to run quickly on a single row passed in as a dictionary (taking around 1 millisecond for the entire pipeline). Batched predictions on thousands of rows at a time are generally more efficient if you're getting predictions for a larger dataset.
+  :param prediction_data: A single dictionary, or a DataFrame, or list of dictionaries. For production environments, the code is optimized to run quickly on a single row passed in as a dictionary (taking around 1 millisecond for the entire pipeline). Batched predictions on thousands of rows at a time using Pandas DataFrames are generally more efficient if you're getting predictions for a larger dataset.
 
   :rtype: list of predicted values, of the same length and order as the ``prediction_rows`` passed in. If a single dictionary is passed in, the return value will be the predicted value, not nested in a list (so just a single number or predicted class).
 

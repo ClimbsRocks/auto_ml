@@ -69,7 +69,7 @@ Interpreting Predicted Probability Buckets for Classifiers
 
 Sometimes, it's useful to know how a classifier is doing very granularly, beyond just accuracy. For instance, pretend an expensive event (say, burning a whole batch of pastries) has a 5% chance of occurring.
 
-If you train a model, obtaining 95% accuracy looks pretty bad on the surface - it's no better htan average! And in fact, you'll probably find that most (or all) of the predictions are 0 - predicting that the pastries will not burn.
+If you train a model, obtaining 95% accuracy looks pretty bad on the surface - it's no better than average! And in fact, you'll probably find that most (or all) of the predictions are 0 - predicting that the pastries will not burn.
 
 It's easy to disregard the model at this point.
 
