@@ -93,12 +93,12 @@ Depending on your machine, they can occasionally be difficult to install, so the
 
 
 ## Feature Responses
-Get linear-model-esque interpretations from non-linear models. See the [docs}(http://auto-ml.readthedocs.io/en/latest/feature_responses.html) for more information and caveats.
+Get linear-model-esque interpretations from non-linear models. See the [docs](http://auto-ml.readthedocs.io/en/latest/feature_responses.html) for more information and caveats.
 
 
 ## Classification
 
-Binary and multiclass classification are both supported. Note that for now, labels must be integers (0 and 1 for binary classification). auto_ml will automatically detect if it is a binary or multiclass classification problem- you just have to pass in `ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)`
+Binary and multiclass classification are both supported. Note that for now, labels must be integers (0 and 1 for binary classification). auto_ml will automatically detect if it is a binary or multiclass classification problem - you just have to pass in `ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)`
 
 
 ## Feature Learning

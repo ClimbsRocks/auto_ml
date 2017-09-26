@@ -22,23 +22,19 @@ You'll need to pass in an identifier for which column of data is our `categorica
 
 The only other thing you have to keep in mind is to pass in a value for `'market_name'` for each new item you want to get a prediction for. The API for this doesn't change from our normal predict API, I'm just calling out that this column should have a value in it.
 
-```
-test_data = {'blah': 1, 'market_name': 'Mumbai'}
-trained_ml_predictor.predict(test_data)
-```
+``test_data = {'blah': 1, 'market_name': 'Mumbai'}``
+``trained_ml_predictor.predict(test_data)``
 
 A couple user-friendly features I've built on top:
 
-1. Default category: Your company just launched 25 new markets- awesome! Except, uh, we obviously don't have any data for them yet, so we can't train a model for them. You can specify a default category, so that when we're asked to make a prediction for a category that wasn't in the training data, we use the predictor trained on this default category to generate the prediction. If you don't specify a default_category, we will choose the most-commonly-occurring (largest) category as the default. Or, you can specify `ml_predictor.train_categorical_ensemble(df_train, categorical_column='market_name', default_category='_RAISE_ERROR')` to raise an error if we're getting a prediction for a category that wasn't in our training data.
+1. Default category: Your company just launched 25 new markets - awesome! Except, uh, we obviously don't have any data for them yet, so we can't train a model for them. You can specify a default category, so that when we're asked to make a prediction for a category that wasn't in the training data, we use the predictor trained on this default category to generate the prediction. If you don't specify a default_category, we will choose the most-commonly-occurring (largest) category as the default. Or, you can specify `ml_predictor.train_categorical_ensemble(df_train, categorical_column='market_name', default_category='_RAISE_ERROR')` to raise an error if we're getting a prediction for a category that wasn't in our training data.
 
 2. min_category_size: For a number of reasons, training an ML predictor on too few data points is messy. You can certainly clean the data yourself to have an effective min_category_size, but we built this in as a convenience for the user. If there's a category that has less than min_category_size observations in our training data, we won't train a model for that category, and we'll default to using the default_category to get predictions. The default value here right now is 5 (which seems really low, if you've got the data for it, I'd recommend a min size of at least a few thousand). To finish the example above: `ml_predictor.train_categorical_ensemble(df_train, categorical_column='market_name', default_category='Beijing', min_category_size=5000)`
 
 3. You can still pass in any of the normal arguments for `.train()` that you know and love!
 
 Performance Notes:
-A. We train up only one global transformation_pipeline to minimize disk space when serializing the models
-B. If `feature_learning=True` is passed in, we will train up one global feature_learning model- we will NOT train up one feature_learning model per category. The model we train for each category can then decide whether and how to use the features from our feature_learning model. Since each feature_learning model has to be serialized to disk separately right now, this design decision was made to reduce complexity, and the risk of things going wrong when transferring trained models to a production environment.
-
-
-
-
+<ol type="A">
+<li>We train up only one global transformation_pipeline to minimize disk space when serializing the models</li>
+<li>If `feature_learning=True` is passed in, we will train up one global feature_learning model - we will NOT train up one feature_learning model per category. The model we train for each category can then decide whether and how to use the features from our feature_learning model. Since each feature_learning model has to be serialized to disk separately right now, this design decision was made to reduce complexity, and the risk of things going wrong when transferring trained models to a production environment.</li>
+</ol>

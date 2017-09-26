@@ -16,7 +16,7 @@ That's right, we've got automated Deep Learning that runs at production-ready sp
 Feature Learning
 -----------------
 
-Deep Learning is great for learning features for you. It's not so amazing at turning those features into predictions (No Free Hunch all you will, I don't see too many people using Perceptrons as standalone models to turn features into predictions- frequently Gradient Boosting wins here).
+Deep Learning is great for learning features for you. It's not so amazing at turning those features into predictions (No Free Hunch all you will, I don't see too many people using Perceptrons as standalone models to turn features into predictions - frequently Gradient Boosting wins here).
 
 So, why not use both models for what they're best at: Deep Learning to learn features for us, and Gradient Boosting to turn those features into accurate predictions?
 
@@ -26,7 +26,7 @@ First, we'll train up a deep learning model on the `fl_data`, which is a dataset
 
 Once we've trained the feature_learning model, we'll split off it's final layer, and instead use it's penultimate layer, which outputs it's 10 most useful features. We'll hstack these features along with the rest of the features you have in your training data. So if you have 100 features in your training data, we'll add the 10 predicted features from the feature_learning model, and get to 110 features total.
 
-Then we'll train a gradient boosted model (or any model of your choice- the full set of auto_ml models are available to you here) on this combined set of 110 features.
+Then we'll train a gradient boosted model (or any model of your choice - the full set of auto_ml models are available to you here) on this combined set of 110 features.
 
 The result from this hybrid approach is up to 5% more accurate than either approach on their own.
 
