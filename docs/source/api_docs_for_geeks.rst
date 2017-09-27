@@ -41,7 +41,7 @@ auto_ml
 
   :param calibrate_final_model: [default- False] Whether to calibrate the probability predictions coming from the final trained classifier. Usefulness depends on your scoring metric, and model. The default auto_ml settings mean that the model does not necessarily need to be calibrated. If True, you must pass in values for X_test and y_test as well. This is the dataset we will calibrate the model to. Note that this means you cannot use this as your test dataset once the model has been calibrated to them.
 
-  :param verify_features: [default- False] Allows you to verify that all the same features are present in a prediction dataset as the training datset. False by default because it increases serialized model size by around 1MB, depending on your dataset. In order to check whether a prediction dataset has the same features, invoke ``trained_ml_pipeline.named_steps['final_model'].verify_features(prediction_data)``. Kind of a clunky UI, but a useful feature smashed into the constraints of a sklearn pipeline.
+  :param verify_features: [default- False] Allows you to verify that all the same features are present in a prediction dataset as the training datset. False by default because it increases serialized model size by around 1MB, depending on your dataset. In order to check whether a prediction dataset has the same features, invoke ``trained_ml_pipeline``. ``named_steps['final_model']``. ``verify_features(prediction_data)``. Kind of a clunky UI, but a useful feature smashed into the constraints of a sklearn pipeline.
 
   :param cv: [default- 2] How many folds of cross-validation to perform. The default of 2 works well for very large datasets. It speeds up training speed, and helps combat overfitting. However, for smaller datasets, cv of 3, or even up to 9, might make more sense, if you're ok with the trade-off in training speed.
 
@@ -92,7 +92,7 @@ auto_ml
 
   :param return_type: [default- dict for single prediction, list of lists for multiple predictions] Accepted values are ``'df', 'list', 'dict'``. If ``'df'``, we will return a pandas DataFrame, with the columns ``[prediction, prediction_lower, prediction_median, prediction_upper]``. If ``'list'``, we will return a single (non-nested) list for single predictions, and a list of lists for batch predictions. If ``'dict'``, we will return a single (non-nested) dictionary for single predictions, and a list of dictionaries for batch predictions.
 
-  :rtype: dict for single predictions, list of lists if getting predictions on multiple rows. The return type can also be specified using return_type below. The list of predicted values for each row will always be in this order: ``[prediction, prediction_lower, prediction_median, prediction_upper]``. Similarly, each returned dict will always have the properties ``{'prediction': None', 'prediction_lower': None, 'prediction_median': None, 'prediction_upper': None}``
+  :rtype: dict for single predictions, list of lists if getting predictions on multiple rows. The return type can also be specified using return_type below. The list of predicted values for each row will always be in this order: ``[prediction, prediction_lower, prediction_median, prediction_upper]``. Similarly, each returned dict will always have the properties ``{'prediction': None'``, ``'prediction_lower': None``, ``'prediction_median': None``, ``'prediction_upper': None}``
 
 .. py:method:: ml_predictor.save(file_name='auto_ml_saved_pipeline.dill', verbose=True)
 

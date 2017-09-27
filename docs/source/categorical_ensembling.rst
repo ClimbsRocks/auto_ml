@@ -34,7 +34,6 @@ A couple user-friendly features I've built on top:
 3. You can still pass in any of the normal arguments for `.train()` that you know and love!
 
 Performance Notes:
-<ol type="A">
-<li>We train up only one global transformation_pipeline to minimize disk space when serializing the models</li>
-<li>If `feature_learning=True` is passed in, we will train up one global feature_learning model - we will NOT train up one feature_learning model per category. The model we train for each category can then decide whether and how to use the features from our feature_learning model. Since each feature_learning model has to be serialized to disk separately right now, this design decision was made to reduce complexity, and the risk of things going wrong when transferring trained models to a production environment.</li>
-</ol>
+
+A. We train up only one global transformation_pipeline to minimize disk space when serializing the models
+B. If `feature_learning=True` is passed in, we will train up one global feature_learning model - we will NOT train up one feature_learning model per category. The model we train for each category can then decide whether and how to use the features from our feature_learning model. Since each feature_learning model has to be serialized to disk separately right now, this design decision was made to reduce complexity, and the risk of things going wrong when transferring trained models to a production environment.
