@@ -4,6 +4,7 @@ import os
 
 import numpy as np
 import pandas as pd
+import scipy
 from sklearn.datasets import load_boston
 from sklearn.model_selection import train_test_split
 from sklearn.pipeline import Pipeline
@@ -111,11 +112,24 @@ def get_boston_dataset():
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
+
+def delete_rows_csr(mat, indices):
+    """
+    Remove the rows denoted by ``indices`` form the CSR sparse matrix ``mat``.
+    """
+    if not isinstance(mat, scipy.sparse.csr_matrix):
+        raise ValueError("works only for CSR format -- use .tocsr() first")
+    indices = list(indices)
+    mask = np.ones(mat.shape[0], dtype=bool)
+    mask[indices] = False
+    return mat[mask]
+
+
 def drop_missing_y_vals(df, y, output_column=None):
 
     y = list(y)
     indices_to_drop = []
-
+    indices_to_keep = []
     for idx, val in enumerate(y):
         if str(val) in bad_vals_as_strings:
             indices_to_drop.append(idx)
@@ -135,8 +149,11 @@ def drop_missing_y_vals(df, y, output_column=None):
             print(y[df_idx])
         print('We will remove these values, and continue with training on the cleaned dataset')
 
-        support_mask = [True if idx not in set_of_indices_to_drop else False for idx in range(len(df)) ]
-        df = df[support_mask]
+        support_mask = [True if idx not in set_of_indices_to_drop else False for idx in range(df.shape[0]) ]
+        if isinstance(df, pd.DataFrame):
+            df = df[support_mask]
+        elif scipy.sparse.issparse(df):
+            df = delete_rows_csr(df, indices_to_drop)
         y = [val for idx, val in enumerate(y) if idx not in set_of_indices_to_drop]
 
 
