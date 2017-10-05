@@ -404,7 +404,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
-        elif self.model_name[:8] == 'CatBoost' and scipy.sparse.issparse(X):
+        elif (self.model_name[:8] == 'CatBoost' or self.model_name[:4] == 'LGBM') and scipy.sparse.issparse(X):
             X = X.toarray()
 
         try:
