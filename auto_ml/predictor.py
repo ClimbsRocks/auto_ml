@@ -1572,38 +1572,45 @@ class Predictor(object):
         print(printing_copy)
 
         if self.verbose:
-            print('Here are all the hyperparameters that were tried:')
-            raw_scores = gs.cv_results_
-            df_raw_scores = pd.DataFrame(raw_scores)
-
-            df_raw_scores = df_raw_scores.sort_values(by='mean_test_score', ascending=False)
-            col_name_map = {
-                'mean_test_score': 'mean_score'
-                , 'min_test_score': 'DROPME'
-                , 'max_test_score': 'DROPME'
-                , 'nan_test_score?': 'DROPME'
-                , 'index': 'DROPME'
-                , 'param_index': 'DROPME'
-                , 'std_test_score': 'DROPME'
-            }
-            new_cols = []
-            for col in df_raw_scores.columns:
-                if col in col_name_map:
-                    new_cols.append(col_name_map.get(col, col))
-                else:
-                    new_cols.append(col)
-            df_raw_scores.columns = new_cols
+            # sklearn-deap has an annoying bug where it doesn't keep .cv_results_ for the first generation, and the second generation might be empty when running the test suite because we have such a small number per generation.
             try:
-                df_raw_scores = df_raw_scores.drop('DROPME', axis=1)
-            except:
-                pass
+                print('Here are all the hyperparameters that were tried:')
+                raw_scores = gs.cv_results_
+                df_raw_scores = pd.DataFrame(raw_scores)
 
-            cleaned_params = list(df_raw_scores['params'].apply(utils.clean_params))
-            df_params = pd.DataFrame(cleaned_params)
-            df_scores = pd.concat([df_raw_scores.mean_score, df_params], axis=1)
-            df_scores = df_scores.sort_values(by='mean_score', ascending=True)
-            print('Score in the following columns always refers to cross-validation score')
-            print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
+                df_raw_scores = df_raw_scores.sort_values(by='mean_test_score', ascending=False)
+                col_name_map = {
+                    'mean_test_score': 'mean_score'
+                    , 'min_test_score': 'DROPME'
+                    , 'max_test_score': 'DROPME'
+                    , 'nan_test_score?': 'DROPME'
+                    , 'index': 'DROPME'
+                    , 'param_index': 'DROPME'
+                    , 'std_test_score': 'DROPME'
+                }
+                new_cols = []
+                for col in df_raw_scores.columns:
+                    if col in col_name_map:
+                        new_cols.append(col_name_map.get(col, col))
+                    else:
+                        new_cols.append(col)
+                df_raw_scores.columns = new_cols
+                try:
+                    df_raw_scores = df_raw_scores.drop('DROPME', axis=1)
+                except:
+                    pass
+
+                cleaned_params = list(df_raw_scores['params'].apply(utils.clean_params))
+                df_params = pd.DataFrame(cleaned_params)
+                df_scores = pd.concat([df_raw_scores.mean_score, df_params], axis=1)
+                df_scores = df_scores.sort_values(by='mean_score', ascending=True)
+                print('Score in the following columns always refers to cross-validation score')
+                print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
+            except ValueError as e:
+                if os.environ.get('is_test_suite', False) == 'True':
+                    pass
+                else:
+                    raise(e)
 
 
     def predict(self, prediction_data):
