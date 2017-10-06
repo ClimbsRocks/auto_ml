@@ -252,7 +252,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             self.model.fit(X_fit, y)
 
-
+        if self.X_test is not None:
+            del self.X_test
+            del self.y_test
         return self
 
     def remove_categorical_values(self, features):
@@ -409,7 +411,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         try:
             if self.model_name[:4] == 'LGBM':
-                predictions = self.model.predict_proba(X, num_iteration=self.model.best_iteration)
+                try:
+                    best_iteration = self.model.best_iteration
+                except AttributeError:
+                    best_iteration = self.model.best_iteration_
+                predictions = self.model.predict_proba(X, num_iteration=best_iteration)
             else:
                 predictions = self.model.predict_proba(X)
 
@@ -461,7 +467,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_predict = X
 
         if self.model_name[:4] == 'LGBM':
-            predictions = self.model.predict(X_predict, num_iteration=self.model.best_iteration)
+            try:
+                best_iteration = self.model.best_iteration
+            except AttributeError:
+                best_iteration = self.model.best_iteration_
+            predictions = self.model.predict(X, num_iteration=best_iteration)
         else:
             predictions = self.model.predict(X_predict)
         # Handle cases of getting a prediction for a single item.
