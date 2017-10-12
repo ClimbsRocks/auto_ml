@@ -107,7 +107,10 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                     else:
                         if str(val) in bad_vals_as_strings:
                             val = '_None'
-                        val = self.get('label_encoders')[f].transform([val])
+                        try:
+                            val = self.get('label_encoders')[f].transform([val])
+                        except TypeError:
+                            val = '_None'
 
                 if f in vocab and str(val) not in bad_vals_as_strings:
 
