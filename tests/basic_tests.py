@@ -20,6 +20,76 @@ import dill
 import numpy as np
 import utils_testing as utils
 
+def test_perform_randomizedsearchcv(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'sex': 'categorical'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', fit_randomized_search=False, optimize_final_model=True)
+    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
+
+    print('test_score')
+    print(test_score)
+
+    assert -0.21 < test_score < -0.131
+
+
+
+
+def test_model_uses_user_provided_training_params(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'sex': 'categorical'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    try:
+        ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', training_params={'this_param_is_not_valid': True})
+        assert False
+    except ValueError as e:
+        assert True
+
+    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', training_params={'solver': 'lsqr'})
+
+
+def test_model_uses_user_provided_gs_params(model_name=None):
+    np.random.seed(0)
+
+    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
+
+    column_descriptions = {
+        'survived': 'output'
+        , 'sex': 'categorical'
+        , 'embarked': 'categorical'
+        , 'pclass': 'categorical'
+    }
+
+    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
+
+    try:
+        ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', grid_search_params={'this_param_is_not_valid': [True]})
+        assert False
+    except ValueError as e:
+        assert True
+
+    ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', grid_search_params={'solver': ['lsqr', 'cholesky', 'auto', 'sparse_cg']})
+
 
 def test_all_algos_classification(model_name=None):
     np.random.seed(0)
@@ -116,27 +186,6 @@ def test_input_df_unmodified():
     print(test_score)
 
     assert -3.35 < test_score < -2.8
-
-def test_model_uses_user_provided_training_params(model_name=None):
-    np.random.seed(0)
-
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-
-    column_descriptions = {
-        'survived': 'output'
-        , 'sex': 'categorical'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-
-    try:
-        ml_predictor.train(df_titanic_train, model_names='RidgeClassifier', training_params={'this_param_is_not_valid': True})
-        assert False
-    except ValueError as e:
-        assert True
-
 
 def test_ignores_new_invalid_features():
 
