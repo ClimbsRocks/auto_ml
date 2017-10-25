@@ -185,9 +185,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             cat_feature_indices = self.get_categorical_feature_indices()
             if cat_feature_indices is None:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
             else:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
             X_fit = X_fit.toarray()
@@ -252,9 +252,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             self.model.fit(X_fit, y)
 
-        if self.X_test is not None:
-            del self.X_test
-            del self.y_test
+        # if self.X_test is not None:
+        #     del self.X_test
+        #     del self.y_test
         return self
 
     def remove_categorical_values(self, features):
