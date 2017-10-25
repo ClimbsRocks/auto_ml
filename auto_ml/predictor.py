@@ -25,7 +25,7 @@ pd.options.mode.chained_assignment = None  # default='warn'
 import scipy
 from sklearn.calibration import CalibratedClassifierCV
 from sklearn.feature_extraction import DictVectorizer
-from sklearn.model_selection import GridSearchCV, KFold, train_test_split
+from sklearn.model_selection import GridSearchCV, KFold, RandomizedSearchCV, train_test_split
 from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, accuracy_score
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
@@ -328,7 +328,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, fit_randomized_search=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -382,6 +382,11 @@ class Predictor(object):
             self.ensemble_config = []
         else:
             self.ensemble_config = ensemble_config
+
+        if fit_randomized_search is None:
+            self.fit_randomized_search = False
+        else:
+            self.fit_randomized_search = True
 
         self.calibrate_uncertainty = calibrate_uncertainty
         self.uncertainty_calibration_data = uncertainty_calibration_data
@@ -603,9 +608,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, fit_randomized_search=False):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed, fit_randomized_search=fit_randomized_search)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -1038,6 +1043,16 @@ class Predictor(object):
         gene_mutation_prob = 0.1
         generations_number = 3
 
+        n_rscv_iter = 20
+
+        if self.user_gs_params is not None:
+            n_jobs = self.user_gs_params.get('n_jobs', n_jobs)
+            population_size = self.user_gs_params.get('population_size', population_size)
+            tournament_size = self.user_gs_params.get('tournament_size', tournament_size)
+            gene_mutation_prob = self.user_gs_params.get('gene_mutation_prob', gene_mutation_prob)
+            generations_number = self.user_gs_params.get('generations_number', generations_number)
+            n_rscv_iter = self.user_gs_params.get('n_rscv_iter', n_rscv_iter)
+
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
             population_size = 6
@@ -1055,7 +1070,32 @@ class Predictor(object):
         if total_combinations >= 50 and model_name not in ['CatBoostClassifier', 'CatBoostRegressor']:
             fit_evolutionary_search = True
         # For some reason, EASCV doesn't play nicely with CatBoost. It blows up the memory hugely, and takes forever to train
-        if fit_evolutionary_search == True:
+        if self.fit_randomized_search == True:
+            print('Using RandomizedSearchCV as our hyperparameter search')
+            gs = RandomizedSearchCV(
+                # Fit on the pipeline.
+                ppl,
+                n_iter=n_rscv_iter,
+                # Two splits of cross-validation, by default
+                cv=self.cv,
+                param_distributions=gs_params,
+                # Train across all cores.
+                n_jobs=n_jobs,
+                # Be verbose (lots of printing).
+                verbose=grid_search_verbose,
+                # Print warnings when we fail to fit a given combination of parameters, but do not raise an error.
+                # Set the score on this partition to some very negative number, so that we do not choose this estimator.
+                error_score=-1000000000,
+                scoring=self._scorer.score,
+                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 10%
+                pre_dispatch='1.1*n_jobs',
+                # Do not fit the best estimator on all the data- we will do that later, possibly after increasing epochs or n_estimators
+                refit=refit,
+                # Useful for understanding overfitting, but takes a while to compute
+                return_train_score=False
+            )
+
+        elif fit_evolutionary_search == True:
             gs = EvolutionaryAlgorithmSearchCV(
                 # Fit on the pipeline.
                 ppl,
@@ -1070,17 +1110,17 @@ class Predictor(object):
                 # Set the score on this partition to some very negative number, so that we do not choose this estimator.
                 error_score=-1000000000,
                 scoring=self._scorer.score,
-                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
-                pre_dispatch='1.5*n_jobs',
+                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 10%
+                pre_dispatch='1.1*n_jobs',
                 # The number of
                 population_size=population_size,
                 gene_mutation_prob=gene_mutation_prob,
                 tournament_size=tournament_size,
                 generations_number=generations_number,
-                # Do not fit the best estimator on all the data- we will do that later, possibly after increasing epochs or n_estimators
                 refit=True
 
             )
+
 
         else:
             gs = GridSearchCV(
@@ -1097,8 +1137,8 @@ class Predictor(object):
                 # Set the score on this partition to some very negative number, so that we do not choose this estimator.
                 error_score=-1000000000,
                 scoring=self._scorer.score,
-                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 50%
-                pre_dispatch='1.5*n_jobs',
+                # Don't allocate memory for all jobs upfront. Instead, only allocate enough memory to handle the current jobs plus an additional 10%
+                pre_dispatch='1.1*n_jobs',
                 refit=refit
             )
 
@@ -1106,7 +1146,10 @@ class Predictor(object):
             print('\n\n********************************************************************************************')
             if self.optimize_final_model == True:
                 print('Optimizing the hyperparameters for your model now')
-                if fit_evolutionary_search == False:
+
+                if self.fit_randomized_search == True:
+                    print('About to run RandomizedSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
+                elif fit_evolutionary_search == False:
                     print('About to run GridSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
                 else:
                     print('About to run EvolutionaryAlgorithmSearchCV to find the optimal hyperparameters for the model ' + model_name + ' to predict ' + self.output_column)
@@ -1134,18 +1177,18 @@ class Predictor(object):
 
         raw_search_params = utils_models.get_search_params(model_name)
 
-        for param_name, param_list in raw_search_params.items():
-            # We need to tell GS where to set these params. In our case, it is on the "final_model" object, and specifically the "model" attribute on that object
-            grid_search_params['model__' + param_name] = param_list
-
         # Overwrite with the user-provided gs_params if they're provided
         if self.user_gs_params is not None:
             print('Using the grid_search_params you passed in:')
             print(self.user_gs_params)
-            grid_search_params.update(self.user_gs_params)
+            raw_search_params.update(self.user_gs_params)
             print('Here is our final list of grid_search_params:')
-            print(grid_search_params)
-            print('Please note that if you want to set the grid search params for the final model specifically, they need to be prefixed with: "model__"')
+            print(raw_search_params)
+
+        for param_name, param_list in raw_search_params.items():
+            # We need to tell GS where to set these params. In our case, it is on the "final_model" object, and specifically the "model" attribute on that object
+            grid_search_params['model__' + param_name] = param_list
+
 
         return grid_search_params
 
