@@ -676,8 +676,11 @@ class Predictor(object):
         del self.X_test
         del self.y_test
         del self.X_test_already_transformed
-        del self.trained_pipeline.named_steps['final_model'].X_test
-        del self.trained_pipeline.named_steps['final_model'].y_test
+        try:
+            del self.trained_pipeline.named_steps['final_model'].X_test
+            del self.trained_pipeline.named_steps['final_model'].y_test
+        except AttributeError:
+            pass
         del X_df
 
         if self.return_transformation_pipeline:
