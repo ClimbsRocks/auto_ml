@@ -671,6 +671,8 @@ class Predictor(object):
         del self.X_test
         del self.y_test
         del self.X_test_already_transformed
+        del self.trained_pipeline.named_steps['final_model'].X_test
+        del self.trained_pipeline.named_steps['final_model'].y_test
         del X_df
 
         if self.return_transformation_pipeline:
@@ -1033,10 +1035,10 @@ class Predictor(object):
             total_combinations *= len(v)
 
         n_jobs = -1
-        population_size = 35
+        population_size = 25
         tournament_size = 3
         gene_mutation_prob = 0.1
-        generations_number = 3
+        generations_number = 2
 
         if os.environ.get('is_test_suite', 0) == 'True':
             n_jobs = 1
@@ -1046,7 +1048,7 @@ class Predictor(object):
         # LightGBM doesn't appear to play well when fighting for CPU cycles with other things
         # However, it does, itself, parallelize pretty nicely. So let lgbm take care of the parallelization itself, which will be less memory intensive than having to duplicate the data for all the cores on the machine
         elif model_name in ['LGBMRegressor', 'LGBMClassifier', 'DeepLearningRegressor', 'DeeplearningClassifier']:
-            n_jobs = 1
+            n_jobs = 2
 
         elif total_combinations >= 50:
             n_jobs = multiprocessing.cpu_count()
