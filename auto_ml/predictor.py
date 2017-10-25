@@ -386,7 +386,7 @@ class Predictor(object):
         if fit_randomized_search is None:
             self.fit_randomized_search = False
         else:
-            self.fit_randomized_search = True
+            self.fit_randomized_search = fit_randomized_search
 
         self.calibrate_uncertainty = calibrate_uncertainty
         self.uncertainty_calibration_data = uncertainty_calibration_data
