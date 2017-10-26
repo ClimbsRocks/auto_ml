@@ -157,19 +157,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
         elif self.model_name[:4] == 'LGBM':
-            X_fit = X.toarray()
-
-            X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
-
-            try:
-                X_test = X_test.toarray()
-            except AttributeError as e:
-                pass
+            if scipy.sparse.issparse(X):
+                X_fit = X.toarray()
 
             if self.type_of_estimator == 'regressor':
                 eval_metric = 'rmse'
             elif self.type_of_estimator == 'classifier':
-                if len(set(y_test)) > 2:
+                if len(set(y)) > 2:
                     eval_metric = 'multi_logloss'
                 else:
                     eval_metric = 'binary_logloss'
@@ -178,16 +172,36 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if self.is_hp_search == True:
                 verbose = False
 
-            if self.X_test is not None:
-                eval_name = 'X_test_the_user_passed_in'
-            else:
-                eval_name = 'random_holdout_set_from_training_data'
-
             cat_feature_indices = self.get_categorical_feature_indices()
-            if cat_feature_indices is None:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+
+            num_trees = self.model.get_params('n_estimators')
+            if num_trees == 2000:
+                print('Programmatically determining the optimal number of trees, based on the performance of either X_test if you passed in X_test at training time, or a random holdout set from the training data.')
+
+                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+
+                try:
+                    X_test = X_test.toarray()
+                except AttributeError as e:
+                    pass
+
+                if self.X_test is not None:
+                    eval_name = 'X_test_the_user_passed_in'
+                else:
+                    eval_name = 'random_holdout_set_from_training_data'
+
+                if cat_feature_indices is None:
+                    self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                else:
+                    self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+
             else:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=50, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                print('Training to a predetermined number of trees, based on the value you passed in for "n_estimators" for training_params. If you want to programmatically determine the optimal number of trees, please leave that value blank in the training params.')
+                if cat_feature_indices is None:
+                    self.model.fit(X_fit, y, verbose=verbose)
+                else:
+                    self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
+
 
         elif self.model_name[:8] == 'CatBoost':
             X_fit = X_fit.toarray()
