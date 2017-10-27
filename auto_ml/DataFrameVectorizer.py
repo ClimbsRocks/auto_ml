@@ -11,6 +11,7 @@ from sklearn.externals import six
 from auto_ml.utils import ExtendedLabelEncoder
 
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+bad_vals = set([float('nan'), float('inf'), float('-inf'), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf', None, np.nan])
 
 def strip_non_ascii(string):
     ''' Returns the string without non ASCII characters'''
@@ -83,6 +84,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         # del self.column_descriptions
         return self
 
+    @profile
     def _transform(self, X):
 
         dtype = self.dtype
@@ -127,34 +129,48 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         else:
             # collect all the possible feature names and build sparse matrix at
             # same time
-            X_columns = X.columns
+            X_columns = list(X.columns)
             string_types = six.string_types
             separator = self.separator
             indices_append = indices.append
             values_append = values.append
             keep_cat_features = self.get('keep_cat_features', False) == False
-            is_categorical = [self.column_descriptions.get(f, False) == 'categorical' for f in X_columns]
+
+            categorical_columns = []
+            for k, v in self.column_descriptions.items():
+                if v == 'categorical':
+                    categorical_columns.append(k)
+            categorical_columns = set(categorical_columns)
+            # is_categorical = [self.column_descriptions.get(f, False) == 'categorical' for f in X_columns]
 
             for row in X.itertuples():
                 for col_idx, val in enumerate(row[1:]):
                     f = X_columns[col_idx]
 
-                    if is_categorical[col_idx]:
+                    if f in categorical_columns:
                         if keep_cat_features:
                             f = f + separator + str(val)
                             val = 1
                         else:
-                            if str(val) in bad_vals_as_strings:
+                            if val in bad_vals:
                                 val = '_None'
 
                             val = self.get('label_encoders')[f].transform([val])
 
                     # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
-                    if f in vocab and str(val) not in bad_vals_as_strings:
-                        # Get the index position from vocab, then append that index position to indices
-                        indices_append(vocab[f])
-                        # Convert the val to the correct dtype, then append to our values list
-                        values_append(dtype(val))
+                    try:
+                        if f in vocab and val not in bad_vals:
+                            # Get the index position from vocab, then append that index position to indices
+                            indices_append(vocab[f])
+                            # Convert the val to the correct dtype, then append to our values list
+                            values_append(dtype(val))
+                    except TypeError as e:
+                        print('f')
+                        print(f)
+                        print('val')
+                        print(val)
+                        print(e)
+                        raise(e)
 
                 indptr.append(len(indices))
 
