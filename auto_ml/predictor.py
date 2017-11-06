@@ -650,13 +650,12 @@ class Predictor(object):
 
         if self.calculate_prediction_intervals is True:
             # TODO: parallelize these!
-            lower_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=self.prediction_intervals[0])
+            interval_predictors = []
+            for percentile in self.prediction_intervals:
+                interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=percentile)
+                predictor_tup = ('interval_{}'.format(percentile), interval_predictor)
+                interval_predictors.append(predictor_tup)
 
-            median_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=0.5)
-
-            upper_interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=self.prediction_intervals[1])
-
-            interval_predictors = [lower_interval_predictor, median_interval_predictor, upper_interval_predictor]
             self.trained_final_model.interval_predictors = interval_predictors
 
 
