@@ -63,6 +63,12 @@ def test_predict_uncertainty_true():
     df_intervals = ml_predictor.predict_intervals(df_boston_test, return_type='df')
     assert isinstance(df_intervals, pd.DataFrame)
 
+    try:
+        ml_predictor.predict_intervals(df_boston_test, return_type='this will not work')
+        assert False
+    except ValueError:
+        assert True
+
 
 def test_predict_intervals_takes_in_custom_intervals():
     np.random.seed(0)
