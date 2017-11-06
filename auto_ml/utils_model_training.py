@@ -500,48 +500,44 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             raise ValueError('This model was not trained to predict intervals')
 
         base_prediction = self.predict(X)
-        lower_prediction = self.interval_predictors[0].predict(X)
-        median_prediction = self.interval_predictors[1].predict(X)
-        upper_prediction = self.interval_predictors[2].predict(X)
+
+        result = {
+            'prediction': base_prediction
+        }
+        for tup in self.interval_predictors:
+            predictor_name = tup[0]
+            predictor = tup[1]
+            result[predictor_name] = predictor.predict(X)
 
         if scipy.sparse.issparse(X):
             len_input = X.shape[0]
         else:
             len_input = len(X)
 
-        if len_input == 1:
-            if return_type is None or return_type == 'dict':
-                return {
-                    'prediction': base_prediction
-                    , 'prediction_lower': lower_prediction
-                    , 'prediction_median': median_prediction
-                    , 'prediction_upper': upper_prediction
-                }
+        if (len_input == 1 and return_type is None) or return_type == 'dict':
+            return result
+
+        elif (len_input > 1 and return_type is None) or return_type == 'df' or return_type == 'dataframe':
+            return pd.DataFrame(result)
+
+        elif return_type == 'list':
+            if len_input == 1:
+                list_result = [base_prediction]
+                for tup in self.interval_predictors:
+                    list_result.append(result[tup[0]])
             else:
-                return [base_prediction, lower_prediction, median_prediction, upper_prediction]
+                list_result = []
+                for idx in range(len_input):
+                    row_result = [base_prediction[idx]]
+                    for tup in self.interval_predictors:
+                        row_result.append(result[tup[0]][idx])
+                    list_result.append(row_result)
+
+            return list_result
+
         else:
-            if return_type is None or return_type == 'list':
-                # kinda tough...
-                results = []
-                for idx in range(len(base_prediction)):
-                    row_result = []
-                    row_result.append(base_prediction[idx])
-                    row_result.append(lower_prediction[idx])
-                    row_result.append(median_prediction[idx])
-                    row_result.append(upper_prediction[idx])
-                    results.append(row_result)
-
-                return results
-
-            elif return_type == 'df':
-                dict_for_df = {
-                    'prediction': base_prediction
-                    , 'prediction_lower': lower_prediction
-                    , 'prediction_median': median_prediction
-                    , 'prediction_upper': upper_prediction
-                }
-                df = pd.DataFrame(dict_for_df)
-                return df
+            print('Please pass in a return_type value of one of the following: ["dict", "dataframe", "df", "list"]')
+            raise(ValueError('Please pass in a return_type value of one of the following: ["dict", "dataframe", "df", "list"]'))
 
 
     # transform is initially designed to be used with feature_learning
