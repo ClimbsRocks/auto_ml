@@ -9,4 +9,3 @@ scikit-learn
 scipy
 sklearn-deap2
 tabulate
-tensorflow

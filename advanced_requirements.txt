@@ -1,4 +1,0 @@
-tensorflow
-keras
-pyyaml
-h5py
