@@ -1,19 +1,25 @@
 sudo: required
 dist: trusty
 language: python
-services:
-  - docker
-
-install: 'skip'
 
 python:
   - "2.7"
+  - "3.5"
 
-  - docker pull climbsrocks/auto_ml_tests:latest
+install:
+  - TEST_DIR=$PWD
   - pip install coveralls
+  - pip install nose
+  - pip install -r requirements.txt
+  # TODO: run as many tests here as possible
+  # then, do the rest of the installs
+  # then, run the rest of the tests
 
-script: docker run -v $PWD:/tmp/working -w=/tmp/working --rm -it climbsrocks/auto_ml_tests:latest python setup.py nosetests
+script:
+  - nosetests tests/api_coverage_tests_classifiers.py ; nosetests tests/api_coverage_tests_regressors.py ; nosetests tests/basic_tests.py ; nosetests tests/calibrate_classifier_tests.py ; nosetests tests/categorical_ensembling_test.py ; nosetests tests/scoring_tests.py ; nosetests tests/test_prediction_intervals.py ; nosetests tests/trained_transformation_pipeline_tests.py ; nosetests tests/uncertainty_tests.py ; nosetests tests/user_logging_tests.py
 
-after_success:
-  - docker cp climbsrocks/auto_ml_tests:latest:/.coverage
+  - pip install lightgbm ; pip install keras ; pip install tensorflow ; pip install catboost ; git clone --recursive https://github.com/dmlc/xgboost ; cd xgboost; make -j4 ; cd python-package ; python setup.py install ; cd $TEST_DIR
+
+  - nosetests tests/advanced_install_tests.py ; nosetests tests/automated_tests.py ; nosetests tests/automated_tests_regressors.py ; nosetests tests/ensemble_tests.py ;
+
   - coveralls

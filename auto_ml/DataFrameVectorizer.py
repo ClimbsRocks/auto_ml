@@ -1,5 +1,6 @@
 # Modified version of scikit-learn's DictVectorizer
 from array import array
+import numbers
 from operator import itemgetter
 
 import numpy as np
@@ -8,9 +9,9 @@ import scipy.sparse as sp
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.externals import six
 
-from auto_ml.utils import ExtendedLabelEncoder
+from auto_ml.utils import CustomLabelEncoder
 
-bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+bad_vals = set([float('nan'), float('inf'), float('-inf'), None, np.nan, 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
 def strip_non_ascii(string):
     ''' Returns the string without non ASCII characters'''
@@ -40,7 +41,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         except AttributeError:
             return default
 
-
     def fit(self, X, y=None):
         print('Fitting DataFrameVectorizer')
 
@@ -53,7 +53,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
                 if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == True:
                     # All of these values will go in the same column, but they must be turned into ints first
-                    self.label_encoders[col_name] = ExtendedLabelEncoder()
+                    self.label_encoders[col_name] = CustomLabelEncoder()
                     # Then, we will use the same flow below to make sure they appear in the vocab correctly
                     self.label_encoders[col_name].fit(X[col_name])
 
@@ -61,9 +61,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == False:
                     # If this is a categorical column, iterate through each row to get all the possible values that we are one-hot-encoding.
                     for val in X[col_name]:
-                        val = str(val)
-                        val = strip_non_ascii(val)
-                        feature_name = col_name + self.separator + str(val)
+                        if not isinstance(val, str):
+                            if isinstance(val, numbers.Number) or val is None:
+                                val = str(val)
+                            else:
+                                val = val.encode('utf-8').decode('utf-8')
+
+                        feature_name = col_name + self.separator + val
 
                         if feature_name not in vocab:
                             feature_names.append(feature_name)
@@ -102,17 +106,19 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             for f, val in X.items():
                 if self.column_descriptions.get(f, False) == 'categorical':
                     if self.get('keep_cat_features', False) == False:
-                        f = f + self.separator + str(val)
+                        if not isinstance(val, str):
+                            if isinstance(val, numbers.Number) or val is None:
+                                val = str(val)
+                            else:
+                                val = val.encode('utf-8').decode('utf-8')
+                        f = f + self.separator + val
                         val = 1
                     else:
-                        if str(val) in bad_vals_as_strings:
+                        if val in bad_vals:
                             val = '_None'
-                        try:
-                            val = self.get('label_encoders')[f].transform([val])
-                        except TypeError:
-                            val = '_None'
+                        val = self.get('label_encoders')[f].transform([val])
 
-                if f in vocab and str(val) not in bad_vals_as_strings:
+                if f in vocab and val not in bad_vals and (self.get('keep_cat_features', False) or not np.isnan(val)):
 
                     indices.append(vocab[f])
                     # Convert the val to the correct dtype, then append to our values list
@@ -127,30 +133,40 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         else:
             # collect all the possible feature names and build sparse matrix at
             # same time
-            X_columns = X.columns
+            X_columns = list(X.columns)
             string_types = six.string_types
             separator = self.separator
             indices_append = indices.append
             values_append = values.append
-            keep_cat_features = self.get('keep_cat_features', False) == False
+            keep_cat_features = self.get('keep_cat_features', False)
             is_categorical = [self.column_descriptions.get(f, False) == 'categorical' for f in X_columns]
+            X = X.values
+            row_len = X.shape[1]
+            range_row_len = range(row_len)
 
-            for row in X.itertuples():
-                for col_idx, val in enumerate(row[1:]):
+            for row_idx in range(X.shape[0]):
+                for col_idx in range_row_len:
+                    val = X[row_idx, col_idx]
                     f = X_columns[col_idx]
 
                     if is_categorical[col_idx]:
                         if keep_cat_features:
-                            f = f + separator + str(val)
-                            val = 1
-                        else:
-                            if str(val) in bad_vals_as_strings:
+                            if val in bad_vals:
                                 val = '_None'
 
                             val = self.get('label_encoders')[f].transform([val])
 
+                        else:
+                            if not isinstance(val, str):
+                                if isinstance(val, numbers.Number) or val is None:
+                                    val = str(val)
+                                else:
+                                    val = val.encode('utf-8').decode('utf-8')
+                            f = f + separator + val
+                            val = 1
+
                     # Only include this in our output if it was part of our training data. Silently ignore it otherwise.
-                    if f in vocab and str(val) not in bad_vals_as_strings:
+                    if f in vocab and val not in bad_vals and (self.get('keep_cat_features', False) or not np.isnan(val)):
                         # Get the index position from vocab, then append that index position to indices
                         indices_append(vocab[f])
                         # Convert the val to the correct dtype, then append to our values list

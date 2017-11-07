@@ -3,7 +3,6 @@ import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
 
 os.environ['is_test_suite'] = 'True'
-os.environ['KERAS_BACKEND'] = 'theano'
 
 from auto_ml import Predictor
 

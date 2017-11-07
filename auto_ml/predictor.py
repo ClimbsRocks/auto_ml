@@ -51,18 +51,18 @@ except ImportError:
     pass
 
 
-def _pickle_method(m):
-    if m.im_self is None:
-        return getattr, (m.im_class, m.im_func.func_name)
-    else:
-        return getattr, (m.im_self, m.im_func.func_name)
+# def _pickle_method(m):
+#     if m.im_self is None:
+#         return getattr, (m.im_class, m.im_func.func_name)
+#     else:
+#         return getattr, (m.im_self, m.im_func.func_name)
 
-try:
-    import copy_reg
-    copy_reg.pickle(types.MethodType, _pickle_method)
-except:
-    import copyreg
-    copyreg.pickle(types.MethodType, _pickle_method)
+# try:
+#     import copy_reg
+#     copy_reg.pickle(types.MethodType, _pickle_method)
+# except:
+#     import copyreg
+#     copyreg.pickle(types.MethodType, _pickle_method)
 
 
 class Predictor(object):
@@ -1481,7 +1481,7 @@ class Predictor(object):
         print('     Explanation: What is the average absolute change in predicted output values to adding one FR_delta amount to every value in this column. Useful for seeing if output is sensitive to a feature, but not in a uniformly positive or negative way')
         print('*******\n')
 
-        df_results.to_csv(analytics_file_name)
+        df_results.to_csv(analytics_file_name, encoding='latin-1')
 
 
     def _print_ml_analytics_results_random_forest(self, trained_model_for_analytics):

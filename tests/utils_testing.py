@@ -74,15 +74,15 @@ def get_twitter_sentiment_multilabel_classification_dataset():
     file_name = os.path.join('tests', 'twitter_sentiment.csv')
 
     try:
-        df_twitter = pd.read_csv(open(file_name,'rU'), encoding='utf-8', engine='python')
+        df_twitter = pd.read_csv(open(file_name,'rU'), encoding='latin-1', engine='python')
     except Exception as e:
         print('Error')
         print(e)
         dataset_url = 'https://raw.githubusercontent.com/ClimbsRocks/sample_datasets/master/twitter_airline_sentiment.csv'
-        df_twitter = pd.read_csv(dataset_url)
+        df_twitter = pd.read_csv(dataset_url, encoding='latin-1')
         # Do not write the index that pandas automatically creates
 
-        df_twitter.to_csv(file_name, index=False)
+        df_twitter.to_csv(file_name, index=False, encoding='latin-1')
 
     # Grab only 10% of the dataset- runs much faster this way
     df_twitter = df_twitter.sample(frac=0.1)

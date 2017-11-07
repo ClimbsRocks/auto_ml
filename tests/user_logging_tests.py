@@ -217,31 +217,6 @@ def test_verify_features_finds_no_missing_features_when_none_are_missing():
         assert len(missing_features['training_not_prediction']) == 0
 
 
-def test_throws_warning_when_fl_data_equals_df_train():
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-
-    column_descriptions = {
-        'survived': 'output'
-        , 'sex': 'categorical'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-
-    with warnings.catch_warnings(record=True) as w:
-
-        try:
-            ml_predictor.train(df_titanic_train, feature_learning=True, fl_data=df_titanic_train)
-        except KeyError as e:
-            pass
-        # We should not be getting to this line- we should be throwing an error above
-        for thing in w:
-            print(thing)
-        assert len(w) >= 1
-    assert True
-
-
 def test_unexpected_datetime_column_handled_without_errors():
     df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 

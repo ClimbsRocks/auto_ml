@@ -21,30 +21,6 @@ import numpy as np
 import utils_testing as utils
 
 
-def test_all_algos_classification(model_name=None):
-    np.random.seed(0)
-
-    df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
-
-    column_descriptions = {
-        'survived': 'output'
-        , 'sex': 'categorical'
-        , 'embarked': 'categorical'
-        , 'pclass': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
-
-    ml_predictor.train(df_titanic_train, model_names=['LogisticRegression', 'RandomForestClassifier', 'RidgeClassifier', 'GradientBoostingClassifier', 'ExtraTreesClassifier', 'AdaBoostClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier', 'DeepLearningClassifier', 'XGBClassifier', 'LGBMClassifier', 'LinearSVC'])
-
-    test_score = ml_predictor.score(df_titanic_test, df_titanic_test.survived)
-
-    print('test_score')
-    print(test_score)
-
-    # Linear models aren't super great on this dataset...
-    assert -0.215 < test_score < -0.131
-
 def test_linear_model_analytics_classification(model_name=None):
     np.random.seed(0)
 
@@ -67,28 +43,6 @@ def test_linear_model_analytics_classification(model_name=None):
     print(test_score)
 
     assert -0.21 < test_score < -0.131
-
-def test_all_algos_regression():
-    # a random seed of 42 has ExtraTreesRegressor getting the best CV score, and that model doesn't generalize as well as GradientBoostingRegressor.
-    np.random.seed(0)
-
-    df_boston_train, df_boston_test = utils.get_boston_regression_dataset()
-
-    column_descriptions = {
-        'MEDV': 'output'
-        , 'CHAS': 'categorical'
-    }
-
-    ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
-
-    ml_predictor.train(df_boston_train, model_names=['LinearRegression', 'RandomForestRegressor', 'Ridge', 'GradientBoostingRegressor', 'AdaBoostRegressor', 'SGDRegressor', 'PassiveAggressiveRegressor', 'Lasso', 'LassoLars', 'ElasticNet', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'ARDRegression', 'MiniBatchKMeans', 'DeepLearningRegressor', 'LGBMRegressor', 'XGBClassifier',  'LinearSVR', 'CatBoostRegressor'])
-
-    test_score = ml_predictor.score(df_boston_test, df_boston_test.MEDV)
-
-    print('test_score')
-    print(test_score)
-
-    assert -3.4 < test_score < -2.8
 
 def test_input_df_unmodified():
     np.random.seed(42)

@@ -102,7 +102,7 @@ class Ensembler(BaseEstimator, TransformerMixin):
         # If this is just a single dictionary we're getting predictions from:
         if X.shape[0] == 1:
             # predictions is just a dictionary where all the values are the predicted values from one of our subpredictors. we'll want that as a list
-            predicted_vals = predictions.values()
+            predicted_vals = list(predictions.values())
             if self.ensemble_method == 'median':
                 return np.median(predicted_vals)
             elif self.ensemble_method == 'average' or self.ensemble_method == 'mean' or self.ensemble_method == 'avg':
@@ -142,7 +142,7 @@ class Ensembler(BaseEstimator, TransformerMixin):
         # If this is just a single dictionary we're getting predictions from:
         if X.shape[0] == 1:
             # predictions is just a dictionary where all the values are the predicted values from one of our subpredictors. we'll want that as a list
-            predicted_vals = predictions.values()
+            predicted_vals = list(predictions.values())
             predicted_vals = self.get_predictions_by_class(predicted_vals)
 
             if self.ensemble_method == 'median':
