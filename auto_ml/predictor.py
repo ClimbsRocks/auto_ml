@@ -739,11 +739,18 @@ class Predictor(object):
 
             # If we have overlapping bucket definitions, pandas will drop those duplicates, but won't drop the duplicate labels
             # So we'll try bucketing one time, then get the actual number of bins from that
-            bucket_results, bins = pd.qcut(probas, q=num_buckets, retbins=True, duplicates='drop')
+            try:
+                bucket_results, bins = pd.qcut(probas, q=num_buckets, retbins=True, duplicates='drop')
+            except TypeError:
+                bucket_results, bins = pd.qcut(probas, q=num_buckets, retbins=True)
+
 
             # now that we know the actual number of bins, we can create our labels, then use those to create our final set of buckets
             bucket_labels = range(1, len(bins))
-            bucket_results = pd.qcut(probas, q=num_buckets, labels=bucket_labels, duplicates='drop')
+            try:
+                bucket_results = pd.qcut(probas, q=num_buckets, labels=bucket_labels, duplicates='drop')
+            except TypeError:
+                bucket_results = pd.qcut(probas, q=num_buckets, labels=bucket_labels)
 
             uncertainty_calibration_predictions['bucket_num'] = bucket_results
 
@@ -1604,7 +1611,11 @@ class Predictor(object):
                 df_scores = pd.concat([df_raw_scores.mean_score, df_params], axis=1)
                 df_scores = df_scores.sort_values(by='mean_score', ascending=True)
                 print('Score in the following columns always refers to cross-validation score')
-                print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
+                try:
+                    print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql', showindex=False))
+                except TypeError:
+                    print(tabulate(df_scores, headers='keys', floatfmt='.4f', tablefmt='psql'))
+
             except ValueError as e:
                 if os.environ.get('is_test_suite', False) == 'True':
                     pass

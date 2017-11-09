@@ -70,7 +70,10 @@ def advanced_scoring_classifiers(probas, actuals, name=None):
         df_probas['Bucket Edges'] = bucket_results
 
         df_buckets = df_probas.groupby(df_probas['Bucket Edges'])
-        print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql', showindex='always'))
+        try:
+            print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql', showindex='always'))
+        except TypeError:
+            print(tabulate(df_buckets.mean(), headers='keys', floatfmt='.4f', tablefmt='psql'))
         print('\nHere is the accuracy of our trained estimator at each level of predicted probabilities')
         print('For a verbose description of what this means, please visit the docs:')
         print('http://auto-ml.readthedocs.io/en/latest/analytics.html#interpreting-predicted-probability-buckets-for-classifiers')

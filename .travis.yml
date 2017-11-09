@@ -8,9 +8,10 @@ python:
 
 install:
   - TEST_DIR=$PWD
+  - pip install --upgrade pip setuptools wheel
   - pip install coveralls
   - pip install nose
-  - pip install -r requirements.txt
+  - pip install --only-binary=numpy,scipy,pandas -r requirements.txt
   # TODO: run as many tests here as possible
   # then, do the rest of the installs
   # then, run the rest of the tests

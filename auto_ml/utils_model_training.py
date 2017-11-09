@@ -9,6 +9,7 @@ import pandas as pd
 import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
+from sklearn import __version__ as sklearn_version
 import warnings
 
 from auto_ml import utils_models
@@ -201,6 +202,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             self.model.fit(X_fit, y, cat_features=cat_feature_indices)
 
         elif self.model_name[:16] == 'GradientBoosting':
+            if not sklearn_version > '0.18.1':
+                X_fit = X_fit.toarray()
 
             patience = 20
             best_val_loss = -10000000000

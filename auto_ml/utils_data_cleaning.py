@@ -2,6 +2,7 @@ import datetime
 import dateutil
 
 import pandas as pd
+from pandas import __version__ as pandas_version
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import TfidfVectorizer
 
@@ -149,7 +150,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             if key in self.text_columns:
                 X_df[key].fillna('nan', inplace=True)
-                text_col = X_df[key].astype(unicode, errors='ignore')
+                if pandas_version < '0.20.0':
+                    text_col = X_df[key].astype(unicode, raise_on_error=False)
+                else:
+                    text_col = X_df[key].astype(unicode, errors='ignore')
                 self.text_columns[key].fit(text_col)
 
                 col_names = self.text_columns[key].get_feature_names()
@@ -287,7 +291,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
 
                     X[key].fillna('nan', inplace=True)
-                    nlp_matrix = self.text_columns[key].transform(X[key].astype(unicode, errors='ignore'))
+                    if pandas_version < '0.20.0':
+                        nlp_matrix = self.text_columns[key].transform(X[key].astype(unicode, raise_on_error=False))
+                    else:
+                        nlp_matrix = self.text_columns[key].transform(X[key].astype(unicode, errors='ignore'))
                     nlp_matrix = nlp_matrix.toarray()
 
                     text_df = pd.DataFrame(nlp_matrix)
@@ -340,10 +347,17 @@ def add_date_features_df(df, date_col):
     df.is_copy = False
 
     df[date_col] = pd.to_datetime(df[date_col])
-    df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, errors='ignore')
+
+    if pandas_version < '0.20.0':
+        df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, raise_on_error=False)
+    else:
+        df[date_col + '_day_of_week'] = df[date_col].apply(lambda x: x.weekday()).astype(int, errors='ignore')
 
     try:
-        df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, errors='ignore')
+        if pandas_version < '0.20.0':
+            df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, raise_on_error=False)
+        else:
+            df[date_col + '_hour'] = df[date_col].apply(lambda x: x.hour).astype(int, errors='ignore')
 
         df[date_col + '_minutes_into_day'] = df[date_col].apply(lambda x: x.hour * 60 + x.minute)
     except AttributeError:
