@@ -1,10 +1,10 @@
-dill==0.2.7.1
-h5py==2.7.1
-numpy>=1.11.0
-pandas==0.20.3
+dill==0.2.5
+h5py==2.7.0
+numpy==1.11.0
+pandas==0.18.0
 pathos==0.2.1
 python-dateutil==2.6.1
 scikit-learn==0.19.1
-scipy==1.0.0
+scipy==0.14.0
 sklearn-deap2==0.2.1
-tabulate==0.8.1
+tabulate==0.7.5
