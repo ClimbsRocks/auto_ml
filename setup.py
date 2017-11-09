@@ -113,7 +113,7 @@ setup(
     install_requires=[
         'dill==0.2.7.1',
         'h5py==2.7.1',
-        'numpy==1.13.3',
+        'numpy==1.11.0',
         'pandas==0.20.3',
         'pathos==0.2.1',
         'python-dateutil==2.6.1',
