@@ -920,7 +920,7 @@ class Predictor(object):
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name and self.column_descriptions.get(col_name, False) != 'categorical':
 
-                col_std = np.std(X[:, col_idx])
+                col_std = np.nanstd(X[:, col_idx])
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
                 col_result['Delta'] = col_delta
 
