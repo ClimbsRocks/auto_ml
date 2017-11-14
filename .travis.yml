@@ -17,10 +17,22 @@ install:
   # then, run the rest of the tests
 
 script:
-  - nosetests tests/api_coverage_tests_classifiers.py ; nosetests tests/api_coverage_tests_regressors.py ; nosetests tests/basic_tests.py ; nosetests tests/calibrate_classifier_tests.py ; nosetests tests/categorical_ensembling_test.py ; nosetests tests/scoring_tests.py ; nosetests tests/test_prediction_intervals.py ; nosetests tests/trained_transformation_pipeline_tests.py ; nosetests tests/uncertainty_tests.py ; nosetests tests/user_logging_tests.py
+  - nosetests tests/api_coverage_tests_classifiers.py
+  - nosetests tests/api_coverage_tests_regressors.py
+  - nosetests tests/basic_tests.py
+  - nosetests tests/calibrate_classifier_tests.py
+  - nosetests tests/categorical_ensembling_test.py
+  - nosetests tests/scoring_tests.py
+  - nosetests tests/test_prediction_intervals.py
+  - nosetests tests/trained_transformation_pipeline_tests.py
+  - nosetests tests/uncertainty_tests.py
+  - nosetests tests/user_logging_tests.py
 
   - pip install lightgbm ; pip install keras ; pip install tensorflow ; pip install catboost ; git clone --recursive https://github.com/dmlc/xgboost ; cd xgboost; make -j4 ; cd python-package ; python setup.py install ; cd $TEST_DIR
 
-  - nosetests tests/advanced_install_tests.py ; nosetests tests/automated_tests.py ; nosetests tests/automated_tests_regressors.py ; nosetests tests/ensemble_tests.py ;
+  - nosetests tests/advanced_install_tests.py
+  - nosetests tests/automated_tests.py
+  - nosetests tests/automated_tests_regressors.py
+  - nosetests tests/ensemble_tests.py
 
   - coveralls
