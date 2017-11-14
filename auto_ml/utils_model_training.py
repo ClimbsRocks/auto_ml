@@ -168,7 +168,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 pass
 
             if self.type_of_estimator == 'regressor':
-                eval_metric = 'rmse'
+                if self.training_prediction_intervals == True:
+                    eval_metric = 'quantile'
+                else:
+                    eval_metric = 'rmse'
             elif self.type_of_estimator == 'classifier':
                 if len(set(y_test)) > 2:
                     eval_metric = 'multi_logloss'
