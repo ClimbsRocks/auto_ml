@@ -213,7 +213,7 @@ class Predictor(object):
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
 
-            base_estimators = ['GradientBoostingRegressor']
+            base_estimators = ['LGBMRegressor']
 
             if self.compare_all_models != True:
                 return base_estimators
@@ -227,7 +227,7 @@ class Predictor(object):
 
         elif self.type_of_estimator == 'classifier':
 
-            base_estimators = ['GradientBoostingClassifier']
+            base_estimators = ['LGBMClassifier']
 
             if self.compare_all_models != True:
                 return base_estimators
