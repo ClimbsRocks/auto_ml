@@ -1507,8 +1507,16 @@ class Predictor(object):
         try:
             trained_feature_importances = final_model_obj.model.feature_importances_
         except AttributeError as e:
-            # There was a version of LightGBM that had this misnamed to miss the "s" at the end
-            trained_feature_importances = final_model_obj.model.feature_importance_
+                try:
+                    # There was a version of LightGBM that had this misnamed to miss the "s" at the end
+                    trained_feature_importances = final_model_obj.model.feature_importance_ 
+                except AttributeError as e:
+                    # There is a version of XGBoost does not have feature_importance_
+                    imp_vals = final_model_obj.model.booster().get_fscore()
+                    imp_dict = {trained_feature_names[i]:float(imp_vals.get('f'+str(i),0.)) \
+                                for i in range(len(trained_feature_names))}
+                    total = np.array(imp_dict.values()).sum()
+                    trained_feature_importances = {k:v/total for k,v in imp_dict.items()}
 
         feature_infos = zip(trained_feature_names, trained_feature_importances)
 
