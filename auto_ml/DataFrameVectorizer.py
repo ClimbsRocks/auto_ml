@@ -21,11 +21,10 @@ def strip_non_ascii(string):
 
 class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
-    def __init__(self, column_descriptions=None, dtype=np.float32, separator="=", sparse=True, sort=True, keep_cat_features=False):
+    def __init__(self, column_descriptions=None, dtype=np.float32, separator="=", sparse=True, keep_cat_features=False):
         self.dtype = dtype
         self.separator = separator
         self.sparse = sparse
-        self.sort = sort
         if column_descriptions == None:
             column_descriptions = {}
         self.column_descriptions = column_descriptions
@@ -47,44 +46,60 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         feature_names = []
         vocab = {}
 
+        # TODO: rearrange X so that all the categorical columns are first
+        # Then we'll have to write a bit of our own custom logic to create feature_names_ and vocabulary_ (the values that thigns like get_feature_names and .restrict depend upon)
+
+        numerical_columns = []
+        categorical_columns = []
+        for col in X.columns:
+            col_desc = self.column_descriptions.get(col, False)
+            if col_desc in [False, 'continuous', 'int', 'float', 'numerical']:
+                numerical_columns.append(col)
+            elif col_desc in self.vals_to_drop:
+                continue
+            elif col_desc == 'categorical':
+                categorical_columns.append(col)
+            else:
+                print('We are unsure what to do with this column:')
+                print(col)
+                print(col_desc)
+
+        self.num_numerical_cols = len(numerical_columns)
+
+        new_cols = numerical_columns + categorical_columns
+        X = X[new_cols]
+
         for col_name in X.columns:
-            # Ignore 'ignore', 'output', etc.
-            if self.column_descriptions.get(col_name, False) not in self.vals_to_drop:
 
-                if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == True:
-                    # All of these values will go in the same column, but they must be turned into ints first
-                    self.label_encoders[col_name] = CustomLabelEncoder()
-                    # Then, we will use the same flow below to make sure they appear in the vocab correctly
-                    self.label_encoders[col_name].fit(X[col_name])
+            if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == True:
+                # All of these values will go in the same column, but they must be turned into ints first
+                self.label_encoders[col_name] = CustomLabelEncoder()
+                # Then, we will use the same flow below to make sure they appear in the vocab correctly
+                self.label_encoders[col_name].fit(X[col_name])
 
 
-                if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == False:
-                    # If this is a categorical column, iterate through each row to get all the possible values that we are one-hot-encoding.
-                    for val in X[col_name]:
-                        if not isinstance(val, str):
-                            if isinstance(val, numbers.Number) or val is None:
-                                val = str(val)
-                            else:
-                                val = val.encode('utf-8').decode('utf-8')
+            if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == False:
+                # If this is a categorical column, iterate through each row to get all the possible values that we are one-hot-encoding.
+                for val in X[col_name]:
+                    if not isinstance(val, str):
+                        if isinstance(val, numbers.Number) or val is None:
+                            val = str(val)
+                        else:
+                            val = val.encode('utf-8').decode('utf-8')
 
-                        feature_name = col_name + self.separator + val
+                    feature_name = col_name + self.separator + val
 
-                        if feature_name not in vocab:
-                            feature_names.append(feature_name)
-                            vocab[feature_name] = len(vocab)
-                # Ideally we shouldn't have to check for for duplicate columns, but in case we're passed a DataFrame with duplicate columns, consolidate down to a single column. Maybe not the ideal solution, but solves a class of bugs, and puts the reasonable onus on the user to not pass in two data columns with different meanings but the same column name
-                # And of course, if this is a categorical column, do not include the column name itself, just include the feature_names as calculated above
-                elif col_name not in vocab:
-                    feature_names.append(col_name)
-                    vocab[col_name] = len(vocab)
+                    if feature_name not in vocab:
+                        feature_names.append(feature_name)
+                        vocab[feature_name] = len(vocab)
 
-        if self.sort:
-            feature_names.sort()
-            vocab = dict((f, i) for i, f in enumerate(feature_names))
+            # If this is a categorical column, do not include the column name itself, just include the feature_names as calculated above
+            elif col_name not in vocab:
+                feature_names.append(col_name)
+                vocab[col_name] = len(vocab)
 
         self.feature_names_ = feature_names
         self.vocabulary_ = vocab
-        # del self.column_descriptions
         return self
 
     def _transform(self, X):
@@ -129,8 +144,40 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             if len(indptr) == 1:
                 raise ValueError('The dictionary passed into DataFrameVectorizer is empty')
 
+            indices = np.frombuffer(indices, dtype=np.intc)
+            indptr = np.frombuffer(indptr, dtype=np.intc)
+            shape = (len(indptr) - 1, len(vocab))
+
+            result_matrix = sp.csr_matrix((values, indices, indptr),
+                                          shape=shape, dtype=dtype)
+
+            if self.sparse:
+                result_matrix.sort_indices()
+
+            return result_matrix
+
+
 
         else:
+
+            # add in any missing numerical columns that we had at fitting time that we do not have now
+            # TODO: get numerical columns in the exact same order as we had them at fitting time
+            # now, our numerical vals are just X[[numerical_cols]].values
+            # Then, we just have to transform our categorical cols
+            # that, we should be able to do in parallel?
+                # what we'll have to be careful of:
+                # let's say a categorical col has 10 unique vals at fitting time
+                # we need to make sure we've got it handled properly if it has only 9 unique vals at transform time (this will be pretty common)
+                # an easy workaround is to create a dense matrix of 0's of the shape we'd expect from this column
+                # then, for each value in the column, set the appropriate row/col combo to 1
+                # then, at the end, we'll just hstack all the results together
+                # we'll probably want to make everything sparse at some point along the way
+
+
+
+
+
+
             # collect all the possible feature names and build sparse matrix at
             # same time
             X_columns = list(X.columns)
