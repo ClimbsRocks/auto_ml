@@ -307,7 +307,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             col_names = self.text_columns[key].cleaned_feature_names
 
-            col = X[key]
             col.fillna('nan', inplace=True)
             if pandas_version < '0.20.0':
                 nlp_matrix = self.text_columns[key].transform(col.astype(unicode, raise_on_error=False))
