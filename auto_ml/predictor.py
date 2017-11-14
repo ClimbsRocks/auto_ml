@@ -492,7 +492,7 @@ class Predictor(object):
             if self.perform_feature_selection == True:
                 print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('We are not currently supporting perform_feature_selection with this release of feature_learning. We will override perform_feature_selection to False and continue with training.')
-                warnigns.warn('perform_feature_selection=True is not currently supported with feature_learning.')
+                warnings.warn('perform_feature_selection=True is not currently supported with feature_learning.')
             self.perform_feature_selection = False
 
             if (isinstance(X_df, pd.DataFrame) and X_df.equals(fl_data)) or (isinstance(X_df, list) and X_df == fl_data):
