@@ -924,6 +924,13 @@ class Predictor(object):
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
                 col_result['Delta'] = col_delta
 
+                # TODO: min_delta
+                # get the unique vals
+                # sort them
+                # go through and find the min_delta between consecutive vals
+                # make srue col_std is greater than min_delta
+                # if it is not, set col_std to min_delta
+
                 # Increment the values of this column by the std
                 X[:, col_idx] += col_delta
                 if self.type_of_estimator == 'regressor':
