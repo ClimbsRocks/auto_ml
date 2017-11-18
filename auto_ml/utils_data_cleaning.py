@@ -237,7 +237,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             return dict_copy
 
         else:
-            X.reset_index(drop=True, inplace=True)
+            X = X.reset_index(drop=True)
+
             results = []
 
             pool = pathos.multiprocessing.ProcessPool()
@@ -301,7 +302,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
         elif col_desc == 'date':
-            result = add_date_features_df(X[key], key)
+            result = add_date_features_df(col, key)
 
         elif key in self.text_columns:
 
