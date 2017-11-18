@@ -172,6 +172,7 @@ class CustomLabelEncoder():
     def __init__(self):
         self.label_map = {}
 
+
     def fit(self, list_of_labels):
         if not isinstance(list_of_labels, pd.Series):
             list_of_labels = pd.Series(list_of_labels)
@@ -184,6 +185,7 @@ class CustomLabelEncoder():
         for idx, val in enumerate(unique_labels):
             self.label_map[val] = idx
         return self
+
 
     def transform(self, in_vals):
         return_vals = []

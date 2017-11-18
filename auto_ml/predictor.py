@@ -159,7 +159,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('dv', trained_pipeline.named_steps['dv']))
         else:
-            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, sort=True, column_descriptions=self.column_descriptions, keep_cat_features=keep_cat_features)))
+            pipeline_list.append(('dv', DataFrameVectorizer.DataFrameVectorizer(sparse=True, column_descriptions=self.column_descriptions, keep_cat_features=keep_cat_features)))
 
 
         if self.perform_feature_selection == True:
@@ -1516,7 +1516,7 @@ class Predictor(object):
         except AttributeError as e:
                 try:
                     # There was a version of LightGBM that had this misnamed to miss the "s" at the end
-                    trained_feature_importances = final_model_obj.model.feature_importance_ 
+                    trained_feature_importances = final_model_obj.model.feature_importance_
                 except AttributeError as e:
                     # There is a version of XGBoost does not have feature_importance_
                     imp_vals = final_model_obj.model.get_booster().get_fscore()

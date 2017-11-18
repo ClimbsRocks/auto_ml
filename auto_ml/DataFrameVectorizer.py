@@ -32,6 +32,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         self.has_been_restricted = False
         self.keep_cat_features = keep_cat_features
         self.label_encoders = {}
+        self.numerical_columns = None
+        self.num_numerical_cols = None
+        self.categorical_columns = None
 
 
     def get(self, prop_name, default=None):
@@ -49,6 +52,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         # TODO: rearrange X so that all the categorical columns are first
         # Then we'll have to write a bit of our own custom logic to create feature_names_ and vocabulary_ (the values that thigns like get_feature_names and .restrict depend upon)
 
+
         numerical_columns = []
         categorical_columns = []
         for col in X.columns:
@@ -65,6 +69,8 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 print(col_desc)
 
         self.num_numerical_cols = len(numerical_columns)
+        self.numerical_columns = numerical_columns
+        self.categorical_columns = categorical_columns
 
         new_cols = numerical_columns + categorical_columns
         X = X[new_cols]
@@ -78,9 +84,10 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 self.label_encoders[col_name].fit(X[col_name])
 
 
+            # We can't do elif here- it has to be inclusive of the logic above
             if self.column_descriptions.get(col_name, False) == 'categorical' and self.keep_cat_features == False:
                 # If this is a categorical column, iterate through each row to get all the possible values that we are one-hot-encoding.
-                for val in X[col_name]:
+                for val in set(X[col_name]):
                     if not isinstance(val, str):
                         if isinstance(val, numbers.Number) or val is None:
                             val = str(val)
@@ -101,6 +108,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         self.feature_names_ = feature_names
         self.vocabulary_ = vocab
         return self
+
 
     def _transform(self, X):
 
@@ -159,6 +167,28 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
         else:
+
+            for col in self.numerical_columns:
+                if col not in X.columns:
+                    X[col] = 0
+            for col in self.categorical_columns:
+                if col not in X.columns:
+                    X[col] = 0
+
+            # we might not need to do this. when we get the .values, we're already getting the cols in the right order before .values. and we'll write a function for the categorical transforms that takes proper column names into account
+            X = X[self.numerical_columns + self.categorical_columns]
+
+            # NEXT: write a parser for a single categorical column
+                # then we'll run those in parallel
+                # and eventually
+
+            # X = X.fillna(0)
+            # TODO: is there a more efficient way of doing this?
+            for idx, col in enumerate(self.numerical_columns):
+                X[col] = X[col].astype(float)
+            numerical_vals = X[self.numerical_columns]
+
+            numerical_vals = sp.csr_matrix(numerical_vals)
 
             # add in any missing numerical columns that we had at fitting time that we do not have now
             # TODO: get numerical columns in the exact same order as we had them at fitting time
@@ -238,6 +268,63 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
         return result_matrix
 
+
+    # We are assuming that each categorical column got a contiguous block of result columns (ie, the 5 categories in City get columns 5-9, not columns 0, 8, 26, 4, and 20)
+    def transform_categorical_col(col_vals, col_name):
+        if self.get('keep_cat_features', False) == True:
+            return_vals = self.get('label_encoders')[col_name].transform(col_vals)
+
+            # we will hstack these later with other sparse values
+            # scipy.sparse.hstack expects each input to be a matrix, not a vector, so we are making a matrix where each row just has one column
+            return_vals = [[val] for val in return_vals]
+            return return_vals
+
+        else:
+
+            num_trained_cols = 0
+            min_transformed_idx = None
+            max_transformed_idx = None
+            len_col_name = len(col_name)
+
+            for trained_feature, col_idx in self.vocabulary_.items():
+                if trained_feature[:len_col_name] == col_name:
+                    num_trained_cols += 1
+                    if min_transformed_idx is None:
+                        min_transformed_idx = col_idx
+                        max_transformed_idx = col_idx
+                    elif col_idx > max_transformed_idx:
+                        max_transformed_idx = col_idx
+                    elif col_idx < min_transformed_idx:
+                        min_transformed_idx = col_idx
+
+            if num_trained_cols != max_transformed_idx - min_transformed_idx:
+                print('We have somehow ended up with categorical column behavior we were not expecting')
+                raise(ValueError)
+
+            result = sp.lil_matrix((len(col_vals), num_trained_cols))
+
+            for row_idx, val in enumerate(col_vals):
+                if not isinstance(val, str):
+                    if isinstance(val, numbers.Number) or val is None:
+                        val = str(val)
+                    else:
+                        val = val.encode('utf-8').decode('utf-8')
+
+                feature_name = col_name + self.separator + val
+                if feature_name in self.vocabulary_:
+                    col_idx = self.vocabulary_[feature_name]
+                    col_idx = col_idx - min_transformed_idx
+
+                    # TODO: get the appropriate column index/number
+                    result[row_idx, col_idx] = 1
+
+
+            result = sp.csr_matrix(result)
+            return result
+
+            # TODO: create a sparse matrix with the right width.
+            # it is critical that we have all the same columns, in the same order, and that each of them take up their required amount of space
+            # This also means we cannot change our labelencoder later
 
     def transform(self, X, y=None):
         return self._transform(X)
