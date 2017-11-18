@@ -27,6 +27,8 @@ try:
     lgb_installed = True
 except ImportError:
     pass
+except OSError:
+    pass
 
 catboost_installed = False
 try:
