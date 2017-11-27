@@ -69,7 +69,7 @@ def test_input_df_unmodified():
     print('test_score')
     print(test_score)
 
-    assert -3.35 < test_score < -2.8
+    assert -3.5 < test_score < -3.2
 
 def test_model_uses_user_provided_training_params(model_name=None):
     np.random.seed(0)
@@ -148,8 +148,8 @@ def test_ignores_new_invalid_features():
     print(first_score)
     # Make sure our score is good, but not unreasonably good
 
-    lower_bound = -3.0
-    assert lower_bound < first_score < -2.7
+    lower_bound = -3.5
+    assert lower_bound < first_score < -3.2
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_boston_test_dictionaries)
@@ -182,4 +182,4 @@ def test_ignores_new_invalid_features():
     print(second_score)
     # Make sure our score is good, but not unreasonably good
 
-    assert lower_bound < second_score < -2.7
+    assert lower_bound < second_score < -3.2

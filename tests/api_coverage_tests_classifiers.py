@@ -39,7 +39,7 @@ def test_perform_feature_selection_false_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 # For some reason, this test now causes a Segmentation Default on travis when run on python 3.5.
 # home/travis/.travis/job_stages: line 53:  8810 Segmentation fault      (core dumped) nosetests -v --with-coverage --cover-package auto_ml tests
@@ -67,7 +67,7 @@ if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
         print('test_score')
         print(test_score)
 
-        assert -0.16 < test_score < -0.135
+        assert -0.145 < test_score < -0.135
 
 
 
@@ -93,7 +93,7 @@ def test_perform_feature_selection_true_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 
 def test_perform_feature_scaling_true_classification():
@@ -117,7 +117,7 @@ def test_perform_feature_scaling_true_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 def test_perform_feature_scaling_false_classification():
     np.random.seed(0)
@@ -140,7 +140,7 @@ def test_perform_feature_scaling_false_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.14
+    assert -0.145 < test_score < -0.135
 
 
 def test_user_input_func_classification():
@@ -261,7 +261,7 @@ def test_binary_classification_predict_on_Predictor_instance():
     test_score = accuracy_score(predictions, df_titanic_test.survived)
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert .77 < test_score < .805
+    assert .8 < test_score < .815
 
 
 
@@ -293,7 +293,7 @@ def test_binary_classification_predict_proba_on_Predictor_instance():
     test_score = utils.calculate_brier_score_loss(df_titanic_test.survived, predictions)
     # Make sure our score is good, but not unreasonably good
     print(test_score)
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 
 def test_pass_in_list_of_dictionaries_train_classification():
@@ -319,7 +319,7 @@ def test_pass_in_list_of_dictionaries_train_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 
 def test_pass_in_list_of_dictionaries_predict_classification():
@@ -345,7 +345,7 @@ def test_pass_in_list_of_dictionaries_predict_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 
 def test_include_bad_y_vals_train_classification():
@@ -402,7 +402,7 @@ def test_include_bad_y_vals_predict_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 
 def test_list_of_single_model_name_classification():
@@ -427,7 +427,7 @@ def test_list_of_single_model_name_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.145 < test_score < -0.135
 
 if os.environ.get('TRAVIS_PYTHON_VERSION', '0') != '3.5':
     def test_getting_single_predictions_nlp_date_multilabel_classification():

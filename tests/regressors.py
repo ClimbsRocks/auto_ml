@@ -103,7 +103,7 @@ def getting_single_predictions_regression(model_name=None):
     if model_name == 'DeepLearningRegressor':
         lower_bound = -7.8
     if model_name == 'LGBMRegressor':
-        lower_bound = -4.95
+        lower_bound = -3.5
     if model_name == 'XGBRegressor':
         lower_bound = -3.4
     if model_name == 'CatBoostRegressor':
