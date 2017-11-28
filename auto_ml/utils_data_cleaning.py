@@ -1,6 +1,7 @@
 import datetime
 import dateutil
 
+import numpy as np
 import pandas as pd
 from pandas import __version__ as pandas_version
 import pathos
@@ -36,7 +37,7 @@ def clean_val(val):
 
 # Same as above, except this version returns float('nan') when it fails
 # This plays more nicely with df.apply, and assumes we will be handling nans appropriately when doing DataFrameVectorizer later.
-def clean_val_nan_version(key, val):
+def clean_val_nan_version(key, val, replacement_val=np.nan):
     try:
         str_val = str(val)
     except UnicodeEncodeError as e:
@@ -48,7 +49,7 @@ def clean_val_nan_version(key, val):
         raise(e)
 
     if str_val in bad_vals_as_strings:
-        return float('nan')
+        return replacement_val
     else:
         try:
             float_val = float(val)
@@ -63,11 +64,11 @@ def clean_val_nan_version(key, val):
                 print('Here is the feature name:')
                 print(key)
                 print('*************************************')
-                return float('nan')
+                return replacement_val
             try:
                 float_val = float(cleaned_string)
             except:
-                return float('nan')
+                return replacement_val
         except TypeError:
             # This is what happens if you feed in a datetime object to float
             print('*************************************')
@@ -76,7 +77,7 @@ def clean_val_nan_version(key, val):
             print('Here is the feature name:')
             print(key)
             print('*************************************')
-            return float('nan')
+            return replacement_val
 
         return float_val
 
@@ -197,7 +198,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 if col_desc is None:
                     continue
                 elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    dict_copy[key] = clean_val_nan_version(key, val)
+                    dict_copy[key] = clean_val_nan_version(key, val, replacement_val=0)
                 elif col_desc == 'date':
                     date_feature_dict = add_date_features_dict(X, key)
                     dict_copy.update(date_feature_dict)
@@ -284,7 +285,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             # For all of our numerical columns, try to turn all of these values into floats
             # This function handles commas inside strings that represent numbers, and returns nan if we cannot turn this value into a float. nans are ignored in DataFrameVectorizer
             try:
-                col = col.apply(lambda x: clean_val_nan_version(key, x))
+                col = col.apply(lambda x: clean_val_nan_version(key, x, replacement_val=0))
                 result = {
                     key: col
                 }
@@ -321,7 +322,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             result = {}
             for col in text_df.columns:
-                result[col] = text_df[col]
+                result[col] = text_df[col].astype(int)
 
         elif col_desc in self.vals_to_drop:
             result = {}
