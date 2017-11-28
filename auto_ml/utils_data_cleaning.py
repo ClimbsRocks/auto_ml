@@ -153,9 +153,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             if key in self.text_columns:
                 X_df[key].fillna('nan', inplace=True)
                 if pandas_version < '0.20.0':
-                    text_col = X_df[key].astype(unicode, raise_on_error=False)
+                    text_col = X_df[key].astype(str, raise_on_error=False)
                 else:
-                    text_col = X_df[key].astype(unicode, errors='ignore')
+                    text_col = X_df[key].astype(str, errors='ignore')
                 self.text_columns[key].fit(text_col)
 
                 col_names = self.text_columns[key].get_feature_names()
@@ -310,9 +310,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             col.fillna('nan', inplace=True)
             if pandas_version < '0.20.0':
-                nlp_matrix = self.text_columns[key].transform(col.astype(unicode, raise_on_error=False))
+                nlp_matrix = self.text_columns[key].transform(col.astype(str, raise_on_error=False))
             else:
-                nlp_matrix = self.text_columns[key].transform(col.astype(unicode, errors='ignore'))
+                nlp_matrix = self.text_columns[key].transform(col.astype(str, errors='ignore'))
 
             nlp_matrix = nlp_matrix.toarray()
 
