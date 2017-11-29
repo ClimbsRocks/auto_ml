@@ -1003,7 +1003,7 @@ class Predictor(object):
 
                 feature_responses = self.create_feature_responses(model, X, y, top_features)
                 self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
-            except TypeError as e:
+            except AttributeError as e:
                 if model_name == 'XGBRegressor':
                     pass
                 else:
