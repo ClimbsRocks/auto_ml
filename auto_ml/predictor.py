@@ -591,7 +591,7 @@ class Predictor(object):
             feature_learning_names.append('feature_learning_' + str(idx + 1))
 
         # TODO:
-        self.transformation_pipeline.named_steps['dv'].add_new_numerical_cols(feature_learning_names)
+        self.transformation_pipeline.named_steps['dv'].feature_names_ += feature_learning_names
 
         # add the estimator to the end of our transformation pipeline
         self.transformation_pipeline = self._construct_pipeline(trained_pipeline=self.transformation_pipeline, final_model=feature_learning_step, final_model_step_name='feature_learning_model')
