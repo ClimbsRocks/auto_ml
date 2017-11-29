@@ -590,7 +590,8 @@ class Predictor(object):
         for idx in range(10):
             feature_learning_names.append('feature_learning_' + str(idx + 1))
 
-        self.transformation_pipeline.named_steps['dv'].feature_names_ += feature_learning_names
+        # TODO:
+        self.transformation_pipeline.named_steps['dv'].add_new_numerical_cols(feature_learning_names)
 
         # add the estimator to the end of our transformation pipeline
         self.transformation_pipeline = self._construct_pipeline(trained_pipeline=self.transformation_pipeline, final_model=feature_learning_step, final_model_step_name='feature_learning_model')
@@ -680,6 +681,7 @@ class Predictor(object):
     def _create_uncertainty_model(self, uncertainty_data, scoring, y, uncertainty_calibration_data):
         # 1. Add base_prediction to our dv for analytics purposes
         # Note that we will have to be cautious that things all happen in the exact same order as we expand what we do post-DV over time
+        # Adding this one directly- we don't want dfv to transform it necessarily, we just want it there for getting feature_names later for printing feature_importances
         self.transformation_pipeline.named_steps['dv'].feature_names_.append('base_prediction')
         # 2. Get predictions from our base predictor on our uncertainty data
         uncertainty_data, y_uncertainty = self._clean_data_and_prepare_for_training(uncertainty_data, scoring)
