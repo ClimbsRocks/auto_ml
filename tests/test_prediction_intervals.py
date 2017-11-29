@@ -83,7 +83,7 @@ def test_prediction_intervals_actually_work():
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, predict_intervals=[0.05, 0.95])
+    ml_predictor.train(df_boston_train, predict_intervals=[0.1, 0.9])
 
     df_boston_test = df_boston_test.reset_index(drop=True)
     intervals = ml_predictor.predict_intervals(df_boston_test)
@@ -95,9 +95,9 @@ def test_prediction_intervals_actually_work():
     for idx, row in intervals.iterrows():
         actual = actuals.iloc[idx]
 
-        if actual < row['interval_0.05']:
+        if actual < row['interval_0.1']:
             count_under += 1
-        if actual > row['interval_0.95']:
+        if actual > row['interval_0.9']:
             count_over += 1
 
     len_intervals = len(intervals)
@@ -105,8 +105,8 @@ def test_prediction_intervals_actually_work():
     pct_under = count_under * 1.0 / len_intervals
     pct_over = count_over * 1.0 / len_intervals
     # There's a decent bit of noise since this is such a small dataset
-    assert pct_under < 0.08
-    assert pct_over < 0.08
+    assert pct_under < 0.3
+    assert pct_over < 0.3
 
 
 def test_prediction_intervals_lets_the_user_specify_number_of_intervals():
