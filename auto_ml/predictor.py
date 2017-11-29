@@ -189,13 +189,12 @@ class Predictor(object):
             except:
                 training_features = None
 
-            # TODO TODO: create kept_cat_features during transformation time, and use that at model training time.
             training_prediction_intervals = False
             params = None
 
             if prediction_interval is not False:
                 params = {}
-                params['loss'] = 'quantile'
+                params['objective'] = 'quantile'
                 params['alpha'] = prediction_interval
                 training_prediction_intervals = True
 
@@ -213,7 +212,7 @@ class Predictor(object):
     def _get_estimator_names(self):
         if self.type_of_estimator == 'regressor':
 
-            base_estimators = ['GradientBoostingRegressor']
+            base_estimators = ['LGBMRegressor']
 
             if self.compare_all_models != True:
                 return base_estimators
@@ -227,7 +226,7 @@ class Predictor(object):
 
         elif self.type_of_estimator == 'classifier':
 
-            base_estimators = ['GradientBoostingClassifier']
+            base_estimators = ['LGBMClassifier']
 
             if self.compare_all_models != True:
                 return base_estimators
@@ -653,7 +652,7 @@ class Predictor(object):
             # TODO: parallelize these!
             interval_predictors = []
             for percentile in self.prediction_intervals:
-                interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=percentile)
+                interval_predictor = self.train_ml_estimator(['LGBMRegressor'], self._scorer, X_df, y, prediction_interval=percentile)
                 predictor_tup = ('interval_{}'.format(percentile), interval_predictor)
                 interval_predictors.append(predictor_tup)
 
@@ -1174,7 +1173,7 @@ class Predictor(object):
     def train_ml_estimator(self, estimator_names, scoring, X_df, y, feature_learning=False, prediction_interval=False):
 
         if prediction_interval is not False:
-            estimator_names = ['GradientBoostingRegressor']
+            estimator_names = ['LGBMRegressor']
             trained_final_model = self.fit_single_pipeline(X_df, y, estimator_names[0], feature_learning=feature_learning, prediction_interval=prediction_interval)
 
         # Use Case 1: Super straightforward: just train a single, non-optimized model
