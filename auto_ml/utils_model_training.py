@@ -416,7 +416,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
             # Trying to force XGBoost to play nice with sparse matrices
-            X_fit = scipy.sparse.hstack((X, ones))
+            X = scipy.sparse.hstack((X, ones))
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X = X.todense()
@@ -476,7 +476,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
             ones = [[1] for x in range(X.shape[0])]
             # Trying to force XGBoost to play nice with sparse matrices
-            X_fit = scipy.sparse.hstack((X, ones))
+            X = scipy.sparse.hstack((X, ones))
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
             X_predict = X.todense()
