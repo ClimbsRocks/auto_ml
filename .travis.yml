@@ -14,6 +14,9 @@ install:
   - pip install nose
   - pip install --only-binary=numpy,scipy,pandas -r requirements.txt
 
+  # For reading and writing to HDF5 (how we store some of our datasets) we need tables
+  - pip install tables
+
 script:
   - nosetests tests
 
