@@ -36,6 +36,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         self.num_numerical_cols = None
         self.categorical_columns = None
         self.numeric_col_types = ['int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+        self.additional_numerical_cols = []
 
 
 
@@ -176,9 +177,11 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             for col in self.categorical_columns:
                 if col not in X.columns:
                     X[col] = 0
+            for col in self.additional_numerical_cols:
+                if col not in X.columns:
+                    X[col] = 0
 
             # we might not need to do this. when we get the .values, we're already getting the cols in the right order before .values. and we'll write a function for the categorical transforms that takes proper column names into account
-            X = X[self.numerical_columns + self.categorical_columns]
 
             # NEXT: write a parser for a single categorical column
                 # then we'll run those in parallel
@@ -190,8 +193,8 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 if X[col].dtype not in self.numeric_col_types:
                     X[col] = X[col].astype(float)
             numerical_vals = X[self.numerical_columns]
-            print('self.numerical_columns')
-            print(self.numerical_columns)
+            # print('self.numerical_columns')
+            # print(self.numerical_columns)
 
             numerical_vals = sp.csr_matrix(numerical_vals)
 
@@ -216,6 +219,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                 # print('final_result.shape')
                 # print(final_result.shape)
 
+            additional_numerical_vals = X[self.additional_numerical_cols]
+            additional_numerical_vals = sp.csr_matrix(additional_numerical_vals)
+            final_result = sp.hstack((final_result, additional_numerical_vals), format='csr')
             # add in any missing numerical columns that we had at fitting time that we do not have now
             # TODO: get numerical columns in the exact same order as we had them at fitting time
             # now, our numerical vals are just X[[numerical_cols]].values
@@ -292,10 +298,13 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         # else:
         #     result_matrix = result_matrix.toarray()
 
-        print('final_result.shape')
+        # print('final_result.shape')
+        # print(final_result.shape)
+        # print('self.vocabulary_')
+        # print(self.vocabulary_)
+        print('final_result.shape at the end of DataFrameVectorizer _transform')
         print(final_result.shape)
-        print('self.vocabulary_')
-        print(self.vocabulary_)
+
         return final_result
 
 
@@ -381,7 +390,19 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         """
         return self.feature_names_
 
-    def restrict(self, support, indices=False):
+
+    # This is for cases where we want to add in new features, such as for feature_learning
+    def add_new_numerical_cols(self, new_feature_names):
+        # add to our vocabulary
+        for feature_name in new_feature_names:
+            if feature_name not in self.vocabulary_:
+                self.feature_names_.append(feature_name)
+                self.vocabulary_[feature_name] = len(self.vocabulary_)
+                self.additional_numerical_cols.append(feature_name)
+
+        return self
+
+    def restrict(self, support):
         """Restrict the features to those in support using feature selection.
 
         This function modifies the estimator in-place.
@@ -390,20 +411,55 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
         if self.has_been_restricted == True:
             return self
 
-        if not indices:
-            support = np.where(support)[0]
+        print('self.feature_names_ at the start of restrict')
+        print(self.feature_names_)
+        print('self.numerical_columns at the start of restrict')
+        print(self.numerical_columns)
+        print('self.categorical_columns at the start of restrict')
+        print(self.categorical_columns)
+        print('self.vocabulary_ at the start of restrict')
+        print(self.vocabulary_)
+        print('self.additional_numerical_cols at the start of restrict')
+        print(self.additional_numerical_cols)
 
-        names = self.feature_names_
+        new_numerical_cols = []
+        new_categorical_cols = []
+        new_additional_numerical_cols = []
+        new_feature_names = []
         new_vocab = {}
-        for i in support:
-            new_vocab[names[i]] = len(new_vocab)
 
+        for idx, val in enumerate(support):
+            if val == True:
+                feature_name = self.feature_names_[idx]
+                if self.separator in feature_name:
+                    base_feature_name = feature_name[:feature_name.rfind(self.separator)]
+                else:
+                    base_feature_name = feature_name
+                new_feature_names.append(feature_name)
+                new_vocab[feature_name] = len(new_vocab)
+                if feature_name in self.numerical_columns:
+                    new_numerical_cols.append(feature_name)
+                elif base_feature_name in self.categorical_columns and base_feature_name not in new_categorical_cols:
+                    new_categorical_cols.append(base_feature_name)
+                elif feature_name in self.additional_numerical_cols:
+                    new_additional_numerical_cols.append(feature_name)
+
+        self.feature_names_ = new_feature_names
         self.vocabulary_ = new_vocab
-        self.feature_names_ = [f for f, i in sorted(six.iteritems(new_vocab),
-                                                    key=itemgetter(1))]
-
-        # TODO: rework our numerical_columns and categorical_columns
+        self.numerical_columns = new_numerical_cols
+        self.categorical_columns = new_categorical_cols
+        self.additional_numerical_cols = new_additional_numerical_cols
 
         self.has_been_restricted = True
 
+        print('self.feature_names_ at the end of restrict')
+        print(self.feature_names_)
+        print('self.numerical_columns at the end of restrict')
+        print(self.numerical_columns)
+        print('self.categorical_columns at the end of restrict')
+        print(self.categorical_columns)
+        print('self.vocabulary_ at the end of restrict')
+        print(self.vocabulary_)
+        print('self.additional_numerical_cols at the end of restrict')
+        print(self.additional_numerical_cols)
         return self
