@@ -949,7 +949,7 @@ class Predictor(object):
                 col_result['FRI_abs'] = np.mean(absolute_prediction_deltas)
 
                 median_prediction = np.median(absolute_prediction_deltas)
-                col_result['FRI_MAP'] = median_prediction
+                col_result['FRI_MAD'] = median_prediction
 
 
                 X[:, col_idx] -= 2 * col_delta
@@ -968,7 +968,7 @@ class Predictor(object):
                 col_result['FRD_abs'] = np.mean(absolute_prediction_deltas)
 
                 median_prediction = np.median(absolute_prediction_deltas)
-                col_result['FRD_MAP'] = median_prediction
+                col_result['FRD_MAD'] = median_prediction
 
                 # Put the column back to it's original state
                 X[:, col_idx] += col_delta
@@ -1017,7 +1017,7 @@ class Predictor(object):
             feature_responses = feature_responses.reset_index(drop=True)
             feature_responses = feature_responses.head(n=100)
             feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
-            feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAP', 'FRI_MAP']]
+            feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAD', 'FRI_MAD']]
             print('Here are our feature responses for the trained model')
             print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
 
@@ -1469,7 +1469,7 @@ class Predictor(object):
 
         # Sort by coefficients or feature importances
         df_results = df_results.sort_values(by=sort_field, ascending=False)
-        df_results = df_results[['Feature Name', sort_field, 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_abs', 'FRI_abs', 'FRD_MAP', 'FRI_MAP']]
+        df_results = df_results[['Feature Name', sort_field, 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_abs', 'FRI_abs', 'FRD_MAD', 'FRI_MAD']]
         df_results = df_results.reset_index(drop=True)
         df_results = df_results.head(n=100)
         df_results = df_results.sort_values(by=sort_field, ascending=True)
@@ -1527,6 +1527,10 @@ class Predictor(object):
             except AttributeError as e:
                 # There is a version of XGBoost does not have feature_importance_
                 try:
+                    # There was a version of LightGBM that had this misnamed to miss the "s" at the end
+                    trained_feature_importances = final_model_obj.model.feature_importance_
+                except AttributeError as e:
+                    # There is a version of XGBoost does not have feature_importance_
                     imp_vals = final_model_obj.model.get_booster().get_fscore()
                 except AttributeError:
                     imp_vals = final_model_obj.model.booster().get_fscore()
@@ -1937,5 +1941,3 @@ class Predictor(object):
 
         # ensembler will be added to pipeline later back inside main train section
         self.trained_final_model = ensembler
-
-
