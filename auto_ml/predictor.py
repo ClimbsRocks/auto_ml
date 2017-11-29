@@ -995,14 +995,20 @@ class Predictor(object):
             feature_responses = self.create_feature_responses(model, X, y, top_features)
             self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
 
-        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
-            df_model_results = self._print_ml_analytics_results_random_forest(model)
-            sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
-            sorted_model_results = sorted_model_results.reset_index(drop=True)
-            top_features = set(sorted_model_results.head(n=100)['Feature Name'])
+        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
+            try:
+                df_model_results = self._print_ml_analytics_results_random_forest(model)
+                sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
+                sorted_model_results = sorted_model_results.reset_index(drop=True)
+                top_features = set(sorted_model_results.head(n=100)['Feature Name'])
 
-            feature_responses = self.create_feature_responses(model, X, y, top_features)
-            self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
+                feature_responses = self.create_feature_responses(model, X, y, top_features)
+                self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
+            except TypeError as e:
+                if model_name == 'XGBRegressor':
+                    pass
+                else:
+                    raise(e)
 
 
         else:
