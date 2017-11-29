@@ -337,6 +337,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             warnings.warn('UnknownValueInColumnDescriptions: Please make sure all the values you pass into column_descriptions are valid.')
             result = {}
 
+
         return result
 
 
@@ -379,13 +380,20 @@ def add_date_features_df(col_data, date_col):
         else:
             result[date_col + '_hour'] = col_data.apply(lambda x: x.hour).astype(int, errors='ignore')
 
+
         result[date_col + '_minutes_into_day'] = col_data.apply(lambda x: x.hour * 60 + x.minute)
+
+        result[date_col + '_hour'] = result[date_col + '_hour'].fillna(0)
+        result[date_col + '_minutes_into_day'] = result[date_col + '_minutes_into_day'].fillna(0)
     except AttributeError:
         pass
 
     result[date_col + '_is_weekend'] = col_data.apply(lambda x: x.weekday() in (5,6))
     result[date_col + '_day_part'] = result[date_col + '_minutes_into_day'].apply(minutes_into_day_parts)
 
+    result[date_col + '_day_of_week'] = result[date_col + '_day_of_week'].fillna(0)
+    result[date_col + '_is_weekend'] = result[date_col + '_is_weekend'].fillna(0)
+    result[date_col + '_day_part'] = result[date_col + '_day_part'].fillna(0)
     return result
 
 # Same logic as above, except implemented for a single dictionary, which is much faster at prediction time when getting just a single prediction
