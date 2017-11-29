@@ -42,7 +42,7 @@ def optimize_final_model_regression(model_name=None):
     if model_name == 'DeepLearningRegressor':
         lower_bound = -24
     if model_name == 'LGBMRegressor':
-        lower_bound = -9.5
+        lower_bound = -16
     if model_name == 'GradientBoostingRegressor':
         lower_bound = -5.1
     if model_name == 'CatBoostRegressor':
