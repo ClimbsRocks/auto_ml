@@ -1521,7 +1521,10 @@ class Predictor(object):
                 trained_feature_importances = final_model_obj.model.feature_importance_
             except AttributeError as e:
                 # There is a version of XGBoost does not have feature_importance_
-                imp_vals = final_model_obj.model.get_booster().get_fscore()
+                try:
+                    imp_vals = final_model_obj.model.get_booster().get_fscore()
+                except AttributeError:
+                    imp_vals = final_model_obj.model.booster().get_fscore()
                 imp_dict = {trained_feature_names[i]:float(imp_vals.get('f'+str(i),0.)) \
                             for i in range(len(trained_feature_names))}
                 total = np.array(imp_dict.values()).sum()
