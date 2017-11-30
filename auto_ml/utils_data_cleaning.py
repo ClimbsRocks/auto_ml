@@ -1,5 +1,5 @@
 import datetime
-import dateutil
+from dateutil import parser
 
 import pandas as pd
 from sklearn.base import BaseEstimator, TransformerMixin
@@ -367,7 +367,12 @@ def add_date_features_dict(row, date_col):
         if date_val == None:
             return date_feature_dict
         if not isinstance(date_val, (datetime.datetime, datetime.date)):
-            date_val = dateutil.parser.parse(date_val)
+            if isinstance(date_val, float):
+                cleaned_date_val = datetime.datetime.utcfromtimestamp(date_val)
+                print('Received a float ({}) in a date column ({}). Assuming this is a UTC epoch time: {}'.format(date_val, date_col, cleaned_date_val))
+                date_val = cleaned_date_val
+            else:
+                date_val = parser.parse(date_val)
     except:
         return date_feature_dict
 
