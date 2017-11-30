@@ -249,7 +249,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             except AssertionError as e:
                 pass
 
-            results = list(pool.map(lambda key: self.process_one_column(X[key], key), X.columns))
+            if X.shape[0] > 100000 and X.shape[1] > 1000:
+                results = list(map(lambda key: self.process_one_column(X[key], key), X.columns))
+            else:
+                results = list(pool.map(lambda key: self.process_one_column(X[key], key), X.columns))
 
             pool.close()
             try:
