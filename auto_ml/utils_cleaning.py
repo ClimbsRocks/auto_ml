@@ -1,5 +1,6 @@
 import datetime
 import dateutil
+import psutil
 
 import numpy as np
 import pandas as pd
@@ -10,7 +11,9 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 
 import warnings
 
-
+import os
+pid = os.getpid()
+pid_mem = psutil.Process(pid)
 
 # The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
@@ -90,6 +93,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         self.column_descriptions = column_descriptions
         self.transformed_column_descriptions = column_descriptions.copy()
         self.text_col_indicators = set(['text', 'nlp'])
+        self.numeric_col_types = ['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64']
+
 
         self.text_columns = {}
         for key, val in self.column_descriptions.items():
@@ -119,7 +124,11 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             return default
 
     def fit(self, X_df, y=None):
-        print('Running basic data cleaning')
+        print('***Running basic data cleaning***')
+        print('Running the version we expect')
+        print('Memory usage at the very start of BasicDataCleaning.fit')
+        print(pid_mem.memory_full_info())
+
         self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
 
         # See if we should fit TfidfVectorizer or not
@@ -172,21 +181,26 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                 self.text_columns[key].cleaned_feature_names = col_names
 
+        print('Done with BasicDataCleaning.fit')
+        print('Memory usage at the very end of BasicDataCleaning.fit')
+        print(pid_mem.memory_full_info())
+
         return self
 
     def transform(self, X, y=None):
 
+        print('starting BasicDataCleaning transform')
+        print('Memory usage at the very start of BasicDataCleaning.transform')
+        print(pid_mem.memory_full_info())
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)
-
-        X = X.copy()
+        elif isinstance(X, dict):
+            X = X.copy()
 
         # All of these are values we will not want to keep for training this particular estimator.
         # Note that we have already split out the output column and saved it into it's own variable
 
-        # It is much more efficient to drop a bunch of columns at once, rather than one at a time
-        cols_to_drop = []
 
         if isinstance(X, dict):
 
@@ -238,39 +252,65 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             return dict_copy
 
         else:
-            X = X.reset_index(drop=True)
+            X.reset_index(drop=True, inplace=True)
 
-            results = []
+            # TODO: run data cleaning only for columns that aren't already pandas numeric dtypes
+            # memory wise:
+                # create a separate df for them
+                # drop those columns from X
+                # get the results
+                # delete the separate object df
+                # make those results into a df
+                # Delete the results
+                # add the new df into X
 
-            pool = pathos.multiprocessing.ProcessPool()
+            cols_to_clean = []
+            dtypes = X.dtypes
+            for idx, col in enumerate(X.columns):
+                if dtypes[idx] not in self.numeric_col_types:
+                    cols_to_clean.append(col)
 
-            try:
-                pool.restart()
-            except AssertionError as e:
-                pass
+            print('Running the version where we trust pandas dtypes')
+            print('Here are the cols we will clean:')
+            print(cols_to_clean)
+            print('len(cols_to_clean)')
+            print(len(cols_to_clean))
+            if len(cols_to_clean) > 0:
 
-            if X.shape[0] > 100000 and X.shape[1] > 1000:
-                results = list(map(lambda key: self.process_one_column(X[key], key), X.columns))
-            else:
-                results = list(pool.map(lambda key: self.process_one_column(X[key], key), X.columns))
+                df_to_clean = X[cols_to_clean]
+                X.drop(cols_to_clean, axis=1, inplace=True)
 
-            pool.close()
-            try:
-                pool.join()
-            except AssertionError:
-                pass
 
-            result = {}
-            for val in results:
-                result.update(val)
-            X = pd.DataFrame(result)
+                pool = pathos.multiprocessing.ProcessPool()
+                try:
+                    pool.restart()
+                except AssertionError as e:
+                    pass
+
+                if df_to_clean.shape[0] > 100000:
+                    results = list(map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
+                else:
+                    results = list(pool.map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
+
+                pool.close()
+                try:
+                    pool.join()
+                except AssertionError:
+                    pass
+
+                result = {}
+                for val in results:
+                    result.update(val)
+                    del val
+                df_result = pd.DataFrame(result)
+                X[df_result.columns] = df_result
 
 
         return X
 
 
-    def process_one_column(self, col, key):
-        col_desc = self.transformed_column_descriptions.get(key)
+    def process_one_column(self, col_vals, col_name):
+        col_desc = self.transformed_column_descriptions.get(col_name)
 
 
         # This is what we do to columns that were not present at fitting time.
@@ -281,16 +321,16 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         elif col_desc == 'categorical':
             # We will handle categorical data later, one-hot-encoding it inside DataFrameVectorizer (or LabelEncoding it for lgbm)
             result = {
-                key: col
+                col_name: col_vals
             }
 
         elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
             # For all of our numerical columns, try to turn all of these values into floats
             # This function handles commas inside strings that represent numbers, and returns nan if we cannot turn this value into a float. nans are ignored in DataFrameVectorizer
             try:
-                col = col.apply(lambda x: clean_val_nan_version(key, x, replacement_val=0))
+                col_vals = col_vals.apply(lambda x: clean_val_nan_version(col_name, x, replacement_val=0))
                 result = {
-                    key: col
+                    col_name: col_vals
                 }
             except TypeError as e:
                 raise(e)
@@ -299,24 +339,24 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('We have found a column that is not marked as a categorical column that has unicode values in it')
                 print('Here is the column name:')
-                print(key)
+                print(col_name)
                 print('The actual value that caused the issue is logged right above the exclamation points')
                 print('Please either mark this column as categorical, or clean up the values in this column')
                 print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
 
         elif col_desc == 'date':
-            result = add_date_features_df(col, key)
+            result = add_date_features_df(col_vals, col_name)
 
-        elif key in self.text_columns:
+        elif col_name in self.text_columns:
 
-            col_names = self.text_columns[key].cleaned_feature_names
+            col_names = self.text_columns[col_name].cleaned_feature_names
 
-            col.fillna('nan', inplace=True)
+            col_vals.fillna('nan', inplace=True)
             if pandas_version < '0.20.0':
-                nlp_matrix = self.text_columns[key].transform(col.astype(str, raise_on_error=False))
+                nlp_matrix = self.text_columns[col_name].transform(col_vals.astype(str, raise_on_error=False))
             else:
-                nlp_matrix = self.text_columns[key].transform(col.astype(str, errors='ignore'))
+                nlp_matrix = self.text_columns[col_name].transform(col_vals.astype(str, errors='ignore'))
 
             nlp_matrix = nlp_matrix.toarray()
 
@@ -324,8 +364,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             text_df.columns = col_names
 
             result = {}
-            for col in text_df.columns:
-                result[col] = text_df[col].astype(int)
+            for col_vals in text_df.columns:
+                result[col_vals] = text_df[col_vals].astype(int)
 
         elif col_desc in self.vals_to_drop:
             result = {}
@@ -334,7 +374,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
             # In either case, it's useful to log it.
             print('When transforming the data, we have encountered a value in column_descriptions that is not currently supported. The column has been dropped to allow the rest of the pipeline to run. Here\'s the name of the column:' )
-            print(key)
+            print(col_name)
             print('And here is the value for this column passed into column_descriptions:')
             print(col_desc)
             warnings.warn('UnknownValueInColumnDescriptions: Please make sure all the values you pass into column_descriptions are valid.')

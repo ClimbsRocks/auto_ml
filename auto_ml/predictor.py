@@ -33,7 +33,7 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from auto_ml import DataFrameVectorizer
 from auto_ml import utils
 from auto_ml import utils_categorical_ensembling
-from auto_ml import utils_data_cleaning
+from auto_ml import utils_cleaning
 from auto_ml import utils_ensembling
 from auto_ml import utils_feature_selection
 from auto_ml import utils_model_training
@@ -42,27 +42,6 @@ from auto_ml import utils_scaling
 from auto_ml import utils_scoring
 
 from evolutionary_search import EvolutionaryAlgorithmSearchCV
-
-xgb_installed = False
-try:
-    import xgboost as xgb
-    xgb_installed = True
-except ImportError:
-    pass
-
-
-# def _pickle_method(m):
-#     if m.im_self is None:
-#         return getattr, (m.im_class, m.im_func.func_name)
-#     else:
-#         return getattr, (m.im_self, m.im_func.func_name)
-
-# try:
-#     import copy_reg
-#     copy_reg.pickle(types.MethodType, _pickle_method)
-# except:
-#     import copyreg
-#     copyreg.pickle(types.MethodType, _pickle_method)
 
 
 class Predictor(object):
@@ -142,7 +121,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('basic_transform', trained_pipeline.named_steps['basic_transform']))
         else:
-            pipeline_list.append(('basic_transform', utils_data_cleaning.BasicDataCleaning(column_descriptions=self.column_descriptions)))
+            pipeline_list.append(('basic_transform', utils_cleaning.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
         if self.perform_feature_scaling is True:
             if trained_pipeline is not None:
@@ -245,7 +224,7 @@ class Predictor(object):
             X_df = pd.DataFrame(X)
             del X
         else:
-            X_df = X
+            X_df = X.copy()
 
         # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
         if len(self.cols_to_ignore) > 0:
@@ -264,7 +243,7 @@ class Predictor(object):
 
         # Remove the output column from the dataset, and store it into the y varaible
         y = list(X_df[self.output_column])
-        X_df = X_df.drop(self.output_column, axis=1)
+        X_df.drop(self.output_column, axis=1, inplace=True)
 
         # Drop all rows that have an empty value for our output column
         # User logging so they can adjust if they pass in a bunch of bad values:
@@ -288,7 +267,7 @@ class Predictor(object):
             bad_vals = []
             for idx, val in enumerate(y):
                 try:
-                    float_val = utils_data_cleaning.clean_val(val)
+                    float_val = utils_cleaning.clean_val(val)
                     y_floats.append(float_val)
                 except ValueError as err:
                     indices_to_delete.append(idx)
@@ -303,7 +282,7 @@ class Predictor(object):
                 print(indices_to_delete)
                 print('These were the bad values')
                 print(bad_vals)
-                X_df = X_df.drop(X_df.index(indices_to_delete))
+                X_df.drop(X_df.index[indices_to_delete], axis=0, inplace=True)
 
         return X_df, y
 
@@ -327,7 +306,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -419,6 +398,10 @@ class Predictor(object):
 
 
         self.perform_feature_selection = perform_feature_selection
+        if skip_feature_responses != True:
+            self.skip_feature_responses = False
+        else:
+            self.skip_feature_responses = skip_feature_responses
 
         # Let the user pass in 'prediction_intervals' and 'predict_intervals' interchangeably
         if predict_intervals is not None and prediction_intervals is None:
@@ -603,16 +586,17 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed, skip_feature_responses=skip_feature_responses)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
-            print('If you have any issues, or new feature ideas, let us know at https://github.com/ClimbsRocks/auto_ml')
+            print('If you have any issues, or new feature ideas, let us know at http://auto.ml')
 
         if transformed_X is None:
             X_df, y = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
+            del raw_training_data
 
             if self.transformation_pipeline is None:
                 if self.feature_learning == True:
@@ -629,6 +613,8 @@ class Predictor(object):
                 X_df = self.transformation_pipeline.transform(X_df)
         else:
             X_df, y = utils.drop_missing_y_vals(transformed_X, transformed_y)
+            del transformed_X
+            del transformed_y
 
             self.set_scoring(y)
 
@@ -913,10 +899,12 @@ class Predictor(object):
 
         feature_names = self._get_trained_feature_names()
 
-        all_results = []
-        for col_idx, col_name in enumerate(feature_names):
+        # all_results = []
+
+        def create_one_feature_response(col_idx, col_name):
+        # for col_idx, col_name in enumerate(feature_names):
             if col_name not in top_features:
-                continue
+                return None
             col_result = {}
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name and self.column_descriptions.get(col_name, False) != 'categorical':
@@ -973,7 +961,25 @@ class Predictor(object):
                 # Put the column back to it's original state
                 X[:, col_idx] += col_delta
 
-            all_results.append(col_result)
+            return col_result
+            # all_results.append(col_result)
+
+        pool = pathos.multiprocessing.ProcessPool()
+        try:
+            pool.restart()
+        except AssertionError as e:
+            pass
+
+        all_results = list(pool.map(lambda tup: create_one_feature_response(col_idx=tup[0], col_name=tup[1]), enumerate(feature_names)))
+
+        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+        pool.close()
+        try:
+            pool.join()
+        except AssertionError:
+            pass
+
+        all_results = [x for x in all_results if x is not None]
 
         df_all_results = pd.DataFrame(all_results)
 
@@ -1001,7 +1007,10 @@ class Predictor(object):
                 sorted_model_results = sorted_model_results.reset_index(drop=True)
                 top_features = set(sorted_model_results.head(n=100)['Feature Name'])
 
-                feature_responses = self.create_feature_responses(model, X, y, top_features)
+                if self.skip_feature_responses == True:
+                    feature_responses = None
+                else:
+                    feature_responses = self.create_feature_responses(model, X, y, top_features)
                 self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
             except AttributeError as e:
                 if model_name == 'XGBRegressor':
@@ -1464,12 +1473,12 @@ class Predictor(object):
         # Join the standard feature_importances/coefficients, with our feature_responses
         if df_feature_responses is not None:
             df_results = pd.merge(df_feature_responses, df_features, on='Feature Name')
+
+            # Sort by coefficients or feature importances
+            df_results = df_results[['Feature Name', sort_field, 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_abs', 'FRI_abs', 'FRD_MAD', 'FRI_MAD']]
         else:
             df_results = df_features
 
-        # Sort by coefficients or feature importances
-        df_results = df_results.sort_values(by=sort_field, ascending=False)
-        df_results = df_results[['Feature Name', sort_field, 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_abs', 'FRI_abs', 'FRD_MAD', 'FRI_MAD']]
         df_results = df_results.reset_index(drop=True)
         df_results = df_results.head(n=100)
         df_results = df_results.sort_values(by=sort_field, ascending=True)
@@ -1477,7 +1486,7 @@ class Predictor(object):
         analytics_file_name = self.analytics_config['file_name']
 
         print('The printed list will only contain at most the top 100 features.')
-        print('The full analytics results will be saved to a filed called: ' + analytics_file_name + '\n')
+        # print('The full analytics results will be saved to a filed called: ' + analytics_file_name + '\n')
 
         df_results = df_results.head(n=100)
         print(tabulate(df_results, headers='keys', floatfmt='.4f', tablefmt='psql'))
