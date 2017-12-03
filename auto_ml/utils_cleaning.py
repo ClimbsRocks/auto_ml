@@ -119,10 +119,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             return default
 
     def fit(self, X_df, y=None):
-        print('***Running basic data cleaning***')
-        print('Running the version we expect')
-        print('Memory usage at the very start of BasicDataCleaning.fit')
-        print(pid_mem.memory_full_info())
+        print('Running basic data cleaning')
 
         self.vals_to_drop = set(['ignore', 'output', 'regressor', 'classifier'])
 
@@ -176,17 +173,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                 self.text_columns[key].cleaned_feature_names = col_names
 
-        print('Done with BasicDataCleaning.fit')
-        print('Memory usage at the very end of BasicDataCleaning.fit')
-        print(pid_mem.memory_full_info())
-
         return self
 
     def transform(self, X, y=None):
 
-        print('starting BasicDataCleaning transform')
-        print('Memory usage at the very start of BasicDataCleaning.transform')
-        print(pid_mem.memory_full_info())
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)
@@ -249,27 +239,13 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         else:
             X.reset_index(drop=True, inplace=True)
 
-            # TODO: run data cleaning only for columns that aren't already pandas numeric dtypes
-            # memory wise:
-                # create a separate df for them
-                # drop those columns from X
-                # get the results
-                # delete the separate object df
-                # make those results into a df
-                # Delete the results
-                # add the new df into X
-
+            # Run data cleaning only for columns that are not already pandas numeric dtypes
             cols_to_clean = []
             dtypes = X.dtypes
             for idx, col in enumerate(X.columns):
                 if dtypes[idx] not in self.numeric_col_types:
                     cols_to_clean.append(col)
 
-            print('Running the version where we trust pandas dtypes')
-            print('Here are the cols we will clean:')
-            print(cols_to_clean)
-            print('len(cols_to_clean)')
-            print(len(cols_to_clean))
             if len(cols_to_clean) > 0:
 
                 df_to_clean = X[cols_to_clean]
@@ -301,7 +277,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 X[df_result.columns] = df_result
 
 
-        return X
+            return X
 
 
     def process_one_column(self, col_vals, col_name):
