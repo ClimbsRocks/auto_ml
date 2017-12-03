@@ -79,11 +79,12 @@ def safely_drop_columns(df, cols_to_drop):
         if col in df.columns:
             safe_cols_to_drop.append(col)
 
-    df = df.drop(safe_cols_to_drop, axis=1)
+    df.drop(safe_cols_to_drop, axis=1, inplace=True)
     return df
 
 
 def drop_duplicate_columns(df):
+    count_cols_to_drop = 0
     cols = list(df.columns)
     for idx, item in enumerate(df.columns):
         if item in df.columns[:idx]:
@@ -93,13 +94,13 @@ def drop_duplicate_columns(df):
             print('Here is the duplicate column:')
             print(item)
             print('#####################################################')
-            cols[idx] = "toDROP"
-    df.columns = cols
+            cols[idx] = 'DROPME'
+            count_cols_to_drop += 1
 
-    try:
-        df = df.drop("toDROP", axis=1)
-    except:
-        pass
+    if count_cols_to_drop > 0:
+        df.columns = cols
+
+        df.drop('DROPME', axis=1, inplace=True)
     return df
 
 
@@ -158,9 +159,12 @@ def drop_missing_y_vals(df, y, output_column=None):
 
         support_mask = [True if idx not in set_of_indices_to_drop else False for idx in range(df.shape[0]) ]
         if isinstance(df, pd.DataFrame):
-            df = df[support_mask]
+            df.drop(df.index[indices_to_drop], axis=0, inplace=True)
+            # df = df.loc[support_mask,]
         elif scipy.sparse.issparse(df):
             df = delete_rows_csr(df, indices_to_drop)
+        elif isinstance(df, np.ndarray):
+            df = np.delete(df, indices_to_drop, axis=0)
         y = [val for idx, val in enumerate(y) if idx not in set_of_indices_to_drop]
 
 
