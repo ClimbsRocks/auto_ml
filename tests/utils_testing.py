@@ -107,3 +107,17 @@ def train_basic_multilabel_classifier(df_twitter_train):
     ml_predictor.train(df_twitter_train)
 
     return ml_predictor
+
+
+import pandas as pd
+import datetime
+def make_test_df():
+    today = datetime.datetime.today()
+    raw_input = {
+        'a': [1,2,3,4,5]
+        , 'b': [6,7,8,9,10]
+        , 'text_col': ['hi', 'there', 'mesmerizingly', 'intriguing', 'world']
+        , 'date_col': [today, today - datetime.timedelta(days=1), today - datetime.timedelta(days=2), today - datetime.timedelta(days=3), today - datetime.timedelta(days=4)]
+    }
+    df = pd.DataFrame(raw_input)
+    return df
