@@ -1,6 +1,5 @@
 import datetime
 import dateutil
-import psutil
 
 import numpy as np
 import pandas as pd
@@ -10,10 +9,6 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.feature_extraction.text import TfidfVectorizer
 
 import warnings
-
-import os
-pid = os.getpid()
-pid_mem = psutil.Process(pid)
 
 # The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
 bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
