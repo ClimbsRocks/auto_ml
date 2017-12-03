@@ -16,7 +16,6 @@ from auto_ml import utils_models
 from auto_ml.utils_models import get_name_from_model
 keras_imported = False
 
-
 # This is the Air Traffic Controller (ATC) that is a wrapper around sklearn estimators.
 # In short, it wraps all the methods the pipeline will look for (fit, score, predict, predict_proba, etc.)
 # However, it also gives us the ability to optimize this stage in conjunction with the rest of the pipeline.
@@ -44,6 +43,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.keep_cat_features = keep_cat_features
         self.X_test = X_test
         self.y_test = y_test
+        self.memory_optimized = False
 
 
         if self.type_of_estimator == 'classifier':
@@ -60,6 +60,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
     def fit(self, X, y):
+
         global keras_imported, KerasRegressor, KerasClassifier, EarlyStopping, ModelCheckpoint, TerminateOnNaN, keras_load_model
         self.model_name = get_name_from_model(self.model)
 
@@ -164,40 +165,60 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
         elif self.model_name[:4] == 'LGBM':
-            X_fit = X.toarray()
 
-            X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+            import lightgbm as lgb
 
-            try:
-                X_test = X_test.toarray()
-            except AttributeError as e:
-                pass
+            if scipy.sparse.issparse(X_fit):
+                X_fit = X_fit.toarray()
 
-            if self.type_of_estimator == 'regressor':
-                if self.training_prediction_intervals == True:
-                    eval_metric = 'quantile'
-                else:
-                    eval_metric = 'rmse'
-            elif self.type_of_estimator == 'classifier':
-                if len(set(y_test)) > 2:
-                    eval_metric = 'multi_logloss'
-                else:
-                    eval_metric = 'binary_logloss'
+
 
             verbose = True
             if self.is_hp_search == True:
                 verbose = False
 
-            if self.X_test is not None:
-                eval_name = 'X_test_the_user_passed_in'
-            else:
-                eval_name = 'random_holdout_set_from_training_data'
+            train_dynamic_n_estimators = False
+            if self.model.get_params()['n_estimators'] == 2000:
+                train_dynamic_n_estimators = True
 
+                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+
+                try:
+                    X_test = X_test.toarray()
+                except AttributeError as e:
+                    pass
+
+                if self.X_test is not None:
+                    eval_name = 'X_test_the_user_passed_in'
+                else:
+                    eval_name = 'random_holdout_set_from_training_data'
+
+                if self.type_of_estimator == 'regressor':
+                    if self.training_prediction_intervals == True:
+                        eval_metric = 'quantile'
+                    else:
+                        eval_metric = 'rmse'
+                elif self.type_of_estimator == 'classifier':
+                    if len(set(y_test)) > 2:
+                        eval_metric = 'multi_logloss'
+                    else:
+                        eval_metric = 'binary_logloss'
             cat_feature_indices = self.get_categorical_feature_indices()
+
+            if self.memory_optimized == True:
+                X_fit.to_csv('_lgbm_dataset.csv')
+                del X_fit
+
             if cat_feature_indices is None:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                if train_dynamic_n_estimators:
+                    self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                else:
+                    self.model.fit(X_fit, y, verbose=verbose)
             else:
-                self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                if train_dynamic_n_estimators:
+                    self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                else:
+                    self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
             X_fit = X_fit.toarray()
