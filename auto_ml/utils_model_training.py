@@ -203,8 +203,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         eval_metric = 'multi_logloss'
                     else:
                         eval_metric = 'binary_logloss'
-            cat_feature_indices = self.get_categorical_feature_indices()
 
+            cat_feature_indices = self.get_categorical_feature_indices()
             if self.memory_optimized == True:
                 X_fit.to_csv('_lgbm_dataset.csv')
                 del X_fit

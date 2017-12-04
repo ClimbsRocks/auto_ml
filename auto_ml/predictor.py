@@ -108,6 +108,8 @@ class Predictor(object):
 
         pipeline_list = []
 
+        if trained_pipeline is not None:
+            keep_cat_features = trained_pipeline.keep_cat_features
 
         if self.user_input_func is not None:
             if trained_pipeline is not None:
@@ -909,7 +911,12 @@ class Predictor(object):
             col_result['Feature Name'] = col_name
             if col_name[:4] != 'nlp_' and '=' not in col_name and self.column_descriptions.get(col_name, False) != 'categorical':
 
-                col_std = np.nanstd(X[:, col_idx])
+                if isinstance(X, pd.DataFrame):
+                    col_vals = X[col_name]
+                else:
+                    col_vals = X[:, col_idx]
+
+                col_std = np.nanstd(col_vals)
                 col_delta = self.analytics_config['col_std_multiplier'] * col_std
                 col_result['Delta'] = col_delta
 
@@ -921,7 +928,10 @@ class Predictor(object):
                 # if it is not, set col_std to min_delta
 
                 # Increment the values of this column by the std
-                X[:, col_idx] += col_delta
+                if isinstance(X, pd.DataFrame):
+                    X[col_name] += col_delta
+                else:
+                    X[:, col_idx] += col_delta
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
@@ -940,7 +950,10 @@ class Predictor(object):
                 col_result['FRI_MAD'] = median_prediction
 
 
-                X[:, col_idx] -= 2 * col_delta
+                if isinstance(X, pd.DataFrame):
+                    X[col_name] -= 2 * col_delta
+                else:
+                    X[:, col_idx] -= 2 * col_delta
                 if self.type_of_estimator == 'regressor':
                     predictions = model.predict(X)
                 elif self.type_of_estimator == 'classifier':
@@ -959,7 +972,11 @@ class Predictor(object):
                 col_result['FRD_MAD'] = median_prediction
 
                 # Put the column back to it's original state
-                X[:, col_idx] += col_delta
+
+                if isinstance(X, pd.DataFrame):
+                    X[col_name] += col_delta
+                else:
+                    X[:, col_idx] += col_delta
 
             return col_result
             # all_results.append(col_result)
@@ -970,7 +987,7 @@ class Predictor(object):
         except AssertionError as e:
             pass
 
-        all_results = list(pool.map(lambda tup: create_one_feature_response(col_idx=tup[0], col_name=tup[1]), enumerate(feature_names)))
+        all_results = list(map(lambda tup: create_one_feature_response(col_idx=tup[0], col_name=tup[1]), enumerate(feature_names)))
 
         # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
         pool.close()
@@ -1226,8 +1243,6 @@ class Predictor(object):
 
 
             # Grab the first one by default
-            # self.trained_final_model = all_gs_results[0].best_estimator_
-            # trained_final_model = all_gs_results[0].best_estimator_
             best_score = all_gs_results[0].best_score_
             best_params = all_gs_results[0].best_params_
             model_name = estimator_names[0]
@@ -1235,7 +1250,6 @@ class Predictor(object):
             # Iterate through the rest, and see if any are better!
             for idx, result in enumerate(all_gs_results):
                 if result.best_score_ > best_score:
-                    # trained_final_model = result.best_estimator_
                     best_score = result.best_score_
                     best_params = result.best_params_
                     if 'model_name' in best_params:

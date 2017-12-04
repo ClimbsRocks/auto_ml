@@ -276,7 +276,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 df_result = pd.DataFrame(result)
                 X[df_result.columns] = df_result
 
-
             return X
 
 

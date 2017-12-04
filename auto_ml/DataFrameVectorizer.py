@@ -11,6 +11,8 @@ from sklearn.externals import six
 
 from auto_ml.utils import CustomLabelEncoder
 
+
+
 bad_vals = set([float('nan'), float('inf'), float('-inf'), None, np.nan, 'None', 'none', 'NaN', 'NAN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
 
 def strip_non_ascii(string):
@@ -48,6 +50,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
     def fit(self, X, y=None):
         print('Fitting DataFrameVectorizer')
+
 
         feature_names = []
         vocab = {}
@@ -181,19 +184,22 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
 
 
             # Running this in parallel can cause memory crashes if the dataset is too large.
-            categorical_vals = map(lambda col_name: self.transform_categorical_col(col_vals=list(X[col_name]), col_name=col_name), self.categorical_columns)
+            categorical_vals = list(map(lambda col_name: self.transform_categorical_col(col_vals=list(X[col_name]), col_name=col_name), self.categorical_columns))
 
-            X.drop(self.categorical_columns, inplace=True, axis=1)
+            X = X[self.numerical_columns]
+            # X.drop(self.categorical_columns, inplace=True, axis=1)
             X.reset_index(drop=True, inplace=True)
             for result in categorical_vals:
                 result.reset_index(drop=True, inplace=True)
                 X[result.columns] = result
                 del result
 
+
         if self.keep_cat_features == True:
             return X
         else:
-            return X.values
+            X = sp.csr_matrix(X.values)
+            return X
 
 
     # We are assuming that each categorical column got a contiguous block of result columns (ie, the 5 categories in City get columns 5-9, not columns 0, 8, 26, 4, and 20)
@@ -203,7 +209,9 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             result = {
                 col_name: return_vals
             }
-            result = pd.DataFrame([result])
+
+            result = pd.DataFrame(result)
+            # result[col_name] = pd.to_numeric(result[col_name], downcast='integer')
 
             return result
 
@@ -227,7 +235,7 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
                     elif col_idx < min_transformed_idx:
                         min_transformed_idx = col_idx
 
-            encoded_col_names = sorted(encoded_col_names, lambda tup: tup[1])
+            encoded_col_names = sorted(encoded_col_names, key=lambda tup: tup[1])
             encoded_col_names = [tup[0] for tup in encoded_col_names]
 
             result = sp.lil_matrix((len(col_vals), num_trained_cols))
