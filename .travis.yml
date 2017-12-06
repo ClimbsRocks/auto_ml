@@ -1,27 +1,25 @@
-sudo: required
 dist: trusty
 language: python
 
+cache: pip
+
 python:
   - "2.7"
-  - "3.5"
   - "3.6"
+
+env:
+  - $TESTS_TO_RUN=advanced_tests
+  - $TESTS_TO_RUN=tests
+
 
 install:
   - TEST_DIR=$PWD
   - pip install --upgrade pip setuptools wheel
-  - pip install coveralls
-  - pip install nose
+  - pip install coveralls nose tables
   - pip install --only-binary=numpy,scipy,pandas -r requirements.txt
-
-  # For reading and writing to HDF5 (how we store some of our datasets) we need tables
-  - pip install tables
+  - pip install lightgbm keras tensorflow catboost xgboost
 
 script:
-  - nosetests tests
-
-  - pip install lightgbm ; pip install keras ; pip install tensorflow ; pip install catboost ; pip install xgboost
-
-  - nosetests advanced_tests
+  - nosetests $TESTS_TO_RUNE
 
   - coveralls
