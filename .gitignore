@@ -1,6 +1,9 @@
 *.csv
 *.dill
+*.h5
 *.npy
+*.parq
+*.parquet
 *.pkl
 *.pyc
 *.txt
