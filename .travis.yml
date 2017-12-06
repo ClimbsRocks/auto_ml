@@ -2,15 +2,14 @@ sudo: required
 dist: trusty
 language: python
 
-matrix:
-  python:
-    - "2.7"
-    - "3.5"
-    - "3.6"
+python:
+  - "2.7"
+  - "3.5"
+  - "3.6"
 
-  env:
-    - TESTS_TO_RUN=tests
-    - TESTS_TO_RUN=advanced_tests
+env:
+  - TESTS_TO_RUN=tests
+  - TESTS_TO_RUN=advanced_tests
 
 install:
   - TEST_DIR=$PWD
