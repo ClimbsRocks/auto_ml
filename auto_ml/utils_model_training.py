@@ -455,6 +455,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             else:
                 X = np.column_stack([X, ones])
 
+        X_predict = X
+
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']):
             if scipy.sparse.issparse(X):
                 X = X.todense()
@@ -524,6 +526,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             else:
                 X = np.column_stack([X, ones])
 
+        X_predict = X
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']):
             if scipy.sparse.issparse(X):
@@ -537,6 +540,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X_predict = X.values
         else:
             X_predict = X
+
 
         if self.model_name[:4] == 'LGBM':
             best_iteration = 0
