@@ -517,10 +517,13 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             X_predict = X
 
         if self.model_name[:4] == 'LGBM':
+            best_iteration = 0
             try:
-                best_iteration = self.model.best_iteration
-            except AttributeError:
                 best_iteration = self.model.best_iteration_
+            except AttributeError:
+                best_iteration = self.model.best_iteration
+            if best_iteration is None:
+                best_iteration = 0
             predictions = self.model.predict(X, num_iteration=best_iteration)
         else:
             predictions = self.model.predict(X_predict)
