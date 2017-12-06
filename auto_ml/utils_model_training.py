@@ -118,10 +118,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     verbose = 2
 
                 X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
-                try:
-                    X_test = X_test.toarray()
-                except AttributeError as e:
-                    pass
+                if isinstance(X_test, pd.DataFrame):
+                    X_test = X_test.values
+                else:
+                    try:
+                        X_test = X_test.toarray()
+                    except AttributeError as e:
+                        pass
+
                 if not self.is_hp_search:
                     print('\nWe will stop training early if we have not seen an improvement in validation accuracy in {} epochs'.format(patience))
                     print('To measure validation accuracy, we will split off a random 10 percent of your training data set')
@@ -221,7 +225,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
-            X_fit = X_fit.toarray()
+            if isinstance(X_fit, pd.DataFrame):
+                X_fit = X_fit.values
+            else:
+                X_fit = X_fit.toarray()
 
             if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
                 # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
@@ -233,7 +240,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         elif self.model_name[:16] == 'GradientBoosting':
             if not sklearn_version > '0.18.1':
-                X_fit = X_fit.toarray()
+                if isinstance(X_fit, pd.DataFrame):
+                    X_fit = X_fit.values
+                else:
+                    X_fit = X_fit.toarray()
 
             patience = 20
             best_val_loss = -10000000000
@@ -445,10 +455,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             else:
                 X = np.column_stack([X, ones])
 
-        if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
-            X = X.todense()
-        elif (self.model_name[:8] == 'CatBoost' or self.model_name[:4] == 'LGBM') and scipy.sparse.issparse(X):
-            X = X.toarray()
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']):
+            if scipy.sparse.issparse(X):
+                X = X.todense()
+            elif isinstance(X, pd.DataFrame):
+                X = X.values
+        elif (self.model_name[:8] == 'CatBoost' or self.model_name[:4] == 'LGBM'):
+            if scipy.sparse.issparse(X):
+                X = X.toarray()
+            elif isinstance(X, pd.DataFrame):
+                X = X.values
 
         try:
             if self.model_name[:4] == 'LGBM':
@@ -509,10 +525,16 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 X = np.column_stack([X, ones])
 
 
-        if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
-            X_predict = X.todense()
-        elif self.model_name[:8] == 'CatBoost' and scipy.sparse.issparse(X):
-            X_predict = X.toarray()
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']):
+            if scipy.sparse.issparse(X):
+                X_predict = X.todense()
+            elif isinstance(X, pd.DataFrame):
+                X_predict = X.values
+        elif self.model_name[:8] == 'CatBoost':
+            if scipy.sparse.issparse(X):
+                X_predict = X.toarray()
+            elif isinstance(X, pd.DataFrame):
+                X_predict = X.values
         else:
             X_predict = X
 
