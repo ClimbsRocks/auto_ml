@@ -1,6 +1,7 @@
 import datetime
-import dateutil
+import os
 
+import dateutil
 import numpy as np
 import pandas as pd
 from pandas import __version__ as pandas_version
@@ -258,7 +259,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 except AssertionError as e:
                     pass
 
-                if df_to_clean.shape[0] > 100000:
+                if df_to_clean.shape[0] > 100000 or os.environ.get('is_test_suite', 0) == 'True':
                     results = list(map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
                 else:
                     results = list(pool.map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
