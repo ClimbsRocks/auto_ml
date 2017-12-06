@@ -9,7 +9,9 @@ python:
 
 env:
   - TESTS_TO_RUN=tests
-  - TESTS_TO_RUN=advanced_tests
+  - TESTS_TO_RUN=advanced_tests/advanced_install_tests
+  - TESTS_TO_RUN=advanced_tests/automated_tests
+  - TESTS_TO_RUN=advanced_tests/automated_tests_regressors
 
 install:
   - TEST_DIR=$PWD
@@ -23,7 +25,7 @@ install:
 
 script:
 
-  - if [ 'advanced' in $TESTS_TO_RUN ];
+  - if [[ $TESTS_TO_RUN == 'advanced_tests'* ];
     then pip install lightgbm keras tensorflow catboost xgboost;
     fi
   - nosetests $TESTS_TO_RUN
