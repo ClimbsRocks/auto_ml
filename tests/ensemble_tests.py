@@ -220,10 +220,6 @@ def getting_single_predictions_regressor_test():
 
     file_name = ml_predictor.save(str(random.random()))
 
-    # from auto_ml.utils_models import load_keras_model
-
-    # saved_ml_pipeline = load_keras_model(file_name)
-
     saved_ml_pipeline = load_ml_model(file_name)
 
     os.remove(file_name)
