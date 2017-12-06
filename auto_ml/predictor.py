@@ -338,7 +338,7 @@ class Predictor(object):
             self.model_names = self._get_estimator_names()
 
 
-        if 'DeepLearningRegressor' in self.model_names or 'DeepLearningClassifier' in self.model_names:
+        if 'DeepLearningRegressor' in self.model_names or 'DeepLearningClassifier' in self.model_names or feature_learning == True:
             if perform_feature_scaling is None or perform_feature_scaling == True:
                 self.perform_feature_scaling = True
             else:

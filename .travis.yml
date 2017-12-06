@@ -3,14 +3,13 @@ language: python
 
 cache: pip
 
-python:
-  - "2.7"
-  - "3.6"
-
 env:
   - $TESTS_TO_RUN=advanced_tests
   - $TESTS_TO_RUN=tests
 
+python:
+  - "2.7"
+  - "3.6"
 
 install:
   - TEST_DIR=$PWD
@@ -20,6 +19,6 @@ install:
   - pip install lightgbm keras tensorflow catboost xgboost
 
 script:
-  - nosetests $TESTS_TO_RUNE
+  - nosetests $TESTS_TO_RUN
 
   - coveralls
