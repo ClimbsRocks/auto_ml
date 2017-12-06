@@ -14,6 +14,15 @@ from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils import column_or_1d
 
 
+def is_linear_model(model_names):
+    linear_models = set(['RANSACRegressor', 'LinearRegression', 'Ridge', 'Lasso', 'ElasticNet', 'LassoLars', 'OrthogonalMatchingPursuit', 'BayesianRidge', 'ARDRegression', 'SGDRegressor', 'PassiveAggressiveRegressor', 'LogisticRegression', 'RidgeClassifier', 'SGDClassifier', 'Perceptron', 'PassiveAggressiveClassifier'])
+
+    if len(linear_models & (set(model_names))) > 0:
+        return True
+    else:
+        return False
+
+
 def write_gs_param_results_to_file(trained_gs, most_recent_filename):
 
     timestamp_time = datetime.datetime.now()

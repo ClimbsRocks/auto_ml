@@ -347,7 +347,14 @@ class Predictor(object):
                 warnings.warn('It is a best practice, and often necessary for training, to perform_feature_scaling while doing Deep Learning.')
                 self.perform_feature_scaling = perform_feature_scaling
         else:
-            self.perform_feature_scaling = perform_feature_scaling
+            if perform_feature_scaling is None:
+                if utils.is_linear_model(self.model_names):
+                    self.perform_feature_scaling = True
+                else:
+                    self.perform_feature_scaling = False
+            else:
+                self.perform_feature_scaling = perform_feature_scaling
+
         self.calibrate_final_model = calibrate_final_model
         self.scoring = scoring
         if training_params is None:
@@ -588,7 +595,7 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=None, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None):
 
         self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed, skip_feature_responses=skip_feature_responses)
 
