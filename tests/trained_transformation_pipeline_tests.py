@@ -31,7 +31,7 @@ def test_already_transformed_X():
     ml_predictor = Predictor(type_of_estimator='classifier', column_descriptions=column_descriptions)
 
     # pass in return_trans_pipeline, and get the trans pipeline
-    trans_pipeline = ml_predictor.train(df_titanic_train, model_names='LogisticRegression', return_transformation_pipeline=True)
+    trans_pipeline = ml_predictor.train(df_titanic_train, return_transformation_pipeline=True)
 
     # get transformed X through transformation_only
     X_train_transformed = ml_predictor.transform_only(df_titanic_train)
