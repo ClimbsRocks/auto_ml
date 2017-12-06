@@ -2,10 +2,15 @@ sudo: required
 dist: trusty
 language: python
 
-python:
-  - "2.7"
-  - "3.5"
-  - "3.6"
+matrix:
+  python:
+    - "2.7"
+    - "3.5"
+    - "3.6"
+
+  env:
+    - TESTS_TO_RUN=tests
+    - TESTS_TO_RUN=advanced_tests
 
 install:
   - TEST_DIR=$PWD
@@ -18,10 +23,12 @@ install:
   - pip install tables
 
 script:
-  - nosetests tests
 
-  - pip install lightgbm ; pip install keras ; pip install tensorflow ; pip install catboost ; pip install xgboost
+  - if [ 'advanced' in $TESTS_TO_RUN ];
+    then pip install lightgbm keras tensorflow catboost xgboost;
+    fi
+  - nosetests $TESTS_TO_RUN
 
-  - nosetests advanced_tests
+  # - nosetests advanced_tests
 
   - coveralls
