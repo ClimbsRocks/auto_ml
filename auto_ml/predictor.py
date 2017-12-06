@@ -33,7 +33,7 @@ from sklearn.preprocessing import FunctionTransformer, StandardScaler
 from auto_ml import DataFrameVectorizer
 from auto_ml import utils
 from auto_ml import utils_categorical_ensembling
-from auto_ml import utils_cleaning
+from auto_ml import utils_data_cleaning
 from auto_ml import utils_ensembling
 from auto_ml import utils_feature_selection
 from auto_ml import utils_model_training
@@ -123,7 +123,7 @@ class Predictor(object):
         if trained_pipeline is not None:
             pipeline_list.append(('basic_transform', trained_pipeline.named_steps['basic_transform']))
         else:
-            pipeline_list.append(('basic_transform', utils_cleaning.BasicDataCleaning(column_descriptions=self.column_descriptions)))
+            pipeline_list.append(('basic_transform', utils_data_cleaning.BasicDataCleaning(column_descriptions=self.column_descriptions)))
 
         if self.perform_feature_scaling is True:
             if trained_pipeline is not None:
@@ -269,7 +269,7 @@ class Predictor(object):
             bad_vals = []
             for idx, val in enumerate(y):
                 try:
-                    float_val = utils_cleaning.clean_val(val)
+                    float_val = utils_data_cleaning.clean_val(val)
                     y_floats.append(float_val)
                 except ValueError as err:
                     indices_to_delete.append(idx)
