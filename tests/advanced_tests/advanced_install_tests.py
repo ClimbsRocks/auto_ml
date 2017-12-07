@@ -4,6 +4,7 @@ import random
 import sys
 import warnings
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+os.environ['is_test_suite'] = 'True'
 
 from auto_ml import Predictor
 from auto_ml.utils_models import load_ml_model

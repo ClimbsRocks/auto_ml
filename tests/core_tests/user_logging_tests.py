@@ -8,6 +8,9 @@ import random
 import sys
 import warnings
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+sys.path = [os.path.abspath(os.path.dirname(os.path.dirname(__file__)))] + sys.path
+
+os.environ['is_test_suite'] = 'True'
 
 from auto_ml import Predictor
 import utils_testing as utils

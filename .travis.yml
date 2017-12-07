@@ -1,11 +1,14 @@
 dist: trusty
+sudo: required
 language: python
 
 cache: pip
 
 env:
-  - TESTS_TO_RUN=advanced_tests
-  - TESTS_TO_RUN=tests
+  - TESTS_TO_RUN=tests/advanced_tests/automated_tests_regressors.py
+  - TESTS_TO_RUN=tests/advanced_tests/automated_tests.py
+  - TESTS_TO_RUN=tests/advanced_tests/advanced_install_tests.py
+  - TESTS_TO_RUN=tests/core_tests
 
 python:
   - "2.7"
@@ -14,7 +17,7 @@ python:
 matrix:
   include:
     - python: '2.7'
-      env: TESTS_TO_RUN=tests/backwards_compatibility_test.py
+      env: TESTS_TO_RUN=tests/backwards_compatibility_tests/backwards_compatibility_test.py
 
 
 install:
@@ -22,7 +25,7 @@ install:
   - pip install --upgrade pip setuptools wheel
   - pip install coveralls nose tables
   - pip install --only-binary=numpy,scipy,pandas -r requirements.txt
-  - if [[ $TESTS_TO_RUN == 'advanced_tests'* ]]; then pip install lightgbm keras tensorflow catboost xgboost; fi
+  - if [[ $TESTS_TO_RUN == *'advanced_tests'* ]]; then pip install lightgbm keras tensorflow catboost xgboost; fi
   - if [[ $TESTS_TO_RUN == *'backwards_compatibility_test'* ]]; then pip install scikit-learn==0.18.0; fi
 
 script:

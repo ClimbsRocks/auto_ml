@@ -1,5 +1,6 @@
 import sys, os
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+os.environ['is_test_suite'] = 'True'
 
 import pandas as pd
 from sklearn.datasets import load_boston
@@ -17,15 +18,22 @@ def get_boston_regression_dataset():
     return df_boston_train, df_boston_test
 
 def get_titanic_binary_classification_dataset(basic=True):
+
+    dir_name = os.path.abspath(os.path.dirname(__file__))
+    file_name = os.path.join(dir_name, 'titanic.csv')
+    print('file_name')
+    print(file_name)
+    print('dir_name')
+    print(dir_name)
     try:
-        df_titanic = pd.read_csv(os.path.join('tests', 'titanic.csv'))
+        df_titanic = pd.read_csv(file_name)
     except Exception as e:
         print('Error')
         print(e)
         dataset_url = 'http://biostat.mc.vanderbilt.edu/wiki/pub/Main/DataSets/titanic3.csv'
         df_titanic = pd.read_csv(dataset_url)
         # Do not write the index that pandas automatically creates
-        df_titanic.to_csv(os.path.join('tests', 'titanic.csv'), index=False)
+        df_titanic.to_csv(file_name, index=False)
 
     df_titanic = df_titanic.drop(['boat', 'body'], axis=1)
 

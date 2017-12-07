@@ -2,6 +2,7 @@ import datetime
 import os
 import sys
 sys.path = [os.path.abspath(os.path.dirname(__file__))] + sys.path
+sys.path = [os.path.abspath(os.path.dirname(os.path.dirname(__file__)))] + sys.path
 
 from auto_ml import Predictor, __version__ as auto_ml_version
 from auto_ml.utils_models import load_ml_model
@@ -10,7 +11,7 @@ import numpy as np
 import utils_testing as utils
 
 
-if 'backwards_compatibility' in os.environ['TESTS_TO_RUN']:
+if 'backwards_compatibility' in os.environ.get('TESTS_TO_RUN', 'blank'):
     def test_backwards_compatibility_with_version_2_1_6():
         np.random.seed(0)
         print('auto_ml_version')
@@ -20,7 +21,7 @@ if 'backwards_compatibility' in os.environ['TESTS_TO_RUN']:
 
         df_titanic_train, df_titanic_test = utils.get_titanic_binary_classification_dataset()
 
-        saved_ml_pipeline = load_ml_model(os.path.join('tests','trained_ml_model_v_2_1_6.dill'))
+        saved_ml_pipeline = load_ml_model(os.path.join('tests', 'backwards_compatibility_tests', 'trained_ml_model_v_2_1_6.dill'))
 
         df_titanic_test_dictionaries = df_titanic_test.to_dict('records')
 

@@ -908,10 +908,7 @@ class Predictor(object):
 
         feature_names = self._get_trained_feature_names()
 
-        # all_results = []
-
         def create_one_feature_response(col_idx, col_name):
-        # for col_idx, col_name in enumerate(feature_names):
             if col_name not in top_features:
                 return None
             col_result = {}
@@ -986,22 +983,8 @@ class Predictor(object):
                     X[:, col_idx] += col_delta
 
             return col_result
-            # all_results.append(col_result)
-
-        pool = pathos.multiprocessing.ProcessPool()
-        try:
-            pool.restart()
-        except AssertionError as e:
-            pass
 
         all_results = list(map(lambda tup: create_one_feature_response(col_idx=tup[0], col_name=tup[1]), enumerate(feature_names)))
-
-        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-        pool.close()
-        try:
-            pool.join()
-        except AssertionError:
-            pass
 
         all_results = [x for x in all_results if x is not None]
 
