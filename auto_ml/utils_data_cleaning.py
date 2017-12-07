@@ -178,6 +178,12 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
     def transform(self, X, y=None):
 
+        ignore_none_fields = False
+        if self.get('transformed_column_descriptions', None) is not None:
+            ignore_none_fields = True
+        column_descriptions = self.get('transformed_column_descriptions', self.column_descriptions)
+
+
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)
@@ -193,7 +199,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             dict_copy = {}
 
             for key, val in X.items():
-                col_desc = self.transformed_column_descriptions.get(key, None)
+                col_desc = column_descriptions.get(key, None)
 
                 if col_desc is None:
                     continue
@@ -233,7 +239,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                     dict_copy.update(relevant_nlp_cols)
 
-                elif col_desc in self.vals_to_drop:
+                else:
                     pass
             return dict_copy
 
@@ -281,7 +287,12 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
 
     def process_one_column(self, col_vals, col_name):
-        col_desc = self.transformed_column_descriptions.get(col_name)
+        ignore_none_fields = False
+        if self.get('transformed_column_descriptions', None) is not None:
+            ignore_none_fields = True
+        column_descriptions = self.get('transformed_column_descriptions', self.column_descriptions)
+
+        col_desc = column_descriptions.get(col_name)
 
 
         # This is what we do to columns that were not present at fitting time.

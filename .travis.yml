@@ -4,19 +4,26 @@ language: python
 cache: pip
 
 env:
-  - $TESTS_TO_RUN=advanced_tests
-  - $TESTS_TO_RUN=tests
+  - TESTS_TO_RUN=advanced_tests
+  - TESTS_TO_RUN=tests
 
 python:
   - "2.7"
   - "3.6"
+
+matrix:
+  include:
+    - python: '2.7'
+      env: TESTS_TO_RUN=tests/backwards_compatibility_test.py
+
 
 install:
   - TEST_DIR=$PWD
   - pip install --upgrade pip setuptools wheel
   - pip install coveralls nose tables
   - pip install --only-binary=numpy,scipy,pandas -r requirements.txt
-  - pip install lightgbm keras tensorflow catboost xgboost
+  - if [[ $TESTS_TO_RUN == 'advanced_tests'* ]]; then pip install lightgbm keras tensorflow catboost xgboost; fi
+  - if [[ $TESTS_TO_RUN == *'backwards_compatibility_test'* ]]; then pip install scikit-learn==0.18.0; fi
 
 script:
   - nosetests $TESTS_TO_RUN
