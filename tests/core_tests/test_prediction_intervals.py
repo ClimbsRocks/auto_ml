@@ -28,8 +28,6 @@ def test_predict_uncertainty_true():
         , 'CHAS': 'categorical'
     }
 
-    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
-
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
     ml_predictor.train(df_boston_train, predict_intervals=True)
@@ -81,11 +79,9 @@ def test_prediction_intervals_actually_work():
         , 'CHAS': 'categorical'
     }
 
-    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
-
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
-    ml_predictor.train(df_boston_train, predict_intervals=[0.1, 0.9])
+    ml_predictor.train(df_boston_train, predict_intervals=[0.05, 0.95])
 
     df_boston_test = df_boston_test.reset_index(drop=True)
     intervals = ml_predictor.predict_intervals(df_boston_test)
@@ -93,13 +89,13 @@ def test_prediction_intervals_actually_work():
 
     count_under = 0
     count_over = 0
-    print(intervals)
+    # print(intervals)
     for idx, row in intervals.iterrows():
         actual = actuals.iloc[idx]
 
-        if actual < row['interval_0.1']:
+        if actual < row['interval_0.05']:
             count_under += 1
-        if actual > row['interval_0.9']:
+        if actual > row['interval_0.95']:
             count_over += 1
 
     len_intervals = len(intervals)
@@ -107,8 +103,8 @@ def test_prediction_intervals_actually_work():
     pct_under = count_under * 1.0 / len_intervals
     pct_over = count_over * 1.0 / len_intervals
     # There's a decent bit of noise since this is such a small dataset
-    assert pct_under < 0.3
-    assert pct_over < 0.3
+    assert pct_under < 0.15
+    assert pct_over < 0.1
 
 
 def test_prediction_intervals_lets_the_user_specify_number_of_intervals():
@@ -120,8 +116,6 @@ def test_prediction_intervals_lets_the_user_specify_number_of_intervals():
         'MEDV': 'output'
         , 'CHAS': 'categorical'
     }
-
-    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
@@ -141,8 +135,6 @@ def test_predict_intervals_should_fail_if_not_trained():
         'MEDV': 'output'
         , 'CHAS': 'categorical'
     }
-
-    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
 
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
 
@@ -167,9 +159,9 @@ def test_predict_intervals_takes_in_custom_intervals():
         , 'CHAS': 'categorical'
     }
 
-    df_boston_train, uncertainty_data = train_test_split(df_boston_train, test_size=0.5)
-
     ml_predictor = Predictor(type_of_estimator='regressor', column_descriptions=column_descriptions)
+
+    # df_boston_train = pd.concat([df_boston_train, df_boston_train, df_boston_train])
 
     ml_predictor.train(df_boston_train, predict_intervals=[0.4, 0.6])
 
@@ -207,6 +199,7 @@ def test_predict_intervals_takes_in_custom_intervals():
     default_intervals = ml_predictor.predict_intervals(df_boston_test, return_type='list')
 
     # This is a super flaky test, because we've got such a small datasize, and we're trying to get distributions from it
+    len_intervals = len(custom_intervals)
     num_failures = 0
     for idx, custom_row in enumerate(custom_intervals):
         default_row = default_intervals[idx]
@@ -218,5 +211,4 @@ def test_predict_intervals_takes_in_custom_intervals():
             print('{} should be lower than {}'.format(custom_row[1], default_row[1]))
             num_failures += 1
 
-    len_intervals = len(custom_intervals)
-    assert num_failures < 0.25 * len_intervals
+    assert num_failures < 0.18 * len_intervals
