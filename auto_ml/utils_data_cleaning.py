@@ -259,22 +259,23 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 X.drop(cols_to_clean, axis=1, inplace=True)
 
 
-                pool = pathos.multiprocessing.ProcessPool()
-                try:
-                    pool.restart()
-                except AssertionError as e:
-                    pass
 
                 if df_to_clean.shape[0] > 100000 or os.environ.get('is_test_suite', 0) == 'True':
                     results = list(map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
                 else:
-                    results = list(pool.map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
+                    pool = pathos.multiprocessing.ProcessPool()
+                    try:
+                        pool.restart()
+                    except AssertionError as e:
+                        pass
 
-                pool.close()
-                try:
-                    pool.join()
-                except AssertionError:
-                    pass
+                    results = list(pool.map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
+                    pool.close()
+                    try:
+                        pool.join()
+                    except AssertionError:
+                        pass
+
 
                 result = {}
                 for val in results:
