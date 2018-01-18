@@ -143,7 +143,7 @@ def drop_missing_y_vals(df, y, output_column=None):
     indices_to_keep = []
     for idx, val in enumerate(y):
         if not isinstance(val, str):
-            if isinstance(val, numbers.Number) or val is None:
+            if isinstance(val, numbers.Number) or val is None or isinstance(val, np.generic):
                 val = str(val)
             else:
                 val = val.encode('utf-8').decode('utf-8')
