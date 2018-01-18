@@ -25,7 +25,7 @@ install:
   - pip install --upgrade pip setuptools wheel
   - pip install coveralls nose tables
   - pip install --only-binary=numpy,scipy,pandas -r requirements.txt
-  - if [[ $TESTS_TO_RUN == *'advanced_tests'* ]]; then pip install lightgbm keras==2.1.2 tensorflow catboost xgboost; fi
+  - if [[ $TESTS_TO_RUN == *'advanced_tests'* ]]; then pip install lightgbm keras==2.1.1 tensorflow catboost xgboost; fi
   - if [[ $TESTS_TO_RUN == *'backwards_compatibility_test'* ]]; then pip install scikit-learn==0.18.0; fi
 
 script:
