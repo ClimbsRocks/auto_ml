@@ -204,7 +204,7 @@ class CustomLabelEncoder():
         return_vals = []
         for val in in_vals:
             if not isinstance(val, str):
-                if isinstance(val, float) or isinstance(val, int) or val is None:
+                if isinstance(val, float) or isinstance(val, int) or val is None or isinstance(val, np.generic):
                     val = str(val)
                 else:
                     val = val.encode('utf-8').decode('utf-8')
