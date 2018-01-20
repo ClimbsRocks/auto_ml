@@ -189,7 +189,7 @@ class Predictor(object):
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test)))
 
-        constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features)
+        constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features, name=self.name)
         return constructed_pipeline
 
 
