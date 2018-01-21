@@ -14,7 +14,7 @@ from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils import column_or_1d
 
-from _version import __version__ as auto_ml_version
+from auto_ml._version import __version__ as auto_ml_version
 
 
 def is_linear_model(model_names):
@@ -261,6 +261,7 @@ class ExtendedPipeline(Pipeline):
         self.keep_cat_features = keep_cat_features
         self.__versions__ = get_versions()
         self.name = name
+        self.feature_importances_ = None
 
 
     @if_delegate_has_method(delegate='_final_estimator')
