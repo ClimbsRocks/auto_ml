@@ -1807,19 +1807,26 @@ class Predictor(object):
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
 
-        feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
-        importances_dict = {}
+        make_feature_importances = True
         try:
-            final_model = self.trained_pipeline.named_steps['final_model'].model
-            importances = final_model.feature_importances_
-
-            for idx, name in enumerate(feature_names):
-                importances_dict[name] = importances[idx]
+            # CategoricalEnsembler doesn't have named_steps, and Ensembler doesn't have .model, so we perform some conditional logic here to add feature_importances_ whenever we can
+            feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
         except AttributeError:
-            for name in feature_names:
-                importances_dict[name] = np.nan
+            make_feature_importances = False
 
-        self.trained_pipeline.feature_importances_ = importances_dict
+        if make_feature_importances == True:
+            importances_dict = {}
+            try:
+                final_model = self.trained_pipeline.named_steps['final_model'].model
+                importances = final_model.feature_importances_
+
+                for idx, name in enumerate(feature_names):
+                    importances_dict[name] = importances[idx]
+            except AttributeError:
+                for name in feature_names:
+                    importances_dict[name] = np.nan
+
+            self.trained_pipeline.feature_importances_ = importances_dict
 
 
         def save_one_step(pipeline_step, used_deep_learning):
