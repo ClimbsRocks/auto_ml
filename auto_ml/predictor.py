@@ -189,7 +189,7 @@ class Predictor(object):
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test)))
 
-        constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features)
+        constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features, name=self.name)
         return constructed_pipeline
 
 
@@ -1806,6 +1806,28 @@ class Predictor(object):
 
 
     def save(self, file_name='auto_ml_saved_pipeline.dill', verbose=True):
+
+        make_feature_importances = True
+        try:
+            # CategoricalEnsembler doesn't have named_steps, and Ensembler doesn't have .model, so we perform some conditional logic here to add feature_importances_ whenever we can
+            feature_names = self.trained_pipeline.named_steps['dv'].get_feature_names()
+        except AttributeError:
+            make_feature_importances = False
+
+        if make_feature_importances == True:
+            importances_dict = {}
+            try:
+                final_model = self.trained_pipeline.named_steps['final_model'].model
+                importances = final_model.feature_importances_
+
+                for idx, name in enumerate(feature_names):
+                    importances_dict[name] = importances[idx]
+            except AttributeError:
+                for name in feature_names:
+                    importances_dict[name] = np.nan
+
+            self.trained_pipeline.feature_importances_ = importances_dict
+
 
         def save_one_step(pipeline_step, used_deep_learning):
             try:

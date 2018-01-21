@@ -2,6 +2,7 @@ import csv
 import datetime
 import numbers
 import os
+import pkg_resources
 
 import numpy as np
 import pandas as pd
@@ -12,6 +13,8 @@ from sklearn.pipeline import Pipeline
 from sklearn.preprocessing import LabelEncoder
 from sklearn.utils.metaestimators import if_delegate_has_method
 from sklearn.utils import column_or_1d
+
+from auto_ml._version import __version__ as auto_ml_version
 
 
 def is_linear_model(model_names):
@@ -225,15 +228,6 @@ class ExtendedLabelEncoder(LabelEncoder):
         super(self.__class__, self).__init__()
 
     def transform(self, y):
-        """Transform labels to normalized encoding.
-        Parameters
-        ----------
-        y : array-like of shape [n_samples]
-            Target values.
-        Returns
-        -------
-        y : array-like of shape [n_samples]
-        """
         y = column_or_1d(y, warn=True)
 
         classes = np.unique(y)
@@ -242,11 +236,32 @@ class ExtendedLabelEncoder(LabelEncoder):
             self.classes_ = np.hstack((self.classes_, diff))
         return np.searchsorted(self.classes_, y)[0]
 
+
+def get_versions():
+
+    libraries_to_check = ['dill', 'h5py', 'keras', 'lightgbm', 'numpy', 'pandas', 'pathos', 'python', 'scikit-learn', 'scipy', 'sklearn-deap2', 'tabulate', 'tensorflow', 'xgboost']
+
+    versions = {
+        'auto_ml': auto_ml_version
+    }
+
+    for lib in libraries_to_check:
+        try:
+            versions[lib] = pkg_resources.get_distribution(lib).version
+        except:
+            pass
+
+    return versions
+
+
 class ExtendedPipeline(Pipeline):
 
-    def __init__(self, steps, keep_cat_features=False):
+    def __init__(self, steps, keep_cat_features=False, name=None):
         super(self.__class__, self).__init__(steps)
         self.keep_cat_features = keep_cat_features
+        self.__versions__ = get_versions()
+        self.name = name
+        self.feature_importances_ = None
 
 
     @if_delegate_has_method(delegate='_final_estimator')

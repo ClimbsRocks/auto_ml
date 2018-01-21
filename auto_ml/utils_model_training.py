@@ -1,8 +1,10 @@
 from collections import Iterable
-import datetime
 from copy import deepcopy
+import datetime
+import gc
 import os
 import random
+import warnings
 
 import numpy as np
 import pandas as pd
@@ -10,7 +12,6 @@ import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn import __version__ as sklearn_version
-import warnings
 
 from auto_ml import utils_models
 from auto_ml.utils_models import get_name_from_model
@@ -298,6 +299,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.X_test is not None:
             del self.X_test
             del self.y_test
+        gc.collect()
         return self
 
     def remove_categorical_values(self, features):
