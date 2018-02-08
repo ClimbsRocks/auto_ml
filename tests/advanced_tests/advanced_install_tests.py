@@ -162,7 +162,7 @@ def test_feature_learning_categorical_ensembling_getting_single_predictions_clas
     if model_name == 'CatBoostClassifier':
         lower_bound = -0.265
 
-    assert lower_bound < first_score < -0.147
+    assert lower_bound < first_score < -0.140
 
     # 2. make sure the speed is reasonable (do it a few extra times)
     data_length = len(df_titanic_test_dictionaries)
