@@ -42,14 +42,6 @@ class Ensembler(BaseEstimator, TransformerMixin):
             predictions_from_all_estimators = map(lambda predictor: get_predictions_for_one_estimator(predictor, X), self.ensemble_predictors)
 
         else:
-            # Open a new multiprocessing pool
-            pool = pathos.multiprocessing.ProcessPool()
-
-            # Since we may have already closed the pool, try to restart it
-            try:
-                pool.restart()
-            except AssertionError as e:
-                pass
 
             # Pathos doesn't like datasets beyond a certain size. So fall back on single, non-parallel predictions instead.
             # try:
@@ -57,19 +49,22 @@ class Ensembler(BaseEstimator, TransformerMixin):
                 predictions_from_all_estimators = map(lambda predictor: get_predictions_for_one_estimator(predictor, X), self.ensemble_predictors)
 
             else:
+                # Open a new multiprocessing pool
+                pool = pathos.multiprocessing.ProcessPool()
+
+                # Since we may have already closed the pool, try to restart it
+                try:
+                    pool.restart()
+                except AssertionError as e:
+                    pass
                 predictions_from_all_estimators = pool.map(lambda predictor: get_predictions_for_one_estimator(predictor, X), self.ensemble_predictors)
 
-            # except:
-            #     predictions_from_all_estimators = map(lambda predictor: get_predictions_for_one_estimator(predictor, X), self.ensemble_predictors)
-            #     predictions_from_all_estimators = list(predictions_from_all_estimators)
-
-
-            # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-            pool.close()
-            try:
-                pool.join()
-            except AssertionError:
-                pass
+                # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+                pool.close()
+                try:
+                    pool.join()
+                except AssertionError:
+                    pass
 
         predictions_from_all_estimators = list(predictions_from_all_estimators)
 

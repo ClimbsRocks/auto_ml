@@ -1429,18 +1429,20 @@ class Predictor(object):
             }
             return result
 
-        pool = pathos.multiprocessing.ProcessPool()
-
-        # Since we may have already closed the pool, try to restart it
-        try:
-            pool.restart()
-        except AssertionError as e:
-            pass
 
         if os.environ.get('is_test_suite', False) == 'True':
             # If this is the test_suite, do not run things in parallel
             results = list(map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
         else:
+
+            pool = pathos.multiprocessing.ProcessPool()
+
+            # Since we may have already closed the pool, try to restart it
+            try:
+                pool.restart()
+            except AssertionError as e:
+                pass
+
             try:
                 results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
             except RuntimeError:
@@ -1450,12 +1452,12 @@ class Predictor(object):
                 results = list(pool.map(lambda x: train_one_categorical_model(x[0], x[1], x[2]), categories_and_data))
                 sys.setrecursionlimit(original_recursion_limit)
 
-        # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
-        pool.close()
-        try:
-            pool.join()
-        except AssertionError:
-            pass
+            # Once we have gotten all we need from the pool, close it so it's not taking up unnecessary memory
+            pool.close()
+            try:
+                pool.join()
+            except AssertionError:
+                pass
 
         for result in results:
             if result['trained_category_model'] is not None:
