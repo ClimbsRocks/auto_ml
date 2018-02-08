@@ -96,7 +96,7 @@ def test_perform_feature_selection_true_classification():
     print('test_score')
     print(test_score)
 
-    assert -0.16 < test_score < -0.135
+    assert -0.16 < test_score < -0.124
 
 
 def test_perform_feature_scaling_true_classification():
