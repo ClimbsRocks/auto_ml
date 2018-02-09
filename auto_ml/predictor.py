@@ -30,6 +30,7 @@ from sklearn.metrics import mean_squared_error, brier_score_loss, make_scorer, a
 from sklearn.preprocessing import FunctionTransformer, StandardScaler
 
 
+from auto_ml._version import __version__ as auto_ml_version
 from auto_ml import DataFrameVectorizer
 from auto_ml import utils
 from auto_ml import utils_categorical_ensembling
@@ -623,6 +624,7 @@ class Predictor(object):
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
             print('If you have any issues, or new feature ideas, let us know at http://auto.ml')
+            print('You are running on version {}'.format(auto_ml_version))
 
         if transformed_X is None:
             X_df, y = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
