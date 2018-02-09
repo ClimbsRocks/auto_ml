@@ -43,6 +43,20 @@ from auto_ml import utils_scoring
 
 from evolutionary_search import EvolutionaryAlgorithmSearchCV
 
+# For handling parallelism edge cases
+def _pickle_method(m):
+    if m.im_self is None:
+        return getattr, (m.im_class, m.im_func.func_name)
+    else:
+        return getattr, (m.im_self, m.im_func.func_name)
+
+try:
+    import copy_reg
+    copy_reg.pickle(types.MethodType, _pickle_method)
+except:
+    import copyreg
+    copyreg.pickle(types.MethodType, _pickle_method)
+
 
 class Predictor(object):
 
@@ -1003,46 +1017,49 @@ class Predictor(object):
 
 
     def print_results(self, model_name, model, X, y):
-
-        if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-            df_model_results = self._print_ml_analytics_results_linear_model(model)
-            sorted_model_results = df_model_results.sort_values(by='Coefficients', ascending=False)
-            sorted_model_results = sorted_model_results.reset_index(drop=True)
-            # only grab the top 100 features from X
-            top_features = set(sorted_model_results.head(n=100)['Feature Name'])
-
-            feature_responses = self.create_feature_responses(model, X, y, top_features)
-            self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
-
-        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
-            try:
-                df_model_results = self._print_ml_analytics_results_random_forest(model)
-                sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
+        # This apparently fails in some cases. I'm not sure what those edge cases are, but the try/except block should at least allow the rest of the script to continue
+        try:
+            if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+                df_model_results = self._print_ml_analytics_results_linear_model(model)
+                sorted_model_results = df_model_results.sort_values(by='Coefficients', ascending=False)
                 sorted_model_results = sorted_model_results.reset_index(drop=True)
+                # only grab the top 100 features from X
                 top_features = set(sorted_model_results.head(n=100)['Feature Name'])
 
-                if self.skip_feature_responses == True:
-                    feature_responses = None
-                else:
-                    feature_responses = self.create_feature_responses(model, X, y, top_features)
-                self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
-            except AttributeError as e:
-                if model_name == 'XGBRegressor':
-                    pass
-                else:
-                    raise(e)
+                feature_responses = self.create_feature_responses(model, X, y, top_features)
+                self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
+
+            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
+                try:
+                    df_model_results = self._print_ml_analytics_results_random_forest(model)
+                    sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
+                    sorted_model_results = sorted_model_results.reset_index(drop=True)
+                    top_features = set(sorted_model_results.head(n=100)['Feature Name'])
+
+                    if self.skip_feature_responses == True:
+                        feature_responses = None
+                    else:
+                        feature_responses = self.create_feature_responses(model, X, y, top_features)
+                    self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
+                except AttributeError as e:
+                    if model_name == 'XGBRegressor':
+                        pass
+                    else:
+                        raise(e)
 
 
-        else:
-            feature_responses = self.create_feature_responses(model, X, y)
-            feature_responses['FR_Incrementing_abs'] = np.absolute(feature_responses.FR_Incrementing)
-            feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=False)
-            feature_responses = feature_responses.reset_index(drop=True)
-            feature_responses = feature_responses.head(n=100)
-            feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
-            feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAD', 'FRI_MAD']]
-            print('Here are our feature responses for the trained model')
-            print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
+            else:
+                feature_responses = self.create_feature_responses(model, X, y)
+                feature_responses['FR_Incrementing_abs'] = np.absolute(feature_responses.FR_Incrementing)
+                feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=False)
+                feature_responses = feature_responses.reset_index(drop=True)
+                feature_responses = feature_responses.head(n=100)
+                feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
+                feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAD', 'FRI_MAD']]
+                print('Here are our feature responses for the trained model')
+                print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
+        except:
+            pass
 
 
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False, refit=False):
@@ -1121,7 +1138,7 @@ class Predictor(object):
                 tournament_size=tournament_size,
                 generations_number=generations_number,
                 # Do not fit the best estimator on all the data- we will do that later, possibly after increasing epochs or n_estimators
-                refit=True
+                refit=refit
 
             )
 
@@ -1254,9 +1271,6 @@ class Predictor(object):
                     else:
                         model_name = estimator_names[idx]
 
-            print('best_params')
-            print(best_params)
-
             # Now that we've got the best model, train it on quite a few more iterations/epochs/trees if applicable
             cleaned_best_params = {}
             for k, v in best_params.items():
@@ -1271,21 +1285,15 @@ class Predictor(object):
             if 'epochs' in best_params:
                 epochs = self.training_params.get('epochs', 1000)
                 best_params['epochs'] = epochs
-                # We are overwriting the user's input with whatever the best params were
-            elif 'n_estimators' in best_params and model_name in ['LGBMClassifier', 'LGBMRegressor', 'GradientBoostingClassifier', 'GradientBoostingRegressor']:
-                n_estimators = self.training_params.get('n_estimators', 2000)
-                best_params['n_estimators'] = n_estimators
 
-            print('estimator_names')
-            print(estimator_names)
             self.training_params = best_params
 
             trained_final_model = self.fit_single_pipeline(X_df, y, model_name, feature_learning=feature_learning, prediction_interval=False)
 
             # Don't report feature_responses (or nearly anything else) if this is just the feature_learning stage
             # That saves a considerable amount of time
-            if feature_learning == False:
-                self.print_results(model_name, trained_final_model, X_df, y)
+            # if feature_learning == False:
+            #     self.print_results(model_name, trained_final_model, X_df, y)
 
             # If we wanted to do something tricky, here would be the place to do it
                 # Train the final model up on more epochs, or with more trees

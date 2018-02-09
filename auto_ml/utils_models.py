@@ -526,7 +526,6 @@ def get_search_params(model_name):
 
         , 'LGBMClassifier': {
             'boosting_type': ['gbdt', 'dart']
-            , 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
             , 'min_child_samples': [1, 5, 7, 10, 15, 20, 35, 50, 100, 200, 500, 1000]
             , 'num_leaves': [2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 50, 65, 80, 100, 125, 150, 200, 250]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
@@ -537,7 +536,6 @@ def get_search_params(model_name):
 
         , 'LGBMRegressor': {
             'boosting_type': ['gbdt', 'dart']
-            , 'max_bin': [25, 50, 100, 200, 250, 300, 400, 500, 750, 1000]
             , 'min_child_samples': [1, 5, 7, 10, 15, 20, 35, 50, 100, 200, 500, 1000]
             , 'num_leaves': [2, 4, 7, 10, 15, 20, 25, 30, 35, 40, 50, 65, 80, 100, 125, 150, 200, 250]
             , 'colsample_bytree': [0.7, 0.9, 1.0]
