@@ -92,8 +92,9 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
         # Get a mask of which indices it is we want to keep
         self.index_mask = [idx for idx, val in enumerate(self.support_mask) if val == True]
-        col_names = list(X.columns)
-        self.col_names_to_keep = [col_names[idx] for idx, val in enumerate(self.support_mask) if val == True]
+        if isinstance(X, pd.DataFrame):
+            col_names = list(X.columns)
+            self.col_names_to_keep = [col_names[idx] for idx, val in enumerate(self.support_mask) if val == True]
         return self
 
 
