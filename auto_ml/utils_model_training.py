@@ -215,20 +215,32 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if self.lgbm_memory_optimized == True:
                 feature_names = list(X_fit.columns)
                 try:
-                    tmp_data_file_name = '/dev/shm/_lgbm_dataset_{}.csv'.format(random.random())
+                    random_num = str(random.random())
+                    tmp_data_file_name = '/dev/shm/_lgbm_dataset_{}.csv'.format(random_num)
                     X_fit.to_csv(tmp_data_file_name, header=False)
+                    if train_dynamic_n_estimators:
+                        tmp_test_data_file_name = '/dev/shm/_lgbm_test_dataset_{}.csv'.format(random.random(random_num))
+                        X_test.to_csv(tmp_test_data_file_name, header=False)
                 except IOError as e:
                     # FUTURE: figure out if we can do the equivalent of /dev/shm for mac/windows, without needing any extra permissions.
-                    tmp_data_file_name = '_lgbm_dataset_{}.csv'.format(random.random())
+                    tmp_data_file_name = '_lgbm_dataset_{}.csv'.format(random_num)
                     X_fit.to_csv(tmp_data_file_name, header=False)
+                    if train_dynamic_n_estimators:
+                        tmp_test_data_file_name = '_lgbm_test_dataset_{}.csv'.format(random_num)
+                        X_test.to_csv(tmp_test_data_file_name, header=False)
+
 
                 del X_fit
                 gc.collect()
 
                 if cat_feature_indices is not None:
                     train_data = lgb.Dataset(tmp_data_file_name, label=y, feature_name=feature_names, categorical_feature=cat_feature_indices)
+                    if train_dynamic_n_estimators:
+                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, feature_name=feature_names, categorical_feature=cat_feature_indices)
                 else:
                     train_data = lgb.Dataset(tmp_data_file_name, label=y, feature_name=feature_names)
+                    if train_dynamic_n_estimators:
+                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, feature_name=feature_names)
 
                 # post-MVP TODOs:
                 # train dynamic num trees, using validation dataset
@@ -253,8 +265,11 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     model_params['objective'] = 'rmse'
                     model_params['metric'] = 'rmse'
 
+                if train_dynamic_n_estimators == True:
+                    bst = lgb.train(params=model_params, train_set=train_data, num_boost_round=model_params['n_estimators'], valid_sets=[test_data], early_stopping_rounds=100)
+                else:
+                    bst = lgb.train(params=model_params, train_set=train_data, num_boost_round=model_params['n_estimators'])
 
-                bst = lgb.train(params=model_params, train_set=train_data, num_boost_round=100)
                 self.model = bst
                 os.remove(tmp_data_file_name)
 
