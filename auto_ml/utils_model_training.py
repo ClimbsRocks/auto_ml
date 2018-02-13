@@ -6,6 +6,8 @@ import os
 import random
 import warnings
 
+import lightgbm as lgb
+from lightgbm import LGBMClassifier
 import numpy as np
 import pandas as pd
 import scipy
@@ -25,7 +27,7 @@ keras_imported = False
 class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
-    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, is_hp_search=None, X_test=None, y_test=None):
+    def __init__(self, model, model_name=None, ml_for_analytics=False, type_of_estimator='classifier', output_column=None, name=None, _scorer=None, training_features=None, column_descriptions=None, feature_learning=False, uncertainty_model=None, uc_results = None, training_prediction_intervals=False, min_step_improvement=0.0001, interval_predictors=None, keep_cat_features=False, is_hp_search=None, X_test=None, y_test=None, lgbm_memory_optimized=False):
 
         self.model = model
         self.model_name = model_name
@@ -44,7 +46,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         self.keep_cat_features = keep_cat_features
         self.X_test = X_test
         self.y_test = y_test
-        self.memory_optimized = False
+        self.lgbm_memory_optimized = lgbm_memory_optimized
 
 
         if self.type_of_estimator == 'classifier':
@@ -210,20 +212,63 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         eval_metric = 'binary_logloss'
 
             cat_feature_indices = self.get_categorical_feature_indices()
-            if self.memory_optimized == True:
-                X_fit.to_csv('_lgbm_dataset.csv')
-                del X_fit
+            if self.lgbm_memory_optimized == True:
+                feature_names = list(X_fit.columns)
+                try:
+                    tmp_data_file_name = '/dev/shm/_lgbm_dataset_{}.csv'.format(random.random())
+                    X_fit.to_csv(tmp_data_file_name, header=False)
+                except IOError as e:
+                    # FUTURE: figure out if we can do the equivalent of /dev/shm for mac/windows, without needing any extra permissions.
+                    tmp_data_file_name = '_lgbm_dataset_{}.csv'.format(random.random())
+                    X_fit.to_csv(tmp_data_file_name, header=False)
 
-            if cat_feature_indices is None:
-                if train_dynamic_n_estimators:
-                    self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                del X_fit
+                gc.collect()
+
+                if cat_feature_indices is not None:
+                    train_data = lgb.Dataset(tmp_data_file_name, label=y, feature_name=feature_names, categorical_feature=cat_feature_indices)
                 else:
-                    self.model.fit(X_fit, y, verbose=verbose)
+                    train_data = lgb.Dataset(tmp_data_file_name, label=y, feature_name=feature_names)
+
+                # post-MVP TODOs:
+                # train dynamic num trees, using validation dataset
+
+                model_params = self.model.get_params()
+                params_to_del = ['n_jobs', 'silent', 'reg_lambda']
+                for param in params_to_del:
+                    try:
+                        del model_params[param]
+                    except:
+                        pass
+
+                if self.type_of_estimator == 'classifier' and model_params.get('objective', None) is None:
+                    if len(set(y)) == 2:
+                        model_params['objective'] = 'binary'
+                        model_params['metric'] = 'binary_logloss'
+                    else:
+                        model_params['objective'] = 'multiclass'
+                        model_params['num_class'] = len(set(y))
+                        model_params['metric'] = 'multi_logloss'
+                elif self.type_of_estimator == 'regressor' and model_params.get('objective', None) is None:
+                    model_params['objective'] = 'rmse'
+                    model_params['metric'] = 'rmse'
+
+
+                bst = lgb.train(params=model_params, train_set=train_data, num_boost_round=100)
+                self.model = bst
+                os.remove(tmp_data_file_name)
+
             else:
-                if train_dynamic_n_estimators:
-                    self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                if cat_feature_indices is None:
+                    if train_dynamic_n_estimators:
+                        self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], verbose=verbose)
+                    else:
+                        self.model.fit(X_fit, y, verbose=verbose)
                 else:
-                    self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
+                    if train_dynamic_n_estimators:
+                        self.model.fit(X_fit, y, eval_set=[(X_test, y_test)], early_stopping_rounds=100, eval_metric=eval_metric, eval_names=[eval_name], categorical_feature=cat_feature_indices, verbose=verbose)
+                    else:
+                        self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
             if isinstance(X_fit, pd.DataFrame):
@@ -447,6 +492,20 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             return self.model.score(X, y)
 
 
+    def lgbm_predict_proba(self, X):
+        try:
+            best_iteration = self.model.best_iteration
+        except AttributeError:
+            best_iteration = self.model.best_iteration_
+        if isinstance(self.model, LGBMClassifier):
+            predictions = self.model.predict_proba(X, num_iteration=best_iteration)
+        else:
+            predictions = self.model.predict(X, num_iteration=best_iteration)
+            predictions = [[1 - pred, pred] for pred in predictions]
+
+        return predictions
+
+
     def predict_proba(self, X, verbose=False):
 
         if self.model_name[:3] == 'XGB':
@@ -470,28 +529,27 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             elif isinstance(X, pd.DataFrame):
                 X = X.values
 
-        try:
-            if self.model_name[:4] == 'LGBM':
-                try:
-                    best_iteration = self.model.best_iteration
-                except AttributeError:
-                    best_iteration = self.model.best_iteration_
-                predictions = self.model.predict_proba(X, num_iteration=best_iteration)
-            else:
+        if self.model_name[:4] == 'LGBM':
+            predictions = self.lgbm_predict_proba(X)
+        else:
+
+            try:
                 predictions = self.model.predict_proba(X)
 
-        except AttributeError as e:
-            try:
-                predictions = self.model.predict(X)
+            except AttributeError as e:
+                print('heard an error while trying to get predict_proba')
+                print(e)
+                try:
+                    predictions = self.model.predict(X)
+                except TypeError as e:
+                    if scipy.sparse.issparse(X):
+                        X = X.todense()
+                    predictions = self.model.predict(X)
+
             except TypeError as e:
                 if scipy.sparse.issparse(X):
                     X = X.todense()
-                predictions = self.model.predict(X)
-
-        except TypeError as e:
-            if scipy.sparse.issparse(X):
-                X = X.todense()
-            predictions = self.model.predict_proba(X)
+                predictions = self.model.predict_proba(X)
 
         # If this model does not have predict_proba, and we have fallen back on predict, we want to make sure we give results back in the same format the user would expect for predict_proba, namely each prediction is a list of predicted probabilities for each class.
         # Note that this DOES NOT WORK for multi-label problems, or problems that are not reduced to 0,1

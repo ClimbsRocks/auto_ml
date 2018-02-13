@@ -5,6 +5,7 @@ import multiprocessing
 import os
 import random
 import sys
+import traceback
 import types
 import warnings
 
@@ -192,8 +193,6 @@ class Predictor(object):
                 params = {}
                 params['loss'] = 'quantile'
                 params['alpha'] = prediction_interval
-                params['n_estimators'] = 100
-                params['learning_rate'] = 0.15
                 params.update(self.prediction_interval_params)
                 training_prediction_intervals = True
 
@@ -202,7 +201,7 @@ class Predictor(object):
                 params = self.training_params
 
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
-            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test)))
+            pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test, lgbm_memory_optimized=self.lgbm_memory_optimized)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features, name=self.name)
         return constructed_pipeline
@@ -326,7 +325,7 @@ class Predictor(object):
 
         return trained_pipeline_without_feature_selection
 
-    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None, prediction_interval_params=None):
+    def set_params_and_defaults(self, X_df, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=True, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=None, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction='both', advanced_analytics=True, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None, prediction_interval_params=None, lgbm_memory_optimized=None):
 
         self.user_input_func = user_input_func
         self.optimize_final_model = optimize_final_model
@@ -339,6 +338,24 @@ class Predictor(object):
         self.X_test = X_test
         self.y_test = y_test
         self.X_test_already_transformed = X_test_already_transformed
+        self.calibrate_final_model = calibrate_final_model
+        self.scoring = scoring
+
+        if training_params is None:
+            self.training_params = {}
+        else:
+            self.training_params = training_params
+        self.user_gs_params = grid_search_params
+        if self.user_gs_params is not None and str(user_gs_params) != '{}':
+            print('Setting optimize_final_model to True, because you passed in gs_params. To keep optimize_final_model=False, please pass in None for gs_params')
+            self.optimize_final_model = True
+
+        self.lgbm_memory_optimized = lgbm_memory_optimized
+        if self.optimize_final_model == True:
+            print('LightGBM currently does not support memory-optimized training while grid searching. Using the non-memory-optimized version instead so that we can optimize hyperparameters')
+
+
+
 
         if self.type_of_estimator == 'regressor':
             self.take_log_of_y = take_log_of_y
@@ -350,6 +367,9 @@ class Predictor(object):
             self.model_names = [model_names]
         else:
             self.model_names = model_names
+
+        if self.lgbm_memory_optimized == True and 'LGBMRegressor' not in self.model_names and 'LGBMClassifier' not in self.model_names:
+            print('lgbm_memory_optimized only works for training LightGBM models. Your model_names did not include any LightGBM models. Please pass in either "LGBMRegressor" or "LGBMClassifier" as an argument for "model_names", eg: ml_predictor.train(data, model_names=["LGBMClassifier"])')
 
         # If the user passed in a valid value for model_names (not None, and not a list where the only thing is None)
         if self.model_names is None or (len(self.model_names) == 1 and self.model_names[0] is None):
@@ -373,15 +393,6 @@ class Predictor(object):
             else:
                 self.perform_feature_scaling = perform_feature_scaling
 
-        self.calibrate_final_model = calibrate_final_model
-        self.scoring = scoring
-        if training_params is None:
-            self.training_params = {}
-        else:
-            self.training_params = training_params
-        self.user_gs_params = grid_search_params
-        if self.user_gs_params is not None:
-            self.optimize_final_model = True
         self.cv = cv
         if ensemble_config is None:
             self.ensemble_config = []
@@ -617,9 +628,9 @@ class Predictor(object):
         return X_df
 
 
-    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=None, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None, prediction_interval_params=None):
+    def train(self, raw_training_data, user_input_func=None, optimize_final_model=None, write_gs_param_results_to_file=True, perform_feature_selection=None, verbose=True, X_test=None, y_test=None, ml_for_analytics=True, take_log_of_y=None, model_names=None, perform_feature_scaling=None, calibrate_final_model=False, _scorer=None, scoring=None, verify_features=False, training_params=None, grid_search_params=None, compare_all_models=False, cv=2, feature_learning=False, fl_data=None, optimize_feature_learning=False, train_uncertainty_model=False, uncertainty_data=None, uncertainty_delta=None, uncertainty_delta_units=None, calibrate_uncertainty=False, uncertainty_calibration_settings=None, uncertainty_calibration_data=None, uncertainty_delta_direction=None, advanced_analytics=None, analytics_config=None, prediction_intervals=None, predict_intervals=None, ensemble_config=None, trained_transformation_pipeline=None, transformed_X=None, transformed_y=None, return_transformation_pipeline=False, X_test_already_transformed=False, skip_feature_responses=None, prediction_interval_params=None, lgbm_memory_optimized=False):
 
-        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed, skip_feature_responses=skip_feature_responses, prediction_interval_params=prediction_interval_params)
+        self.set_params_and_defaults(raw_training_data, user_input_func=user_input_func, optimize_final_model=optimize_final_model, write_gs_param_results_to_file=write_gs_param_results_to_file, perform_feature_selection=perform_feature_selection, verbose=verbose, X_test=X_test, y_test=y_test, ml_for_analytics=ml_for_analytics, take_log_of_y=take_log_of_y, model_names=model_names, perform_feature_scaling=perform_feature_scaling, calibrate_final_model=calibrate_final_model, _scorer=_scorer, scoring=scoring, verify_features=verify_features, training_params=training_params, grid_search_params=grid_search_params, compare_all_models=compare_all_models, cv=cv, feature_learning=feature_learning, fl_data=fl_data, optimize_feature_learning=False, train_uncertainty_model=train_uncertainty_model, uncertainty_data=uncertainty_data, uncertainty_delta=uncertainty_delta, uncertainty_delta_units=uncertainty_delta_units, calibrate_uncertainty=calibrate_uncertainty, uncertainty_calibration_settings=uncertainty_calibration_settings, uncertainty_calibration_data=uncertainty_calibration_data, uncertainty_delta_direction=uncertainty_delta_direction, prediction_intervals=prediction_intervals, predict_intervals=predict_intervals, ensemble_config=ensemble_config, trained_transformation_pipeline=trained_transformation_pipeline, transformed_X=transformed_X, transformed_y=transformed_y, return_transformation_pipeline=return_transformation_pipeline, X_test_already_transformed=X_test_already_transformed, skip_feature_responses=skip_feature_responses, prediction_interval_params=prediction_interval_params, lgbm_memory_optimized=lgbm_memory_optimized)
 
         if verbose:
             print('Welcome to auto_ml! We\'re about to go through and make sense of your data using machine learning, and give you a production-ready pipeline to get predictions with.\n')
@@ -1020,48 +1031,51 @@ class Predictor(object):
 
     def print_results(self, model_name, model, X, y):
         # This apparently fails in some cases. I'm not sure what those edge cases are, but the try/except block should at least allow the rest of the script to continue
-        try:
-            if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
-                df_model_results = self._print_ml_analytics_results_linear_model(model)
-                sorted_model_results = df_model_results.sort_values(by='Coefficients', ascending=False)
+        # try:
+        if self.ml_for_analytics and model_name in ('LogisticRegression', 'RidgeClassifier', 'LinearRegression', 'Ridge'):
+            df_model_results = self._print_ml_analytics_results_linear_model(model)
+            sorted_model_results = df_model_results.sort_values(by='Coefficients', ascending=False)
+            sorted_model_results = sorted_model_results.reset_index(drop=True)
+            # only grab the top 100 features from X
+            top_features = set(sorted_model_results.head(n=100)['Feature Name'])
+
+            feature_responses = self.create_feature_responses(model, X, y, top_features)
+            self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
+
+        elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
+            try:
+                df_model_results = self._print_ml_analytics_results_random_forest(model)
+                sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
                 sorted_model_results = sorted_model_results.reset_index(drop=True)
-                # only grab the top 100 features from X
                 top_features = set(sorted_model_results.head(n=100)['Feature Name'])
 
-                feature_responses = self.create_feature_responses(model, X, y, top_features)
-                self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Coefficients')
-
-            elif self.ml_for_analytics and model_name in ['RandomForestClassifier', 'RandomForestRegressor', 'XGBClassifier', 'XGBRegressor', 'GradientBoostingRegressor', 'GradientBoostingClassifier', 'LGBMRegressor', 'LGBMClassifier', 'CatBoostRegressor', 'CatBoostClassifier']:
-                try:
-                    df_model_results = self._print_ml_analytics_results_random_forest(model)
-                    sorted_model_results = df_model_results.sort_values(by='Importance', ascending=False)
-                    sorted_model_results = sorted_model_results.reset_index(drop=True)
-                    top_features = set(sorted_model_results.head(n=100)['Feature Name'])
-
-                    if self.skip_feature_responses == True:
-                        feature_responses = None
-                    else:
-                        feature_responses = self.create_feature_responses(model, X, y, top_features)
-                    self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
-                except AttributeError as e:
-                    if model_name == 'XGBRegressor':
-                        pass
-                    else:
-                        raise(e)
+                if self.skip_feature_responses == True:
+                    feature_responses = None
+                else:
+                    feature_responses = self.create_feature_responses(model, X, y, top_features)
+                self._join_and_print_analytics_results(feature_responses, sorted_model_results, sort_field='Importance')
+            except AttributeError as e:
+                if model_name == 'XGBRegressor':
+                    pass
+                else:
+                    raise(e)
 
 
-            else:
-                feature_responses = self.create_feature_responses(model, X, y)
-                feature_responses['FR_Incrementing_abs'] = np.absolute(feature_responses.FR_Incrementing)
-                feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=False)
-                feature_responses = feature_responses.reset_index(drop=True)
-                feature_responses = feature_responses.head(n=100)
-                feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
-                feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAD', 'FRI_MAD']]
-                print('Here are our feature responses for the trained model')
-                print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
-        except:
-            pass
+        else:
+            feature_responses = self.create_feature_responses(model, X, y)
+            feature_responses['FR_Incrementing_abs'] = np.absolute(feature_responses.FR_Incrementing)
+            feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=False)
+            feature_responses = feature_responses.reset_index(drop=True)
+            feature_responses = feature_responses.head(n=100)
+            feature_responses = feature_responses.sort_values(by='FR_Incrementing_abs', ascending=True)
+            feature_responses = feature_responses[['Feature Name', 'Delta', 'FR_Decrementing', 'FR_Incrementing', 'FRD_MAD', 'FRI_MAD']]
+            print('Here are our feature responses for the trained model')
+            print(tabulate(feature_responses, headers='keys', floatfmt='.4f', tablefmt='psql'))
+        # except Exception as e:
+        #     print(e)
+        #     traceback.print_exc()
+        #     raise(e)
+        #     pass
 
 
     def fit_grid_search(self, X_df, y, gs_params, feature_learning=False, refit=False):
@@ -1553,23 +1567,25 @@ class Predictor(object):
         try:
             trained_feature_importances = final_model_obj.model.feature_importances_
         except AttributeError as e:
-            try:
-                # There was a version of LightGBM that had this misnamed to miss the "s" at the end
-                trained_feature_importances = final_model_obj.model.feature_importance_
-            except AttributeError as e:
-                # There is a version of XGBoost does not have feature_importance_
-                try:
-                    # There was a version of LightGBM that had this misnamed to miss the "s" at the end
-                    trained_feature_importances = final_model_obj.model.feature_importance_
-                except AttributeError as e:
-                    # There is a version of XGBoost does not have feature_importance_
-                    imp_vals = final_model_obj.model.get_booster().get_fscore()
-                except AttributeError:
-                    imp_vals = final_model_obj.model.booster().get_fscore()
-                imp_dict = {trained_feature_names[i]:float(imp_vals.get('f'+str(i),0.)) \
-                            for i in range(len(trained_feature_names))}
-                total = np.array(imp_dict.values()).sum()
-                trained_feature_importances = {k:v/total for k,v in imp_dict.items()}
+            trained_feature_importances = list(final_model_obj.model.feature_importance())
+        # except AttributeError as e:
+        #     try:
+        #         # There was a version of LightGBM that had this misnamed to miss the "s" at the end
+        #         trained_feature_importances = final_model_obj.model.feature_importance_
+        #     except AttributeError as e:
+        #         # There is a version of XGBoost does not have feature_importance_
+        #         try:
+        #             # There was a version of LightGBM that had this misnamed to miss the "s" at the end
+        #             trained_feature_importances = final_model_obj.model.feature_importance_
+        #         except AttributeError as e:
+        #             # There is a version of XGBoost does not have feature_importance_
+        #             imp_vals = final_model_obj.model.get_booster().get_fscore()
+        #         except AttributeError:
+        #             imp_vals = final_model_obj.model.booster().get_fscore()
+        #         imp_dict = {trained_feature_names[i]:float(imp_vals.get('f'+str(i),0.)) \
+        #                     for i in range(len(trained_feature_names))}
+        #         total = np.array(imp_dict.values()).sum()
+        #         trained_feature_importances = {k:v/total for k,v in imp_dict.items()}
 
         feature_infos = zip(trained_feature_names, trained_feature_importances)
 

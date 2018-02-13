@@ -109,7 +109,7 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
             model_params['n_estimators'] = 500
 
 
-    if training_params is not None:
+    if str(training_params) != '{}':
         print('Now using the model training_params that you passed in:')
         print(training_params)
         # Overwrite our stock params with what the user passes in (i.e., if the user wants 10,000 trees, we will let them do it)
