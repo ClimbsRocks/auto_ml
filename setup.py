@@ -55,7 +55,7 @@ setup(
         'Programming Language :: Python :: 2.7',
         'Programming Language :: Python :: 3',
         'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.4',
+        'Programming Language :: Python :: 3.5',
         'Programming Language :: Python :: 3.6',
     ],
 
@@ -67,7 +67,7 @@ setup(
     install_requires=[
         'dill>=0.2.5, <0.3',
         'h5py>=2.7.0, <3.0',
-        'lightgbm>=2.0.11, <2.1',
+        'lightgbm>=2.1.0, <2.2',
         'numpy>=1.11.0, <2.0',
         'pandas>=0.18.0, <1.0',
         'pathos>=0.2.1, <0.3.0',
