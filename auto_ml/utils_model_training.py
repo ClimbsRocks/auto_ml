@@ -219,7 +219,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     tmp_data_file_name = '/dev/shm/_lgbm_dataset_{}.csv'.format(random_num)
                     X_fit.to_csv(tmp_data_file_name, header=False)
                     if train_dynamic_n_estimators:
-                        tmp_test_data_file_name = '/dev/shm/_lgbm_test_dataset_{}.csv'.format(random.random(random_num))
+                        tmp_test_data_file_name = '/dev/shm/_lgbm_test_dataset_{}.csv'.format(random_num)
                         X_test.to_csv(tmp_test_data_file_name, header=False)
                 except IOError as e:
                     # FUTURE: figure out if we can do the equivalent of /dev/shm for mac/windows, without needing any extra permissions.
