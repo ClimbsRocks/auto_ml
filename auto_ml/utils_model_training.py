@@ -626,6 +626,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 best_iteration = self.model.best_iteration_
             except AttributeError:
                 best_iteration = self.model.best_iteration
+            # At version 2.1.0, lgbm returns best_iteration = None, but doesn't take None as an input for num_iteration. this issue only exists in python3(.6)
+            if best_iteration is None:
+                best_iteration = -1
+
             predictions = self.model.predict(X, num_iteration=best_iteration)
         else:
             predictions = self.model.predict(X_predict)
