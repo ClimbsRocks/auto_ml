@@ -1,9 +1,9 @@
+import itertools
+
+import pandas as pd
+import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
-
-import scipy
-import itertools
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 
 
@@ -92,6 +92,8 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
         # Get a mask of which indices it is we want to keep
         self.index_mask = [idx for idx, val in enumerate(self.support_mask) if val == True]
+        col_names = list(X.columns)
+        self.col_names_to_keep = [col_names[idx] for idx, val in enumerate(self.support_mask) if val == True]
         return self
 
 
@@ -111,6 +113,9 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             # convert back to a csr matrix
             return X.tocsr()
 
+        if isinstance(X, pd.DataFrame):
+            X = X[self.col_names_to_keep]
+            return X
         # If this is a dense matrix:
         else:
             X = X[:, self.index_mask]
