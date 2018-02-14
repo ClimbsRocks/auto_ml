@@ -352,11 +352,17 @@ class Predictor(object):
             print('Setting optimize_final_model to True, because you passed in gs_params. To keep optimize_final_model=False, please pass in None for gs_params')
             self.optimize_final_model = True
 
-        if lgbm_memory_optimized == True:
-            mem_optimized_file_name = '_lgbm_dataset_{}.csv'.format(random.random())
-            self.lgbm_memory_optimized = mem_optimized_file_name
-        if self.optimize_final_model == True:
-            print('LightGBM currently does not support memory-optimized training while grid searching. Using the non-memory-optimized version instead so that we can optimize hyperparameters')
+        if lgbm_memory_optimized != False:
+            if isinstance(lgbm_memory_optimized, str):
+                self.lgbm_memory_optimized = lgbm_memory_optimized
+            else:
+                mem_optimized_file_name = '_lgbm_dataset_{}.csv'.format(random.random())
+                self.lgbm_memory_optimized = mem_optimized_file_name
+
+            if self.optimize_final_model == True:
+                print('LightGBM currently does not support memory-optimized training while grid searching. Using the non-memory-optimized version instead so that we can optimize hyperparameters')
+        else:
+            self.lgbm_memory_optimized = False
 
 
 
