@@ -212,40 +212,51 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         eval_metric = 'binary_logloss'
 
             cat_feature_indices = self.get_categorical_feature_indices()
-            if self.lgbm_memory_optimized == True:
-                feature_names = list(X_fit.columns)
-                try:
-                    random_num = str(random.random())
-                    tmp_data_file_name = '/dev/shm/_lgbm_dataset_{}.csv'.format(random_num)
-                    X_fit.to_csv(tmp_data_file_name, header=False)
-                    if train_dynamic_n_estimators:
-                        tmp_test_data_file_name = '/dev/shm/_lgbm_test_dataset_{}.csv'.format(random_num)
-                        X_test.to_csv(tmp_test_data_file_name, header=False)
-                except IOError as e:
-                    # FUTURE: figure out if we can do the equivalent of /dev/shm for mac/windows, without needing any extra permissions.
-                    tmp_data_file_name = '_lgbm_dataset_{}.csv'.format(random_num)
-                    X_fit.to_csv(tmp_data_file_name, header=False)
-                    if train_dynamic_n_estimators:
-                        tmp_test_data_file_name = '_lgbm_test_dataset_{}.csv'.format(random_num)
-                        X_test.to_csv(tmp_test_data_file_name, header=False)
+            if self.lgbm_memory_optimized != False:
+
+                write_to_disk = True
+                if isinstance(X_fit, str):
+                    tmp_data_file_name = '/dev/shm/{}'.format(self.lgbm_memory_optimized)
+                    if os.path.isfile(tmp_data_file_name):
+                        write_to_disk = False
+                    elif os.path.isfile(self.lgbm_memory_optimized):
+                        write_to_disk = False
+                        tmp_data_file_name = self.lgbm_memory_optimized
+
+
+                if write_to_disk:
+                    try:
+                        random_num = str(random.random())
+                        tmp_data_file_name = '/dev/shm/_lgbm_dataset_{}.csv'.format(random_num)
+                        X_fit.to_csv(tmp_data_file_name, header=False)
+                        if train_dynamic_n_estimators:
+                            tmp_test_data_file_name = '/dev/shm/_lgbm_test_dataset_{}.csv'.format(random_num)
+                            X_test.to_csv(tmp_test_data_file_name, header=False)
+                    except IOError as e:
+                        # FUTURE: figure out if we can do the equivalent of /dev/shm for mac/windows, without needing any extra permissions.
+                        tmp_data_file_name = '_lgbm_dataset_{}.csv'.format(random_num)
+                        X_fit.to_csv(tmp_data_file_name, header=False)
+                        if train_dynamic_n_estimators:
+                            tmp_test_data_file_name = '_lgbm_test_dataset_{}.csv'.format(random_num)
+                            X_test.to_csv(tmp_test_data_file_name, header=False)
 
 
                 del X_fit
                 gc.collect()
 
                 if cat_feature_indices is not None:
-                    train_data = lgb.Dataset(tmp_data_file_name, label=y, feature_name=feature_names, categorical_feature=cat_feature_indices)
+                    train_data = lgb.Dataset(tmp_data_file_name, label=y, categorical_feature=cat_feature_indices)
                     if train_dynamic_n_estimators:
-                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, feature_name=feature_names, categorical_feature=cat_feature_indices)
+                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, categorical_feature=cat_feature_indices)
                 else:
-                    train_data = lgb.Dataset(tmp_data_file_name, label=y, feature_name=feature_names)
+                    train_data = lgb.Dataset(tmp_data_file_name, label=y)
                     if train_dynamic_n_estimators:
-                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, feature_name=feature_names)
-
-                # post-MVP TODOs:
-                # train dynamic num trees, using validation dataset
+                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test)
 
                 model_params = self.model.get_params()
+                model_params['num_threads'] = model_params['n_jobs']
+                if 'loss' in model_params:
+                    model_params['objective'] = model_params['loss']
                 params_to_del = ['n_jobs', 'silent', 'reg_lambda']
                 for param in params_to_del:
                     try:
@@ -271,7 +282,8 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     bst = lgb.train(params=model_params, train_set=train_data, num_boost_round=model_params['n_estimators'])
 
                 self.model = bst
-                os.remove(tmp_data_file_name)
+
+                # os.remove(tmp_data_file_name)
 
             else:
                 if cat_feature_indices is None:

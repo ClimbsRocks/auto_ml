@@ -187,20 +187,22 @@ class Predictor(object):
                 training_features = None
 
             training_prediction_intervals = False
-            params = None
+            model_params = None
 
             if prediction_interval is not False:
-                params = {}
-                params['loss'] = 'quantile'
-                params['alpha'] = prediction_interval
-                params.update(self.prediction_interval_params)
+                model_params = {}
+                model_params['loss'] = 'quantile'
+                model_params['alpha'] = prediction_interval
+                model_params.update(self.prediction_interval_params)
                 training_prediction_intervals = True
 
             elif feature_learning == False:
                 # Do not pass in our training_params for the feature_learning model
-                params = self.training_params
+                model_params = self.training_params
 
-            final_model = utils_models.get_model_from_name(model_name, training_params=params)
+            # TODO TODO: figure out how to pass in a '**.csv' filename here.
+
+            final_model = utils_models.get_model_from_name(model_name, training_params=model_params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test, lgbm_memory_optimized=self.lgbm_memory_optimized)))
 
         constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features, name=self.name)
@@ -350,7 +352,9 @@ class Predictor(object):
             print('Setting optimize_final_model to True, because you passed in gs_params. To keep optimize_final_model=False, please pass in None for gs_params')
             self.optimize_final_model = True
 
-        self.lgbm_memory_optimized = lgbm_memory_optimized
+        if lgbm_memory_optimized == True:
+            mem_optimized_file_name = '_lgbm_dataset_{}.csv'.format(random.random())
+            self.lgbm_memory_optimized = mem_optimized_file_name
         if self.optimize_final_model == True:
             print('LightGBM currently does not support memory-optimized training while grid searching. Using the non-memory-optimized version instead so that we can optimize hyperparameters')
 
@@ -462,7 +466,8 @@ class Predictor(object):
             if prediction_intervals == True:
                 self.prediction_intervals = [0.05, 0.95]
             else:
-                self.prediction_intervals = prediction_intervals
+
+                self.prediction_intervals = [val if val < 1 else val / 100 for val in prediction_intervals]
 
         self.train_uncertainty_model = train_uncertainty_model
         if self.train_uncertainty_model == True and self.type_of_estimator == 'classifier':
@@ -681,12 +686,11 @@ class Predictor(object):
             # TODO: parallelize these!
             interval_predictors = []
             for percentile in self.prediction_intervals:
-                interval_predictor = self.train_ml_estimator(['GradientBoostingRegressor'], self._scorer, X_df, y, prediction_interval=percentile)
+                interval_predictor = self.train_ml_estimator(['LGBMRegressor'], self._scorer, X_df, y, prediction_interval=percentile)
                 predictor_tup = ('interval_{}'.format(percentile), interval_predictor)
                 interval_predictors.append(predictor_tup)
 
             self.trained_final_model.interval_predictors = interval_predictors
-
 
         self.trained_pipeline = self._consolidate_pipeline(self.transformation_pipeline, self.trained_final_model)
 
@@ -700,10 +704,22 @@ class Predictor(object):
         del self.y_test
         del self.X_test_already_transformed
         del X_df
+        self.delete_lgb_memory_optimized_file(lgbm_memory_optimized)
 
         if self.return_transformation_pipeline:
             return self.transformation_pipeline
         return self
+
+
+    def delete_lgb_memory_optimized_file(self, lgbm_memory_optimized):
+        if self.lgbm_memory_optimized != False and not isinstance(lgbm_memory_optimized, str):
+            try:
+                os.remove(self.lgbm_memory_optimized)
+            except:
+                try:
+                    os.remove('/dev/shm/{}'.format(self.lgbm_memory_optimized))
+                except:
+                    pass
 
 
     def _create_uncertainty_model(self, uncertainty_data, scoring, y, uncertainty_calibration_data):
@@ -870,6 +886,8 @@ class Predictor(object):
             start_time = datetime.datetime.now().replace(microsecond=0)
             print(start_time)
 
+        # TODO TODO: try passing in the '**.csv' file here as X_df.
+            # what we have to do first: get the file name! which means we have to pass in a
         ppl.fit(X_df, y)
 
         if self.verbose:
