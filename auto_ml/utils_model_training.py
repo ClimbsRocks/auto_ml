@@ -570,10 +570,28 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             elif isinstance(X, pd.DataFrame):
                 X = X.values
 
-        if self.model_name[:4] == 'LGBM':
-            predictions = self.lgbm_predict_proba(X)
-        else:
+# <<<<<<< HEAD
+#         if self.model_name[:4] == 'LGBM':
+#             predictions = self.lgbm_predict_proba(X)
+#         else:
 
+# =======
+        try:
+            if self.model_name[:4] == 'LGBM':
+                try:
+                    best_iteration = self.model.best_iteration
+                except AttributeError:
+                    best_iteration = self.model.best_iteration_
+                try:
+                    predictions = self.model.predict_proba(X, num_iteration=best_iteration)
+                except AttributeError as e:
+                    predictions = self.model.predict(X, num_iteration=best_iteration)
+            else:
+                predictions = self.model.predict_proba(X)
+
+        except AttributeError as e:
+
+# >>>>>>> memory_optimized_bug
             try:
                 predictions = self.model.predict_proba(X)
 
@@ -600,8 +618,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             for prediction in predictions:
                 if prediction == 1:
                     tupled_predictions.append([0,1])
-                else:
+                elif prediction == 0:
                     tupled_predictions.append([1,0])
+                else:
+                    tupled_predictions.append([1 - prediction, prediction])
             predictions = tupled_predictions
 
 
