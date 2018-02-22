@@ -256,12 +256,13 @@ def get_versions():
 
 class ExtendedPipeline(Pipeline):
 
-    def __init__(self, steps, keep_cat_features=False, name=None):
+    def __init__(self, steps, keep_cat_features=False, name=None, training_features=None):
         super(self.__class__, self).__init__(steps)
         self.keep_cat_features = keep_cat_features
         self.__versions__ = get_versions()
         self.name = name
         self.feature_importances_ = None
+        self.training_features = training_features
 
 
     @if_delegate_has_method(delegate='_final_estimator')

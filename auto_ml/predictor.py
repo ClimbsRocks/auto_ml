@@ -204,7 +204,7 @@ class Predictor(object):
             final_model = utils_models.get_model_from_name(model_name, training_params=params)
             pipeline_list.append(('final_model', utils_model_training.FinalModelATC(model=final_model, type_of_estimator=self.type_of_estimator, ml_for_analytics=self.ml_for_analytics, name=self.name, _scorer=self._scorer, feature_learning=feature_learning, uncertainty_model=self.need_to_train_uncertainty_model, training_prediction_intervals=training_prediction_intervals, column_descriptions=self.column_descriptions, training_features=training_features, keep_cat_features=keep_cat_features, is_hp_search=is_hp_search, X_test=self.X_test, y_test=self.y_test)))
 
-        constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features, name=self.name)
+        constructed_pipeline = utils.ExtendedPipeline(pipeline_list, keep_cat_features=keep_cat_features, name=self.name, training_features=self.training_features)
         return constructed_pipeline
 
 
@@ -304,6 +304,13 @@ class Predictor(object):
                 print(bad_vals)
                 X_df.drop(X_df.index[indices_to_delete], axis=0, inplace=True)
 
+        clean_descriptions = {}
+        col_names = set(X_df.columns)
+        for k, v in self.column_descriptions.items():
+            if k in col_names or '_day_part' in k or v == 'output':
+                clean_descriptions[k] = v
+        self.column_descriptions = clean_descriptions
+
         return X_df, y
 
 
@@ -332,6 +339,7 @@ class Predictor(object):
         self.optimize_final_model = optimize_final_model
         self.write_gs_param_results_to_file = write_gs_param_results_to_file
         self.ml_for_analytics = ml_for_analytics
+        self.training_features = None
 
         if X_test is not None:
             X_test, y_test = utils.drop_missing_y_vals(X_test, y_test, self.output_column)
@@ -629,6 +637,7 @@ class Predictor(object):
         if transformed_X is None:
             X_df, y = self._clean_data_and_prepare_for_training(raw_training_data, scoring)
             del raw_training_data
+            self.training_features = list(X_df.columns)
 
             if self.transformation_pipeline is None:
                 if self.feature_learning == True:
@@ -647,6 +656,10 @@ class Predictor(object):
             X_df, y = utils.drop_missing_y_vals(transformed_X, transformed_y)
             del transformed_X
             del transformed_y
+            try:
+                self.training_features = list(X_df.columns)
+            except:
+                pass
 
             self.set_scoring(y)
 
