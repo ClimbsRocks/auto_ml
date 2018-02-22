@@ -247,11 +247,18 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 if cat_feature_indices is not None:
                     train_data = lgb.Dataset(tmp_data_file_name, label=y, categorical_feature=cat_feature_indices)
                     if train_dynamic_n_estimators:
-                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, categorical_feature=cat_feature_indices)
+                        try:
+                            test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, categorical_feature=cat_feature_indices)
+                        except UnboundLocalError:
+                            test_data = lgb.Dataset(X_test, label=y_test, categorical_feature=cat_feature_indices, free_raw_data=True)
                 else:
                     train_data = lgb.Dataset(tmp_data_file_name, label=y)
                     if train_dynamic_n_estimators:
-                        test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test)
+                        try:
+                            test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test)
+                        except UnboundLocalError:
+                            test_data = lgb.Dataset(X_test, label=y_test, free_raw_data=True)
+
 
                 model_params = self.model.get_params()
                 model_params['num_threads'] = model_params['n_jobs']
@@ -264,7 +271,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     except:
                         pass
 
-                if self.type_of_estimator == 'classifier' and model_params.get('objective', None) is None:
+                if self.type_of_estimator == 'classifier':
                     if len(set(y)) == 2:
                         model_params['objective'] = 'binary'
                         model_params['metric'] = 'binary_logloss'
@@ -283,6 +290,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
                 self.model = bst
 
+                try:
+                    del X_test
+                except UnboundLocalError:
+                    pass
                 # os.remove(tmp_data_file_name)
 
             else:

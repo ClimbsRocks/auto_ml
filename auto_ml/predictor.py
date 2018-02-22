@@ -460,7 +460,7 @@ class Predictor(object):
         else:
             self.prediction_interval_params = prediction_interval_params
 
-        if prediction_intervals is None:
+        if prediction_intervals is None or prediction_intervals == False:
             self.calculate_prediction_intervals = False
         else:
             if isinstance(prediction_intervals, bool):
@@ -472,7 +472,6 @@ class Predictor(object):
             if prediction_intervals == True:
                 self.prediction_intervals = [0.05, 0.95]
             else:
-
                 self.prediction_intervals = [val if val < 1 else val / 100 for val in prediction_intervals]
 
         self.train_uncertainty_model = train_uncertainty_model
