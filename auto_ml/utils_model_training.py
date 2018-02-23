@@ -582,6 +582,9 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     best_iteration = self.model.best_iteration
                 except AttributeError:
                     best_iteration = self.model.best_iteration_
+
+                if best_iteration is None:
+                    best_iteration = -1
                 try:
                     predictions = self.model.predict_proba(X, num_iteration=best_iteration)
                 except AttributeError as e:
