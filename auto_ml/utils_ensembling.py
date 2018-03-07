@@ -6,17 +6,17 @@ import pathos
 from sklearn.base import BaseEstimator, TransformerMixin
 
 
-
-
 class Ensembler(BaseEstimator, TransformerMixin):
 
-
-    def __init__(self, ensemble_predictors, type_of_estimator, ensemble_method='average', num_classes=None):
+    def __init__(self,
+                 ensemble_predictors,
+                 type_of_estimator,
+                 ensemble_method='average',
+                 num_classes=None):
         self.ensemble_predictors = ensemble_predictors
         self.type_of_estimator = type_of_estimator
         self.ensemble_method = ensemble_method
         self.num_classes = num_classes
-
 
     # ################################
     # Get a dataframe that is all the predictions from all the sub-models
@@ -35,7 +35,6 @@ class Ensembler(BaseEstimator, TransformerMixin):
                 predictions = list(estimator.predict_proba(X))
             return_obj = {estimator_name: predictions}
             return return_obj
-
 
         # Don't bother parallelizing if this is a single dictionary
         if X.shape[0] == 1:
@@ -80,11 +79,8 @@ class Ensembler(BaseEstimator, TransformerMixin):
 
             return predictions_df
 
-
-
     def fit(self, X, y):
         return self
-
 
     # ################################
     # Public API to get a single prediction from each row, where that single prediction is somehow an ensemble of all our trained subpredictors
@@ -118,8 +114,6 @@ class Ensembler(BaseEstimator, TransformerMixin):
             elif self.ensemble_method == 'min':
                 return predictions.apply(np.min, axis=1).values
 
-
-
     def get_predictions_by_class(self, predictions):
         predictions_by_class = []
         for class_idx in range(self.num_classes):
@@ -128,11 +122,9 @@ class Ensembler(BaseEstimator, TransformerMixin):
 
         return predictions_by_class
 
-
     def predict_proba(self, X):
 
         predictions = self.get_all_predictions(X)
-
 
         # If this is just a single dictionary we're getting predictions from:
         if X.shape[0] == 1:
@@ -141,16 +133,21 @@ class Ensembler(BaseEstimator, TransformerMixin):
             predicted_vals = self.get_predictions_by_class(predicted_vals)
 
             if self.ensemble_method == 'median':
-                return [np.median(class_preds) for class_preds in predicted_vals]
+                return [
+                    np.median(class_preds) for class_preds in predicted_vals
+                ]
             elif self.ensemble_method == 'average' or self.ensemble_method == 'mean' or self.ensemble_method == 'avg':
-                return [np.average(class_preds) for class_preds in predicted_vals]
+                return [
+                    np.average(class_preds) for class_preds in predicted_vals
+                ]
             elif self.ensemble_method == 'max':
                 return [np.max(class_preds) for class_preds in predicted_vals]
             elif self.ensemble_method == 'min':
                 return [np.min(class_preds) for class_preds in predicted_vals]
 
         else:
-            classed_predictions = predictions.apply(self.get_predictions_by_class, axis=1)
+            classed_predictions = predictions.apply(
+                self.get_predictions_by_class, axis=1)
 
             if self.ensemble_method == 'median':
                 return classed_predictions.apply(np.median, axis=1)
@@ -160,4 +157,3 @@ class Ensembler(BaseEstimator, TransformerMixin):
                 return classed_predictions.apply(np.max, axis=1)
             elif self.ensemble_method == 'min':
                 return classed_predictions.apply(np.min, axis=1)
-

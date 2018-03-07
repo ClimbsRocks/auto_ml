@@ -1,25 +1,36 @@
+import itertools
+import scipy
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
-
-
-import scipy
-import itertools
 from sklearn.feature_selection import GenericUnivariateSelect, RFECV, SelectFromModel
 
 
 def get_feature_selection_model_from_name(type_of_estimator, model_name):
     model_map = {
         'classifier': {
-            'SelectFromModel': SelectFromModel(RandomForestClassifier(n_jobs=-1, max_depth=10, n_estimators=15), threshold='20*mean'),
-            'RFECV': RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
-            'GenericUnivariateSelect': GenericUnivariateSelect(),
-            'KeepAll': 'KeepAll'
+            'SelectFromModel':
+            SelectFromModel(
+                RandomForestClassifier(
+                    n_jobs=-1, max_depth=10, n_estimators=15),
+                threshold='20*mean'),
+            'RFECV':
+            RFECV(estimator=RandomForestClassifier(n_jobs=-1), step=0.1),
+            'GenericUnivariateSelect':
+            GenericUnivariateSelect(),
+            'KeepAll':
+            'KeepAll'
         },
         'regressor': {
-            'SelectFromModel': SelectFromModel(RandomForestRegressor(n_jobs=-1, max_depth=10, n_estimators=15), threshold='0.7*mean'),
-            'RFECV': RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
-            'GenericUnivariateSelect': GenericUnivariateSelect(),
-            'KeepAll': 'KeepAll'
+            'SelectFromModel':
+            SelectFromModel(
+                RandomForestRegressor(n_jobs=-1, max_depth=10, n_estimators=15),
+                threshold='0.7*mean'),
+            'RFECV':
+            RFECV(estimator=RandomForestRegressor(n_jobs=-1), step=0.1),
+            'GenericUnivariateSelect':
+            GenericUnivariateSelect(),
+            'KeepAll':
+            'KeepAll'
         }
     }
 
@@ -28,13 +39,14 @@ def get_feature_selection_model_from_name(type_of_estimator, model_name):
 
 class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
 
-
-    def __init__(self, type_of_estimator, column_descriptions, feature_selection_model='SelectFromModel'):
+    def __init__(self,
+                 type_of_estimator,
+                 column_descriptions,
+                 feature_selection_model='SelectFromModel'):
 
         self.column_descriptions = column_descriptions
         self.type_of_estimator = type_of_estimator
         self.feature_selection_model = feature_selection_model
-
 
     def get(self, prop_name, default=None):
         try:
@@ -42,12 +54,11 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         except AttributeError:
             return default
 
-
     def fit(self, X, y=None):
         print('Performing feature selection')
 
-
-        self.selector = get_feature_selection_model_from_name(self.type_of_estimator, self.feature_selection_model)
+        self.selector = get_feature_selection_model_from_name(
+            self.type_of_estimator, self.feature_selection_model)
 
         if self.selector == 'KeepAll':
             if scipy.sparse.issparse(X):
@@ -55,15 +66,17 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
             else:
                 num_cols = len(X[0])
 
-            self.support_mask = [True for col_idx in range(num_cols) ]
+            self.support_mask = [True for col_idx in range(num_cols)]
         else:
             if self.feature_selection_model == 'SelectFromModel':
                 num_cols = X.shape[1]
                 num_rows = X.shape[0]
                 if self.type_of_estimator == 'regressor':
-                    self.estimator = RandomForestRegressor(n_jobs=-1, max_depth=10, n_estimators=15)
+                    self.estimator = RandomForestRegressor(
+                        n_jobs=-1, max_depth=10, n_estimators=15)
                 else:
-                    self.estimator = RandomForestClassifier(n_jobs=-1, max_depth=10, n_estimators=15)
+                    self.estimator = RandomForestClassifier(
+                        n_jobs=-1, max_depth=10, n_estimators=15)
 
                 self.estimator.fit(X, y)
 
@@ -83,17 +96,22 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
                 except IndexError:
                     threshold_by_max_cols = sorted_importances[-1]
 
-                threshold = max(threshold_by_relative_importance, threshold_by_max_cols)
-                self.support_mask = [True if x > threshold else False for x in feature_importances]
+                threshold = max(threshold_by_relative_importance,
+                                threshold_by_max_cols)
+                self.support_mask = [
+                    True if x > threshold else False
+                    for x in feature_importances
+                ]
 
             else:
                 self.selector.fit(X, y)
                 self.support_mask = self.selector.get_support()
 
         # Get a mask of which indices it is we want to keep
-        self.index_mask = [idx for idx, val in enumerate(self.support_mask) if val == True]
+        self.index_mask = [
+            idx for idx, val in enumerate(self.support_mask) if val == True
+        ]
         return self
-
 
     def transform(self, X, y=None):
 
@@ -115,4 +133,3 @@ class FeatureSelectionTransformer(BaseEstimator, TransformerMixin):
         else:
             X = X[:, self.index_mask]
             return X
-

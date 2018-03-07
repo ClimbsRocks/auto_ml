@@ -3,6 +3,8 @@ from sklearn.base import BaseEstimator, TransformerMixin
 from auto_ml import utils
 
 booleans = set([True, False, 'true', 'false', 'True', 'False', 'TRUE', 'FALSE'])
+
+
 # Used in CustomSparseScaler
 def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
 
@@ -43,24 +45,33 @@ def calculate_scaling_ranges(X, col, min_percentile=0.05, max_percentile=0.95):
                 return 'ignore'
 
     col_summary = {
-        'max_val': max_val
-        , 'min_val': min_val
-        , 'inner_range': inner_range
+        'max_val': max_val,
+        'min_val': min_val,
+        'inner_range': inner_range
     }
 
     return col_summary
+
 
 # Scale sparse data to the 95th and 5th percentile
 # Only do so for values that actuall exist (do absolutely nothing with rows that do not have this data point)
 class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
-
-    def __init__(self, column_descriptions, truncate_large_values=False, perform_feature_scaling=True, min_percentile=0.05, max_percentile=0.95):
+    def __init__(self,
+                 column_descriptions,
+                 truncate_large_values=False,
+                 perform_feature_scaling=True,
+                 min_percentile=0.05,
+                 max_percentile=0.95):
         self.column_descriptions = column_descriptions
 
-        self.numeric_col_descs = set([None, 'continuous', 'numerical', 'numeric', 'float', 'int'])
+        self.numeric_col_descs = set(
+            [None, 'continuous', 'numerical', 'numeric', 'float', 'int'])
         # Everything in column_descriptions (except numeric_col_descs) is a non-numeric column, and thus, cannot be scaled
-        self.cols_to_avoid = set([k for k, v in column_descriptions.items() if v not in self.numeric_col_descs])
+        self.cols_to_avoid = set([
+            k for k, v in column_descriptions.items()
+            if v not in self.numeric_col_descs
+        ])
 
         # Setting these here so that they can be grid searchable
         # Truncating large values is an interesting strategy. It forces all values to fit inside the 5th - 95th percentiles.
@@ -70,13 +81,11 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
         self.min_percentile = min_percentile
         self.max_percentile = max_percentile
 
-
     def get(self, prop_name, default=None):
         try:
             return getattr(self, prop_name)
         except AttributeError:
             return default
-
 
     def fit(self, X, y=None):
         print('Performing feature scaling')
@@ -87,7 +96,11 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
             for col in X.columns:
                 if col not in self.cols_to_avoid:
-                    col_summary = calculate_scaling_ranges(X, col, min_percentile=self.min_percentile, max_percentile=self.max_percentile)
+                    col_summary = calculate_scaling_ranges(
+                        X,
+                        col,
+                        min_percentile=self.min_percentile,
+                        max_percentile=self.max_percentile)
                     if col_summary == 'ignore':
                         self.cols_to_ignore.append(col)
                     elif col_summary == 'pass_on_col':
@@ -97,14 +110,17 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
 
         return self
 
-
     # Perform basic min/max scaling, with the minor caveat that our min and max values are the 10th and 90th percentile values, to avoid outliers.
     def transform(self, X, y=None):
 
         if isinstance(X, dict):
             for col, col_dict in self.column_ranges.items():
                 if col in X:
-                    X[col] = scale_val(val=X[col], min_val=col_dict['min_val'], total_range=col_dict['inner_range'], truncate_large_values=self.truncate_large_values)
+                    X[col] = scale_val(
+                        val=X[col],
+                        min_val=col_dict['min_val'],
+                        total_range=col_dict['inner_range'],
+                        truncate_large_values=self.truncate_large_values)
         else:
 
             if len(self.cols_to_ignore) > 0:
@@ -114,7 +130,9 @@ class CustomSparseScaler(BaseEstimator, TransformerMixin):
                 if col in X.columns:
                     min_val = col_dict['min_val']
                     inner_range = col_dict['inner_range']
-                    X[col] = X[col].apply(lambda x: scale_val(x, min_val, inner_range, self.truncate_large_values))
+                    X[col] = X[col].apply(
+                        lambda x: scale_val(x, min_val, inner_range, self.truncate_large_values)
+                    )
 
         return X
 
@@ -128,4 +146,3 @@ def scale_val(val, min_val, total_range, truncate_large_values=False):
             scaled_value = 1
 
     return scaled_value
-

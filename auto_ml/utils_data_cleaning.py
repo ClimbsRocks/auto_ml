@@ -12,7 +12,13 @@ from sklearn.feature_extraction.text import TfidfVectorizer
 import warnings
 
 # The easiest way to check against a bunch of different bad values is to convert whatever val we have into a string, then check it against a set containing the string representation of a bunch of bad values
-bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf', '-inf'])
+bad_vals_as_strings = set([
+    str(float('nan')),
+    str(float('inf')),
+    str(float('-inf')), 'None', 'none', 'NaN', 'nan', 'NULL', 'null', '', 'inf',
+    '-inf'
+])
+
 
 # clean_val will try to turn a value into a float.
 # If it fails, it will attempt to strip commas and then attempt to turn it into a float again
@@ -20,7 +26,7 @@ bad_vals_as_strings = set([str(float('nan')), str(float('inf')), str(float('-inf
 # This function will either return a clean value, or raise an error if we cannot turn the value into a float or the value is a bad val
 def clean_val(val):
     if str(val) in bad_vals_as_strings:
-        raise(ValueError('clean_val failed'))
+        raise (ValueError('clean_val failed'))
     else:
         try:
             float_val = float(val)
@@ -34,6 +40,7 @@ def clean_val(val):
                 return None
         return float_val
 
+
 # Same as above, except this version returns float('nan') when it fails
 # This plays more nicely with df.apply, and assumes we will be handling nans appropriately when doing DataFrameVectorizer later.
 def clean_val_nan_version(key, val, replacement_val=np.nan):
@@ -41,11 +48,13 @@ def clean_val_nan_version(key, val, replacement_val=np.nan):
         str_val = str(val)
     except UnicodeEncodeError as e:
         str_val = val.encode('ascii', 'ignore').decode('ascii')
-        print('Here is the value that causes the UnicodeEncodeError to be thrown:')
+        print(
+            'Here is the value that causes the UnicodeEncodeError to be thrown:'
+        )
         print(val)
         print('Here is the feature name:')
         print(key)
-        raise(e)
+        raise (e)
 
     if str_val in bad_vals_as_strings:
         return replacement_val
@@ -58,7 +67,9 @@ def clean_val_nan_version(key, val, replacement_val=np.nan):
                 cleaned_string = val.replace(',', '')
             except TypeError:
                 print('*************************************')
-                print('We expected this value to be numeric, but were unable to convert it to a float:')
+                print(
+                    'We expected this value to be numeric, but were unable to convert it to a float:'
+                )
                 print(val)
                 print('Here is the feature name:')
                 print(key)
@@ -71,7 +82,9 @@ def clean_val_nan_version(key, val, replacement_val=np.nan):
         except TypeError:
             # This is what happens if you feed in a datetime object to float
             print('*************************************')
-            print('We expected this value to be numeric, but were unable to convert it to a float:')
+            print(
+                'We expected this value to be numeric, but were unable to convert it to a float:'
+            )
             print(val)
             print('Here is the feature name:')
             print(key)
@@ -81,16 +94,15 @@ def clean_val_nan_version(key, val, replacement_val=np.nan):
         return float_val
 
 
-
 class BasicDataCleaning(BaseEstimator, TransformerMixin):
-
 
     def __init__(self, column_descriptions=None):
         self.column_descriptions = column_descriptions
         self.transformed_column_descriptions = column_descriptions.copy()
         self.text_col_indicators = set(['text', 'nlp'])
-        self.numeric_col_types = ['int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64']
-
+        self.numeric_col_types = [
+            'int8', 'int16', 'int32', 'int64', 'float16', 'float32', 'float64'
+        ]
 
         self.text_columns = {}
         for key, val in self.column_descriptions.items():
@@ -99,19 +111,24 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     # If we have any documents that cannot be decoded properly, just ignore them and keep going as planned with everything else
                     decode_error='ignore'
                     # Try to strip accents from characters. Using unicode is slightly slower but more comprehensive than 'ascii'
-                    , strip_accents='unicode'
+                    ,
+                    strip_accents='unicode'
                     # Can also choose 'character', which will likely increase accuracy, at the cost of much more space, generally
-                    , analyzer='word'
+                    ,
+                    analyzer='word'
                     # Remove commonly found english words ('it', 'a', 'the') which do not typically contain much signal
-                    , stop_words='english'
+                    ,
+                    stop_words='english'
                     # Convert all characters to lowercase
-                    , lowercase=True
+                    ,
+                    lowercase=True
                     # Only consider words that appear in fewer than max_df percent of all documents
                     # In this case, ignore all words that appear in 90% of all documents
-                    , max_df=0.9
+                    ,
+                    max_df=0.9
                     # Consider only the most frequently occurring 3000 words, after taking into account all the other filtering going on
-                    , max_features=3000
-                )
+                    ,
+                    max_features=3000)
 
     def get(self, prop_name, default=None):
         try:
@@ -127,7 +144,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         # See if we should fit TfidfVectorizer or not
         for key in X_df.columns:
 
-            if X_df[key].dtype == 'object' and self.column_descriptions.get(key, False) not in ['categorical', 'ignore', 'nlp']:
+            if X_df[key].dtype == 'object' and self.column_descriptions.get(
+                    key, False) not in ['categorical', 'ignore', 'nlp']:
 
                 # First, make sure that the values in this column are not just ints, or float('nan')
                 vals = X_df[key].sample(n=10)
@@ -142,13 +160,22 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                 if is_categorical:
                     print('\n')
-                    print('Encountered a column that is not marked as categorical, but is an "object" pandas type, which typically indicates a categorical column.')
+                    print(
+                        'Encountered a column that is not marked as categorical, but is an "object" pandas type, which typically indicates a categorical column.'
+                    )
                     print('The name of this columns is: "{}"'.format(key))
-                    print('Some example features in this column are: {}'.format(list(X_df[key].sample(n=5))))
-                    print('If this is a categorical column, please mark it as `{}: "categorical"` as part of your column_descriptions'.format(key))
-                    print('If this is not a categorical column, please consider converting its dtype before passing data into auto_ml')
+                    print('Some example features in this column are: {}'.format(
+                        list(X_df[key].sample(n=5))))
+                    print(
+                        'If this is a categorical column, please mark it as `{}: "categorical"` as part of your column_descriptions'.
+                        format(key))
+                    print(
+                        'If this is not a categorical column, please consider converting its dtype before passing data into auto_ml'
+                    )
                     print('\n')
-                    warnings.warn('Consider marking the "{}" column as categorical'.format(key))
+                    warnings.warn(
+                        'Consider marking the "{}" column as categorical'.
+                        format(key))
 
             if self.transformed_column_descriptions.get(key) is None:
                 self.transformed_column_descriptions[key] = 'continuous'
@@ -170,7 +197,9 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     except:
                         col_names[idx] = 'non_ascii_word_' + str(idx)
 
-                col_names = ['nlp_' + key + '_' + str(word) for word in col_names]
+                col_names = [
+                    'nlp_' + key + '_' + str(word) for word in col_names
+                ]
 
                 self.text_columns[key].cleaned_feature_names = col_names
 
@@ -181,18 +210,16 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         ignore_none_fields = False
         if self.get('transformed_column_descriptions', None) is not None:
             ignore_none_fields = True
-        column_descriptions = self.get('transformed_column_descriptions', self.column_descriptions)
-
+        column_descriptions = self.get('transformed_column_descriptions',
+                                       self.column_descriptions)
 
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)
         X = X.copy()
 
-
         # All of these are values we will not want to keep for training this particular estimator.
         # Note that we have already split out the output column and saved it into it's own variable
-
 
         if isinstance(X, dict):
 
@@ -203,8 +230,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
                 if col_desc is None:
                     continue
-                elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
-                    dict_copy[key] = clean_val_nan_version(key, val, replacement_val=0)
+                elif col_desc in (None, 'continuous', 'numerical', 'float',
+                                  'int'):
+                    dict_copy[key] = clean_val_nan_version(
+                        key, val, replacement_val=0)
                 elif col_desc == 'date':
                     date_feature_dict = add_date_features_dict(X, key)
                     dict_copy.update(date_feature_dict)
@@ -217,7 +246,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     try:
                         text_val = str(X[key])
                     except UnicodeEncodeError:
-                        text_val = X[key].encode('ascii', 'ignore').decode('ascii')
+                        text_val = X[key].encode('ascii',
+                                                 'ignore').decode('ascii')
 
                     # the transform function expects a list
                     text_val = [text_val]
@@ -235,7 +265,10 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                         relevant_col_names.append(col_names[col_idx])
 
                     # Then we zip together the relevant columns and the sparse data into a dictionary
-                    relevant_nlp_cols = {k:v for k,v in zip(relevant_col_names, nlp_matrix.data)}
+                    relevant_nlp_cols = {
+                        k: v
+                        for k, v in zip(relevant_col_names, nlp_matrix.data)
+                    }
 
                     dict_copy.update(relevant_nlp_cols)
 
@@ -258,9 +291,8 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                 df_to_clean = X[cols_to_clean]
                 X.drop(cols_to_clean, axis=1, inplace=True)
 
-
-
-                if df_to_clean.shape[0] > 100000 or os.environ.get('is_test_suite', 0) == 'True':
+                if df_to_clean.shape[0] > 100000 or os.environ.get(
+                        'is_test_suite', 0) == 'True':
                     results = list(map(lambda col: self.process_one_column(col_vals=df_to_clean[col], col_name=col), df_to_clean.columns))
                 else:
                     pool = pathos.multiprocessing.ProcessPool()
@@ -276,7 +308,6 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
                     except AssertionError:
                         pass
 
-
                 result = {}
                 for val in results:
                     result.update(val)
@@ -286,15 +317,14 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             return X
 
-
     def process_one_column(self, col_vals, col_name):
         ignore_none_fields = False
         if self.get('transformed_column_descriptions', None) is not None:
             ignore_none_fields = True
-        column_descriptions = self.get('transformed_column_descriptions', self.column_descriptions)
+        column_descriptions = self.get('transformed_column_descriptions',
+                                       self.column_descriptions)
 
         col_desc = column_descriptions.get(col_name)
-
 
         # This is what we do to columns that were not present at fitting time.
         # All columns that were present at fitting time that had no entry in column_descriptions were filled in with 'continuous'
@@ -303,30 +333,40 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
         elif col_desc == 'categorical':
             # We will handle categorical data later, one-hot-encoding it inside DataFrameVectorizer (or LabelEncoding it for lgbm)
-            result = {
-                col_name: col_vals
-            }
+            result = {col_name: col_vals}
 
         elif col_desc in (None, 'continuous', 'numerical', 'float', 'int'):
             # For all of our numerical columns, try to turn all of these values into floats
             # This function handles commas inside strings that represent numbers, and returns nan if we cannot turn this value into a float. nans are ignored in DataFrameVectorizer
             try:
                 col_vals = col_vals.apply(lambda x: clean_val_nan_version(col_name, x, replacement_val=0))
-                result = {
-                    col_name: col_vals
-                }
+                result = {col_name: col_vals}
             except TypeError as e:
-                raise(e)
+                raise (e)
             except UnicodeEncodeError as e:
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                print('We have found a column that is not marked as a categorical column that has unicode values in it')
+                print(
+                    '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+                )
+                print(
+                    '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+                )
+                print(
+                    'We have found a column that is not marked as a categorical column that has unicode values in it'
+                )
                 print('Here is the column name:')
                 print(col_name)
-                print('The actual value that caused the issue is logged right above the exclamation points')
-                print('Please either mark this column as categorical, or clean up the values in this column')
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
-                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
+                print(
+                    'The actual value that caused the issue is logged right above the exclamation points'
+                )
+                print(
+                    'Please either mark this column as categorical, or clean up the values in this column'
+                )
+                print(
+                    '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+                )
+                print(
+                    '!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!'
+                )
 
         elif col_desc == 'date':
             result = add_date_features_df(col_vals, col_name)
@@ -337,9 +377,11 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
 
             col_vals.fillna('nan', inplace=True)
             if pandas_version < '0.20.0':
-                nlp_matrix = self.text_columns[col_name].transform(col_vals.astype(str, raise_on_error=False))
+                nlp_matrix = self.text_columns[col_name].transform(
+                    col_vals.astype(str, raise_on_error=False))
             else:
-                nlp_matrix = self.text_columns[col_name].transform(col_vals.astype(str, errors='ignore'))
+                nlp_matrix = self.text_columns[col_name].transform(
+                    col_vals.astype(str, errors='ignore'))
 
             nlp_matrix = nlp_matrix.toarray()
 
@@ -356,16 +398,20 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
             # If we have gotten here, the value is not any that we recognize
             # This is most likely a typo that the user would want to be informed of, or a case while we're developing on auto_ml itself.
             # In either case, it's useful to log it.
-            print('When transforming the data, we have encountered a value in column_descriptions that is not currently supported. The column has been dropped to allow the rest of the pipeline to run. Here\'s the name of the column:' )
+            print(
+                'When transforming the data, we have encountered a value in column_descriptions that is not currently supported. The column has been dropped to allow the rest of the pipeline to run. Here\'s the name of the column:'
+            )
             print(col_name)
-            print('And here is the value for this column passed into column_descriptions:')
+            print(
+                'And here is the value for this column passed into column_descriptions:'
+            )
             print(col_desc)
-            warnings.warn('UnknownValueInColumnDescriptions: Please make sure all the values you pass into column_descriptions are valid.')
+            warnings.warn(
+                'UnknownValueInColumnDescriptions: Please make sure all the values you pass into column_descriptions are valid.'
+            )
             result = {}
 
-
         return result
-
 
 
 def minutes_into_day_parts(minutes_into_day):
@@ -386,6 +432,7 @@ def minutes_into_day_parts(minutes_into_day):
     else:
         return 'late_night'
 
+
 # Note: assumes that the column is already formatted as a pandas date type
 def add_date_features_df(col_data, date_col):
     # Pandas nicely tries to prevent you from doing stupid things, like setting values on a copy of a df, not your real one
@@ -396,31 +443,45 @@ def add_date_features_df(col_data, date_col):
     col_data = pd.to_datetime(col_data)
 
     if pandas_version < '0.20.0':
-        result[date_col + '_day_of_week'] = col_data.apply(lambda x: x.weekday()).astype(int, raise_on_error=False)
+        result[date_col +
+               '_day_of_week'] = col_data.apply(lambda x: x.weekday()).astype(
+                   int, raise_on_error=False)
     else:
-        result[date_col + '_day_of_week'] = col_data.apply(lambda x: x.weekday()).astype(int, errors='ignore')
+        result[date_col +
+               '_day_of_week'] = col_data.apply(lambda x: x.weekday()).astype(
+                   int, errors='ignore')
 
     try:
         if pandas_version < '0.20.0':
-            result[date_col + '_hour'] = col_data.apply(lambda x: x.hour).astype(int, raise_on_error=False)
+            result[date_col +
+                   '_hour'] = col_data.apply(lambda x: x.hour).astype(
+                       int, raise_on_error=False)
         else:
-            result[date_col + '_hour'] = col_data.apply(lambda x: x.hour).astype(int, errors='ignore')
+            result[date_col +
+                   '_hour'] = col_data.apply(lambda x: x.hour).astype(
+                       int, errors='ignore')
 
-
-        result[date_col + '_minutes_into_day'] = col_data.apply(lambda x: x.hour * 60 + x.minute)
+        result[date_col + '_minutes_into_day'] = col_data.apply(
+            lambda x: x.hour * 60 + x.minute)
 
         result[date_col + '_hour'] = result[date_col + '_hour'].fillna(0)
-        result[date_col + '_minutes_into_day'] = result[date_col + '_minutes_into_day'].fillna(0)
+        result[date_col + '_minutes_into_day'] = result[
+            date_col + '_minutes_into_day'].fillna(0)
     except AttributeError:
         pass
 
-    result[date_col + '_is_weekend'] = col_data.apply(lambda x: x.weekday() in (5,6))
-    result[date_col + '_day_part'] = result[date_col + '_minutes_into_day'].apply(minutes_into_day_parts)
+    result[date_col +
+           '_is_weekend'] = col_data.apply(lambda x: x.weekday() in (5, 6))
+    result[date_col + '_day_part'] = result[
+        date_col + '_minutes_into_day'].apply(minutes_into_day_parts)
 
-    result[date_col + '_day_of_week'] = result[date_col + '_day_of_week'].fillna(0)
-    result[date_col + '_is_weekend'] = result[date_col + '_is_weekend'].fillna(0)
+    result[date_col + '_day_of_week'] = result[date_col +
+                                               '_day_of_week'].fillna(0)
+    result[date_col + '_is_weekend'] = result[date_col +
+                                              '_is_weekend'].fillna(0)
     result[date_col + '_day_part'] = result[date_col + '_day_part'].fillna(0)
     return result
+
 
 # Same logic as above, except implemented for a single dictionary, which is much faster at prediction time when getting just a single prediction
 def add_date_features_dict(row, date_col):
@@ -440,18 +501,17 @@ def add_date_features_dict(row, date_col):
     # Make a copy of all the engineered features from the date, without modifying the original object at all
     # This way the same original object can be passed into a number of different trained auto_ml predictors
 
-
     date_feature_dict[date_col + '_day_of_week'] = date_val.weekday()
     # nesting this inside a try/except block because the date might be a datetime.date, not a datetime.datetime
     try:
         date_feature_dict[date_col + '_hour'] = date_val.hour
 
-        date_feature_dict[date_col + '_minutes_into_day'] = date_val.hour * 60 + date_val.minute
+        date_feature_dict[
+            date_col +
+            '_minutes_into_day'] = date_val.hour * 60 + date_val.minute
     except AttributeError:
         pass
 
-    date_feature_dict[date_col + '_is_weekend'] = date_val.weekday() in (5,6)
+    date_feature_dict[date_col + '_is_weekend'] = date_val.weekday() in (5, 6)
 
     return date_feature_dict
-
-
