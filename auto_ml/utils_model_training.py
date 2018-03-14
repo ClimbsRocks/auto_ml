@@ -226,18 +226,34 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
+            train_dynamic_n_estimators = False
+            if self.model.get_params()['iterations'] == 2001:
+                train_dynamic_n_estimators = True
+
+                X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
+
             if isinstance(X_fit, pd.DataFrame):
                 X_fit = X_fit.values
             else:
                 X_fit = X_fit.toarray()
 
-            if self.type_of_estimator == 'classifier' and len(pd.Series(y).unique()) > 2:
+            if train_dynamic_n_estimators:
+                if isinstance(X_test, pd.DataFrame):
+                    X_test = X_test.values
+                else:
+                    X_test = X_test.toarray()
+
+            if self.type_of_estimator == 'classifier' and len(
+                    pd.Series(y).unique()) > 2:
                 # TODO: we might have to modify the format of the y values, converting them all to ints, then back again (sklearn has a useful inverse_transform on some preprocessing classes)
                 self.model.set_params(loss_function='MultiClass')
 
             cat_feature_indices = self.get_categorical_feature_indices()
 
-            self.model.fit(X_fit, y, cat_features=cat_feature_indices)
+            if train_dynamic_n_estimators:
+                self.model.fit(X_fit, y, cat_features=cat_feature_indices, eval_set=(X_test, y_test))
+            else:
+                self.model.fit(X_fit, y, cat_features=cat_feature_indices)
 
         elif self.model_name[:16] == 'GradientBoosting':
             if not sklearn_version > '0.18.1':

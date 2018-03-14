@@ -91,8 +91,8 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.15, 'num_leaves': 8, 'lambda_l2': 0.001, 'histogram_pool_size': 16384},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
-        'CatBoostRegressor': {},
-        'CatBoostClassifier': {}
+        'CatBoostRegressor': {'iterations': 2001},
+        'CatBoostClassifier': {'iterations': 2001}
     }
 
     # if os.environ.get('is_test_suite', 0) == 'True':
