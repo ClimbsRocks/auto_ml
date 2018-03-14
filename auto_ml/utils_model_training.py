@@ -227,7 +227,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         elif self.model_name[:8] == 'CatBoost':
             train_dynamic_n_estimators = False
-            if self.model.get_params()['iterations'] == 2001:
+            if self.model.get_params()['iterations'] == 1001:
                 train_dynamic_n_estimators = True
 
                 X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
@@ -251,6 +251,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             cat_feature_indices = self.get_categorical_feature_indices()
 
             if train_dynamic_n_estimators:
+                existing_model_params = self.model.get_params()
+                existing_model_params.update({
+                        'use_best_model': True
+                        , 'od_type': 'IncToDec'
+                        , 'od_wait': 50
+                    })
                 self.model.fit(X_fit, y, cat_features=cat_feature_indices, eval_set=(X_test, y_test))
             else:
                 self.model.fit(X_fit, y, cat_features=cat_feature_indices)
