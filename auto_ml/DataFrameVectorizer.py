@@ -126,24 +126,24 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             indptr = array("i", [0])
             values = []
 
-            for f, val in X.items():
-                if self.column_descriptions.get(f, False) == 'categorical':
+            for feature_name, val in X.items():
+                if self.column_descriptions.get(feature_name, False) == 'categorical':
                     if self.get('keep_cat_features', False) == False:
                         if not isinstance(val, str):
                             if isinstance(val, numbers.Number) or val is None:
                                 val = str(val)
                             else:
                                 val = val.encode('utf-8').decode('utf-8')
-                        f = f + self.separator + val
+                        feature_name = feature_name + self.separator + val
                         val = 1
                     else:
                         if val in bad_vals:
                             val = '_None'
-                        val = self.get('label_encoders')[f].transform([val])
+                        val = self.get('label_encoders')[feature_name].transform([val])
 
-                if f in vocab and val not in bad_vals and (self.get('keep_cat_features', False) or not np.isnan(val)):
+                if feature_name in vocab and val not in bad_vals and (self.get('keep_cat_features', False) or not np.isnan(val)):
 
-                    indices.append(vocab[f])
+                    indices.append(vocab[feature_name])
                     # Convert the val to the correct dtype, then append to our values list
                     values.append(dtype(val))
 
@@ -187,7 +187,6 @@ class DataFrameVectorizer(BaseEstimator, TransformerMixin):
             categorical_vals = list(map(lambda col_name: self.transform_categorical_col(col_vals=list(X[col_name]), col_name=col_name), self.categorical_columns))
 
             X = X[self.numerical_columns]
-            # X.drop(self.categorical_columns, inplace=True, axis=1)
             X.reset_index(drop=True, inplace=True)
             for result in categorical_vals:
                 result.reset_index(drop=True, inplace=True)
