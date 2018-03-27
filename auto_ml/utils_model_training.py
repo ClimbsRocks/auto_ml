@@ -63,6 +63,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
     def fit(self, X, y):
 
         global keras_imported, KerasRegressor, KerasClassifier, EarlyStopping, ModelCheckpoint, TerminateOnNaN, keras_load_model
+        global catboost_imported, CatBoostClassifier, CatBoostRegressor
         self.model_name = get_name_from_model(self.model)
 
         X_fit = X
@@ -203,6 +204,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                         eval_metric = 'quantile'
                     else:
                         eval_metric = 'rmse'
+
                 elif self.type_of_estimator == 'classifier':
                     if len(set(y_test)) > 2:
                         eval_metric = 'multi_logloss'
@@ -226,8 +228,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     self.model.fit(X_fit, y, categorical_feature=cat_feature_indices, verbose=verbose)
 
         elif self.model_name[:8] == 'CatBoost':
+            print('CatBoost models can take a while longer to train, so we will include more verbose logging while training this model')
+            print(datetime.datetime.now())
             train_dynamic_n_estimators = False
-            if self.model.get_params()['iterations'] == 1001:
+            if self.model.get_params()['iterations'] != 501:
                 train_dynamic_n_estimators = True
 
                 X_fit, y, X_test, y_test = self.get_X_test(X_fit, y)
@@ -253,11 +257,26 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             if train_dynamic_n_estimators:
                 existing_model_params = self.model.get_params()
                 existing_model_params.update({
-                        'use_best_model': True
-                        , 'od_type': 'IncToDec'
-                        , 'od_wait': 50
-                    })
+                    'use_best_model': True
+                    , 'od_type': 'Iter'
+                    , 'od_wait': 50
+                    # , 'od_pval': 0.005
+                })
+
+                from catboost import CatBoostRegressor, CatBoostClassifier
+                if self.type_of_estimator == 'classifier':
+                    self.model = CatBoostClassifier(**existing_model_params)
+                elif self.type_of_estimator == 'regressor':
+                    self.model = CatBoostRegressor(**existing_model_params)
+
+                print('self.model.get_params()')
+                print(self.model.get_params())
+
+                print('Right before fitting the model')
+                print(datetime.datetime.now())
                 self.model.fit(X_fit, y, cat_features=cat_feature_indices, eval_set=(X_test, y_test))
+                print('Model is fitted!')
+                print(datetime.datetime.now())
             else:
                 self.model.fit(X_fit, y, cat_features=cat_feature_indices)
 
@@ -321,6 +340,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.X_test is not None:
             del self.X_test
             del self.y_test
+            del X_fit
         gc.collect()
         return self
 
@@ -720,8 +740,6 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                     del results['max_proba']
 
 
-
-
         return results
 
 
@@ -745,9 +763,4 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
             return X_fit, y, X_test, y_test
-
-
-
-
-
 
