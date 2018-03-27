@@ -1854,7 +1854,7 @@ class Predictor(object):
             self.trained_pipeline.feature_importances_ = importances_dict
 
 
-        def save_one_step(pipeline_step, used_deep_learning):
+        def save_one_step(pipeline_step, used_deep_learning, used_catboost):
             try:
                 if pipeline_step.model_name[:12] == 'DeepLearning':
                     used_deep_learning = True
@@ -1877,15 +1877,26 @@ class Predictor(object):
                     # Now that we've saved the keras model, set that spot in the pipeline to our random name, because otherwise we're at risk for recursionlimit errors (the model is very recursively deep)
                     # Using the random_name allows us to find the right model later if we have several (or several thousand) models to put back into place in the pipeline when we save this later
                     pipeline_step.model = random_name
+                elif pipeline_step.model_name[:8] == 'CatBoost':
+                    used_catboost = True
 
+                    random_name = str(random.random())
+
+                    catboost_file_name = file_name[:-5] + random_name + '_catboost_' + self.type_of_estimator + '_model.bin'
+                    catboost_model = pipeline_step.model
+                    catboost_model.save_model(catboost_file_name)
+                    pipeline_step.model = catboost_file_name
+
+                    model_name_map[catboost_file_name] = catboost_model
 
             except AttributeError as e:
                 pass
 
-            return used_deep_learning
+            return used_deep_learning, used_catboost
 
 
         used_deep_learning = False
+        used_catboost = False
 
         # This is where we will store all of our Keras models by their name, so we can put them back in place once we've taken them out and saved the rest of the pipeline
         model_name_map = {}
@@ -1893,19 +1904,19 @@ class Predictor(object):
             for step in self.trained_pipeline.transformation_pipeline.named_steps:
                 pipeline_step = self.trained_pipeline.transformation_pipeline.named_steps[step]
 
-                used_deep_learning = save_one_step(pipeline_step, used_deep_learning)
+                used_deep_learning = save_one_step(pipeline_step, used_deep_learning, used_catboost)
 
             for step in self.trained_pipeline.trained_models:
                 pipeline_step = self.trained_pipeline.trained_models[step]
 
-                used_deep_learning = save_one_step(pipeline_step, used_deep_learning)
+                used_deep_learning = save_one_step(pipeline_step, used_deep_learning, used_catboost)
 
         else:
 
             for step in self.trained_pipeline.named_steps:
                 pipeline_step = self.trained_pipeline.named_steps[step]
 
-                used_deep_learning = save_one_step(pipeline_step, used_deep_learning)
+                used_deep_learning = save_one_step(pipeline_step, used_deep_learning, used_catboost)
 
         # Now, whether we had deep learning models in there or not, save the structure of the whole pipeline
         # We've already removed the deep learning models from it if they existed, so they won't be throwing recursion errors here
@@ -1914,14 +1925,15 @@ class Predictor(object):
 
 
         # If we used deep learning, put the models back in place, so the predictor instance that's already loaded in memory will continue to work like the user expects (rather than forcing them to load it back in from disk again)
-        if used_deep_learning == True:
+        if used_deep_learning == True or used_catboost == True:
             if isinstance(self.trained_pipeline, utils_categorical_ensembling.CategoricalEnsembler):
                 for step in self.trained_pipeline.transformation_pipeline.named_steps:
                     pipeline_step = self.trained_pipeline.transformation_pipeline.named_steps[step]
 
                     try:
                         model_name = pipeline_step.model
-                        pipeline_step.model = model_name_map[model_name]
+                        if isinstance(model_name, str):
+                            pipeline_step.model = model_name_map[model_name]
                     except AttributeError:
                         pass
 
@@ -1940,13 +1952,11 @@ class Predictor(object):
                 for step in self.trained_pipeline.named_steps:
                     pipeline_step = self.trained_pipeline.named_steps[step]
                     try:
-                        if pipeline_step.get('model_name', 'nonsensicallongstring')[:12] == 'DeepLearning':
-
-                            model_name = pipeline_step.model
+                        model_name = pipeline_step.model
+                        if isinstance(model_name, str):
                             pipeline_step.model = model_name_map[model_name]
-                    except AttributeError as e:
+                    except AttributeError:
                         pass
-
 
 
         if verbose:
