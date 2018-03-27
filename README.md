@@ -84,7 +84,7 @@ Generally, just pass one of them in for model_names.
 Available options are
 - `DeepLearningClassifier` and `DeepLearningRegressor`
 - `XGBClassifier` and `XGBRegressor`
-- `LGBMClassifer` and `LGBMRegressor`
+- `LGBMClassifier` and `LGBMRegressor`
 - `CatBoostClassifier` and `CatBoostRegressor`
 
 All of these projects are ready for production. These projects all have prediction time in the 1 millisecond range for a single prediction, and are able to be serialized to disk and loaded into a new environment after training.

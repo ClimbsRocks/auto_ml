@@ -91,8 +91,8 @@ def get_model_from_name(model_name, training_params=None, is_hp_search=False):
         'LGBMClassifier': {'n_estimators': 2000, 'learning_rate': 0.15, 'num_leaves': 8, 'lambda_l2': 0.001, 'histogram_pool_size': 16384},
         'DeepLearningRegressor': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
         'DeepLearningClassifier': {'epochs': epochs, 'batch_size': 50, 'verbose': 2},
-        'CatBoostRegressor': {},
-        'CatBoostClassifier': {}
+        'CatBoostRegressor': {'iterations': 501, 'metric_period': 10, 'learning_rate': 0.15},
+        'CatBoostClassifier': {'iterations': 501, 'metric_period': 10, 'learning_rate': 0.15}
     }
 
     # if os.environ.get('is_test_suite', 0) == 'True':
@@ -596,6 +596,23 @@ def insert_deep_learning_model(pipeline_step, file_name):
     # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
     return model
 
+
+def insert_catboost_model(pipeline_step, file_name):
+    # This is where we saved the random_name for this model
+    catboost_file_name = pipeline_step.model
+
+    if 'classifier' in catboost_file_name:
+        from catboost import CatBoostClassifier
+        cb_model = CatBoostClassifier()
+    elif 'regressor' in catboost_file_name:
+        from catboost import CatBoostRegressor
+        cb_model = CatBoostRegressor()
+    model = cb_model.load_model(catboost_file_name)
+
+    # Put the model back in place so that we can still use it to get predictions without having to load it back in from disk
+    return model
+
+
 def load_ml_model(file_name):
 
     with open(file_name, 'rb') as read_file:
@@ -606,7 +623,7 @@ def load_ml_model(file_name):
             pipeline_step = base_pipeline.transformation_pipeline.named_steps[step]
 
             try:
-                if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                if pipeline_step.get('model_name', 'quite_necessarily_long_string')[:12] == 'DeepLearning':
                     pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
             except AttributeError:
                 pass
@@ -615,7 +632,7 @@ def load_ml_model(file_name):
             pipeline_step = base_pipeline.trained_models[step]
 
             try:
-                if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                if pipeline_step.get('model_name', 'quite_necessarily_long_string')[:12] == 'DeepLearning':
                     pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
             except AttributeError:
                 pass
@@ -625,9 +642,14 @@ def load_ml_model(file_name):
         for step in base_pipeline.named_steps:
             pipeline_step = base_pipeline.named_steps[step]
             try:
-                if pipeline_step.get('model_name', 'reallylongnonsensicalstring')[:12] == 'DeepLearning':
+                if pipeline_step.get('model_name', 'quite_necessarily_long_string')[:12] == 'DeepLearning':
                     pipeline_step.model = insert_deep_learning_model(pipeline_step, file_name)
-            except AttributeError:
+                elif pipeline_step.get('model_name', 'quite_necessarily_long_string')[:8] == 'CatBoost':
+                    pipeline_step.model = insert_catboost_model(pipeline_step, file_name)
+            except AttributeError as e:
+                print(e)
+                raise(e)
+
                 pass
 
     return base_pipeline
