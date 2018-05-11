@@ -1,3 +1,4 @@
+from bisect import bisect_left, bisect_right
 from collections import Iterable
 from copy import deepcopy
 import datetime
@@ -10,7 +11,8 @@ import lightgbm as lgb
 from lightgbm import LGBMClassifier
 import numpy as np
 import pandas as pd
-import scipy
+from scipy import sparse as scipy_sparse
+from scipy import stats as scipy_stats
 from sklearn.base import BaseEstimator, TransformerMixin
 from sklearn.model_selection import train_test_split
 from sklearn import __version__ as sklearn_version
@@ -72,12 +74,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression', 'Perceptron', 'PassiveAggressiveClassifier', 'SGDClassifier', 'RidgeClassifier', 'LogisticRegression', 'XGBClassifier', 'XGBRegressor']:
 
-            if self.model_name[:3] == 'XGB' and scipy.sparse.issparse(X):
+            if self.model_name[:3] == 'XGB' and scipy_sparse.issparse(X):
                 ones = [[1] for x in range(X.shape[0])]
                 # Trying to force XGBoost to play nice with sparse matrices
-                X_fit = scipy.sparse.hstack((X, ones))
+                X_fit = scipy_sparse.hstack((X, ones))
 
-            elif scipy.sparse.issparse(X_fit):
+            elif scipy_sparse.issparse(X_fit):
                 X_fit = X_fit.todense()
 
             if self.model_name[:12] == 'DeepLearning':
@@ -176,7 +178,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
             import lightgbm as lgb
 
-            if scipy.sparse.issparse(X_fit):
+            if scipy_sparse.issparse(X_fit):
                 X_fit = X_fit.toarray()
 
 
@@ -227,6 +229,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
 
                 if write_to_disk:
+                    print('Writing the dataset to disk so we can use it multiple times in a memory-efficient way')
                     try:
                         random_num = str(random.random())
                         tmp_data_file_name = '/dev/shm/{}'.format(self.lgbm_memory_optimized)
@@ -247,11 +250,14 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 gc.collect()
 
                 if cat_feature_indices is not None:
+                    print(len(y))
                     train_data = lgb.Dataset(tmp_data_file_name, label=y, categorical_feature=cat_feature_indices)
                     if train_dynamic_n_estimators:
                         try:
+                            print(len(y_test))
                             test_data = lgb.Dataset(tmp_test_data_file_name, label=y_test, categorical_feature=cat_feature_indices)
                         except UnboundLocalError:
+                            print(len(y_test))
                             test_data = lgb.Dataset(X_test, label=y_test, categorical_feature=cat_feature_indices, free_raw_data=True)
                 else:
                     train_data = lgb.Dataset(tmp_data_file_name, label=y)
@@ -423,7 +429,10 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         if self.X_test is not None:
             del self.X_test
             del self.y_test
+        try:
             del X_fit
+        except:
+            pass
         gc.collect()
         return self
 
@@ -558,7 +567,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
     def score(self, X, y, verbose=False):
         # At the time of writing this, GradientBoosting does not support sparse matrices for predictions
-        if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy.sparse.issparse(X):
+        if (self.model_name[:16] == 'GradientBoosting' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']) and scipy_sparse.issparse(X):
             X = X.todense()
 
         if self._scorer is not None:
@@ -593,21 +602,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if self.model_name[:3] == 'XGB':
             ones = [[1] for x in range(X.shape[0])]
-            if scipy.sparse.issparse(X):
+            if scipy_sparse.issparse(X):
                 # Trying to force XGBoost to play nice with sparse matrices
-                X = scipy.sparse.hstack((X, ones))
+                X = scipy_sparse.hstack((X, ones))
             else:
                 X = np.column_stack([X, ones])
 
         X_predict = X
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']):
-            if scipy.sparse.issparse(X):
+            if scipy_sparse.issparse(X):
                 X = X.todense()
             elif isinstance(X, pd.DataFrame):
                 X = X.values
         elif (self.model_name[:8] == 'CatBoost' or self.model_name[:4] == 'LGBM'):
-            if scipy.sparse.issparse(X):
+            if scipy_sparse.issparse(X):
                 X = X.toarray()
             elif isinstance(X, pd.DataFrame):
                 X = X.values
@@ -646,12 +655,12 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
                 try:
                     predictions = self.model.predict(X)
                 except TypeError as e:
-                    if scipy.sparse.issparse(X):
+                    if scipy_sparse.issparse(X):
                         X = X.todense()
                     predictions = self.model.predict(X)
 
             except TypeError as e:
-                if scipy.sparse.issparse(X):
+                if scipy_sparse.issparse(X):
                     X = X.todense()
                 predictions = self.model.predict_proba(X)
 
@@ -686,21 +695,21 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
 
         if self.model_name[:3] == 'XGB':
             ones = [[1] for x in range(X.shape[0])]
-            if scipy.sparse.issparse(X):
+            if scipy_sparse.issparse(X):
                 # Trying to force XGBoost to play nice with sparse matrices
-                X = scipy.sparse.hstack((X, ones))
+                X = scipy_sparse.hstack((X, ones))
             else:
                 X = np.column_stack([X, ones])
 
         X_predict = X
 
         if (self.model_name[:16] == 'GradientBoosting' or self.model_name[:12] == 'DeepLearning' or self.model_name in ['BayesianRidge', 'LassoLars', 'OrthogonalMatchingPursuit', 'ARDRegression']):
-            if scipy.sparse.issparse(X):
+            if scipy_sparse.issparse(X):
                 X_predict = X.todense()
             elif isinstance(X, pd.DataFrame):
                 X_predict = X.values
         elif self.model_name[:8] == 'CatBoost':
-            if scipy.sparse.issparse(X):
+            if scipy_sparse.issparse(X):
                 X_predict = X.toarray()
             elif isinstance(X, pd.DataFrame):
                 X_predict = X.values
@@ -756,7 +765,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
             predictor = tup[1]
             result[predictor_name] = predictor.predict(X)
 
-        if scipy.sparse.issparse(X):
+        if scipy_sparse.issparse(X):
             len_input = X.shape[0]
         else:
             len_input = len(X)
@@ -792,7 +801,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         predicted_features = self.predict(X)
         predicted_features = list(predicted_features)
 
-        X = scipy.sparse.hstack([X, predicted_features], format='csr')
+        X = scipy_sparse.hstack([X, predicted_features], format='csr')
         return X
 
     # Allows the user to get the fully transformed data
@@ -815,7 +824,7 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             base_predictions_col = [base_predictions]
 
-        X_combined = scipy.sparse.hstack([X, base_predictions_col], format='csr')
+        X_combined = scipy_sparse.hstack([X, base_predictions_col], format='csr')
 
         uncertainty_predictions = self.uncertainty_model.predict_proba(X_combined)
 
@@ -887,4 +896,3 @@ class FinalModelATC(BaseEstimator, TransformerMixin):
         else:
             X_fit, X_test, y, y_test = train_test_split(X_fit, y, test_size=0.15)
             return X_fit, y, X_test, y_test
-
