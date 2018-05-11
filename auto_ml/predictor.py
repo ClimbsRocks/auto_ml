@@ -245,7 +245,7 @@ class Predictor(object):
             X_df = pd.DataFrame(X)
             del X
         else:
-            X_df = X.copy()
+            X_df = X
 
         # To keep this as light in memory as possible, immediately remove any columns that the user has already told us should be ignored
         if len(self.cols_to_ignore) > 0:

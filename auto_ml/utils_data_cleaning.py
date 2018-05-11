@@ -188,7 +188,7 @@ class BasicDataCleaning(BaseEstimator, TransformerMixin):
         # Convert input to DataFrame if we were given a list of dictionaries
         if isinstance(X, list):
             X = pd.DataFrame(X)
-        X = copy.deepcopy(X)
+        # X = copy.deepcopy(X)
 
 
         # All of these are values we will not want to keep for training this particular estimator.
